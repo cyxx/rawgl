@@ -1,0 +1,173 @@
+entry #000 type 0
+entry #001 type 0
+entry #002 type 0
+entry #003 type 0
+entry #004 type 0
+entry #005 type 0
+entry #006 type 0
+entry #007 type 1
+entry #008 type 0
+entry #009 type 0
+entry #010 type 0
+entry #011 type 0
+entry #012 type 0
+entry #013 type 0
+entry #014 type 0
+entry #015 type 0
+entry #016 type 0
+entry #017 type 6
+entry #018 type 2
+entry #019 type 2
+entry #020 type 3
+entry #021 type 4
+entry #022 type 5
+entry #023 type 3
+entry #024 type 4
+entry #025 type 5
+entry #026 type 3
+entry #027 type 4
+entry #028 type 5
+entry #029 type 3
+entry #030 type 4
+entry #031 type 5
+entry #032 type 3
+entry #033 type 4
+entry #034 type 5
+entry #035 type 3
+entry #036 type 4
+entry #037 type 5
+entry #038 type 3
+entry #039 type 4
+entry #040 type 5
+entry #041 type 3
+entry #042 type 4
+entry #043 type 5
+entry #044 type 0
+entry #045 type 0
+entry #046 type 0
+entry #047 type 0
+entry #048 type 0
+entry #049 type 0
+entry #050 type 0
+entry #051 type 0
+entry #052 type 0
+entry #053 type 0
+entry #054 type 0
+entry #055 type 0
+entry #056 type 0
+entry #057 type 0
+entry #058 type 0
+entry #059 type 0
+entry #060 type 0
+entry #061 type 0
+entry #062 type 0
+entry #063 type 0
+entry #064 type 0
+entry #065 type 0
+entry #066 type 0
+entry #067 type 2
+entry #068 type 2
+entry #069 type 2
+entry #070 type 2
+entry #071 type 2
+entry #072 type 2
+entry #073 type 2
+entry #074 type 0
+entry #075 type 0
+entry #076 type 0
+entry #077 type 0
+entry #078 type 0
+entry #079 type 0
+entry #080 type 0
+entry #081 type 0
+entry #082 type 0
+entry #083 type 2
+entry #084 type 0
+entry #085 type 0
+entry #086 type 0
+entry #087 type 0
+entry #088 type 0
+entry #089 type 0
+entry #090 type 0
+entry #091 type 0
+entry #092 type 0
+entry #093 type 0
+entry #094 type 0
+entry #095 type 0
+entry #096 type 0
+entry #097 type 0
+entry #098 type 0
+entry #099 type 0
+entry #100 type 0
+entry #101 type 0
+entry #102 type 0
+entry #103 type 0
+entry #104 type 0
+entry #105 type 0
+entry #106 type 0
+entry #107 type 0
+entry #108 type 0
+entry #109 type 0
+entry #110 type 0
+entry #111 type 0
+entry #112 type 0
+entry #113 type 0
+entry #114 type 0
+entry #115 type 0
+entry #116 type 0
+entry #117 type 0
+entry #118 type 0
+entry #119 type 0
+entry #120 type 0
+entry #121 type 0
+entry #122 type 0
+entry #123 type 0
+entry #124 type 0
+entry #125 type 3
+entry #126 type 4
+entry #127 type 5
+entry #128 type 0
+entry #129 type 0
+entry #130 type 0
+entry #131 type 0
+entry #132 type 0
+entry #133 type 0
+entry #134 type 0
+entry #135 type 0
+entry #136 type 0
+entry #137 type 1
+entry #138 type 1
+entry #139 type 0
+entry #140 type 0
+entry #141 type 0
+entry #142 type 0
+entry #143 type 0
+entry #144 type 2
+entry #145 type 2
+resource #54
+resource #8
+resource #10
+resource #14
+resource #15
+resource #44
+resource #3
+resource #2
+resource #1
+resource #7
+resource #65
+resource #4
+resource #5
+resource #6
+resource #7
+resource #8
+resource #9
+resource #10
+resource #11
+resource #13
+resource #54
+resource #60
+resource #12
+resource #51
+resource #63
+resource #47
+resource #64

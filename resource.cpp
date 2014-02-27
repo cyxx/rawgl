@@ -1,0 +1,209 @@
+
+/*
+ * Another World engine rewrite
+ * Copyright (C) 2004-2005 Gregory Montoir (cyx@users.sourceforge.net)
+ */
+
+#include "resource.h"
+#include "file.h"
+#include "unpack.h"
+#include "video.h"
+
+
+Resource::Resource(Video *vid, const char *dataDir) 
+	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0) {
+}
+
+void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
+	uint16_t n = me - _memList;
+	debug(DBG_BANK, "Resource::readBank(%d)", n);
+#ifdef USE_UNPACKED_DATA
+	char bankEntryName[64];
+	sprintf(bankEntryName, "ootw-%02X-%d.dump", n, me->type);
+	File f;
+	if (!f.open(bankEntryName, _dataDir)) {
+		error("Resource::readBank() unable to open '%s' file\n", bankEntryName);
+	}
+	f.read(dstBuf, me->unpackedSize);
+#else
+	char name[10];
+	snprintf(name, sizeof(name), "bank%02x", me->bankNum);
+	File f;
+	if (f.open(name, _dataDir)) {
+		f.seek(me->bankPos);
+		if (me->packedSize == me->unpackedSize) {
+			f.read(dstBuf, me->packedSize);
+		} else {
+			f.read(dstBuf, me->packedSize);
+			bool ret = delphine_unpack(dstBuf, dstBuf, me->packedSize);
+			if (!ret) {
+				error("Resource::readBank() failed to unpack resource %d", n);
+			}
+		}
+	} else {
+		error("Resource::readBank() unable to open '%s'", name);
+	}
+#endif
+}
+
+void Resource::readEntries() {	
+	File f;
+	if (!f.open("memlist.bin", _dataDir)) {
+		error("Resource::readEntries() unable to open 'memlist.bin' file\n");
+	}
+	_numMemList = 0;
+	MemEntry *me = _memList;
+	while (1) {
+		assert(_numMemList < ARRAYSIZE(_memList));
+		me->valid = f.readByte();
+		me->type = f.readByte();
+		me->bufPtr = 0; f.readUint32BE();
+		me->rankNum = f.readByte();
+		me->bankNum = f.readByte();
+		me->bankPos = f.readUint32BE();
+		me->packedSize = f.readUint32BE();
+		me->unpackedSize = f.readUint32BE();
+		if (me->valid == 0xFF) {
+			break;
+		}
+		++_numMemList;
+		++me;
+	}
+}
+
+void Resource::load() {
+	while (1) {
+		MemEntry *it = _memList;
+		MemEntry *me = 0;
+
+		// get resource with max rankNum
+		uint8_t maxNum = 0;
+		uint16_t i = _numMemList;
+		while (i--) {
+			if (it->valid == 2 && maxNum <= it->rankNum) {
+				maxNum = it->rankNum;
+				me = it;
+			}
+			++it;
+		}
+		if (me == 0) {
+			break; // no entry found
+		}
+
+		uint8_t *memPtr = 0;
+		if (me->type == 2) {
+			memPtr = _vidCurPtr;
+		} else {
+			memPtr = _scriptCurPtr;
+			if (me->unpackedSize > uint32_t(_vidBakPtr - _scriptCurPtr)) {
+				warning("Resource::load() not enough memory");
+				me->valid = 0;
+				continue;
+			}
+		}
+		if (me->bankNum == 0) {
+			warning("Resource::load() ec=0x%X (me->bankNum == 0)", 0xF00);
+			me->valid = 0;
+		} else {
+			debug(DBG_BANK, "Resource::load() bufPos=%X size=%X type=%X pos=%X bankNum=%X", memPtr - _memPtrStart, me->packedSize, me->type, me->bankPos, me->bankNum);
+			readBank(me, memPtr);
+			if(me->type == 2) {
+				_vid->copyPagePtr(_vidCurPtr);
+				me->valid = 0;
+			} else {
+				me->bufPtr = memPtr;
+				me->valid = 1;
+				_scriptCurPtr += me->unpackedSize;
+			}
+		}
+	}
+}
+
+void Resource::invalidateRes() {
+	MemEntry *me = _memList;
+	uint16_t i = _numMemList;
+	while (i--) {
+		if (me->type <= 2 || me->type > 6) {
+			me->valid = 0;
+		}
+		++me;
+	}
+	_scriptCurPtr = _scriptBakPtr;
+}
+
+void Resource::invalidateAll() {
+	MemEntry *me = _memList;
+	uint16_t i = _numMemList;
+	while (i--) {
+		me->valid = 0;
+		++me;
+	}
+	_scriptCurPtr = _memPtrStart;
+}
+
+const uint16_t Resource::_memListAudio[] = { 
+	8, 0x10, 0x61, 0x66, 0xFFFF
+};
+
+void Resource::update(uint16_t num) {
+printf("resource #%d\n", num);
+	if (num > _numMemList) {
+		_newPtrsId = num;
+	} else {
+		for (const uint16_t *ml = _memListAudio; *ml != 0xFFFF; ++ml) {
+			if (*ml == num)
+				return;
+		}		
+		MemEntry *me = &_memList[num];
+		if (me->valid == 0) {
+			me->valid = 2;
+			load();
+		}
+	}
+}
+
+void Resource::setupPtrs(uint16_t ptrId) {
+	if (ptrId != _curPtrsId) {
+		uint8_t ipal = 0;
+		uint8_t icod = 0;
+		uint8_t ivd1 = 0;
+		uint8_t ivd2 = 0;
+		if (ptrId >= 16000 && ptrId <= 16009) {
+			uint16_t part = ptrId - 16000;
+			ipal = _memListParts[part][0];
+			icod = _memListParts[part][1];
+			ivd1 = _memListParts[part][2];
+			ivd2 = _memListParts[part][3];
+		} else {
+			error("Resource::setupPtrs() ec=0x%X invalid ptrId", 0xF07);
+		}
+		invalidateAll();
+		_memList[ipal].valid = 2;
+		_memList[icod].valid = 2;
+		_memList[ivd1].valid = 2;
+		if (ivd2 != 0) {
+			_memList[ivd2].valid = 2;
+		}
+printf("resource #%d #%d #%d #%d\n", ipal, icod, ivd1, ivd2);
+		load();
+		_segVideoPal = _memList[ipal].bufPtr;
+		_segCode = _memList[icod].bufPtr;
+		_segVideo1 = _memList[ivd1].bufPtr;
+		if (ivd2 != 0) {
+			_segVideo2 = _memList[ivd2].bufPtr;
+		}
+		_curPtrsId = ptrId;
+	}
+	_scriptBakPtr = _scriptCurPtr;	
+}
+
+void Resource::allocMemBlock() {
+	_memPtrStart = (uint8_t *)malloc(MEM_BLOCK_SIZE);
+	_scriptBakPtr = _scriptCurPtr = _memPtrStart;
+	_vidBakPtr = _vidCurPtr = _memPtrStart + MEM_BLOCK_SIZE - 0x800 * 16;
+	_useSegVideo2 = false;
+}
+
+void Resource::freeMemBlock() {
+	free(_memPtrStart);
+}
