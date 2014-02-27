@@ -10,6 +10,152 @@
 #include "systemstub.h"
 
 
+static bool hasExtension(const char *exts, const char *name) {
+	const char *p = strstr(exts, name);
+	if (p) {
+		p += strlen(name);
+		return *p == ' ' || *p == 0;
+	}
+	return false;
+}
+
+static int roundPow2(int sz) {
+	if (sz != 0 && (sz & (sz - 1)) == 0) {
+		return sz;
+	}
+	int textureSize = 1;
+	while (textureSize < sz) {
+		textureSize <<= 1;
+	}
+	return textureSize;
+}
+
+struct Texture {
+	bool _npotTex;
+	GLuint _id;
+	int _w, _h;
+	float _u, _v;
+	uint8_t *_rgbData;
+	const uint8_t *_raw16Data;
+
+	void init();
+	void uploadData(const uint8_t *data, int srcPitch, int w, int h, const Color *pal);
+	void setPalette(const Color *pal);
+	void draw(int w, int h);
+	void clear();
+	void readRaw16(const uint8_t *src, const Color *pal);
+	void readBitmap(const uint8_t *src);
+};
+
+void Texture::init() {
+	const char *exts = (const char *)glGetString(GL_EXTENSIONS);
+	_npotTex = hasExtension(exts, "GL_ARB_texture_non_power_of_two");
+	_id = (GLuint)-1;
+	_rgbData = 0;
+	_raw16Data = 0;
+}
+
+static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal) {
+	for (int y = 0; y < h; ++y) {
+		for (int x = 0; x < w; ++x) {
+			const uint8_t color = src[x];
+			int offset = x * 3;
+			dst[offset++] = pal[color].r;
+			dst[offset++] = pal[color].g;
+			dst[offset++] = pal[color].b;
+		}
+		dst += dstPitch;
+		src += srcPitch;
+	}
+}
+
+void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const Color *pal) {
+	if (!_rgbData) {
+		_w = _npotTex ? w : roundPow2(w);
+		_h = _npotTex ? h : roundPow2(h);
+		_rgbData = (uint8_t *)malloc(_w * _h * 3);
+		if (!_rgbData) {
+			return;
+		}
+		_u = w / (float)_w;
+		_v = h / (float)_h;
+		glGenTextures(1, &_id);
+		glBindTexture(GL_TEXTURE_2D, _id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		convertTexture(data, srcPitch, w, h, _rgbData, _w * 3, pal);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _w, _h, 0, GL_RGB, GL_UNSIGNED_BYTE, _rgbData);
+	} else {
+		glBindTexture(GL_TEXTURE_2D, _id);
+		convertTexture(data, srcPitch, w, h, _rgbData, _w * 3, pal);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _w, _h, GL_RGB, GL_UNSIGNED_BYTE, _rgbData);
+	}
+}
+
+void Texture::setPalette(const Color *pal) {
+	if (_raw16Data) {
+		uploadData(_raw16Data, 320, 320, 200, pal);
+	}
+}
+
+void Texture::draw(int w, int h) {
+	if (_id != (GLuint) -1) {
+		glEnable(GL_TEXTURE_2D);
+		glColor4ub(255, 255, 255, 255);
+		glBindTexture(GL_TEXTURE_2D, _id);
+		glBegin(GL_QUADS);
+			glTexCoord2f(0.f, 0.f);
+			glVertex2i(0, h);
+			glTexCoord2f(_u, 0.f);
+			glVertex2i(w, h);
+			glTexCoord2f(_u, _v);
+			glVertex2i(w, 0);
+			glTexCoord2f(0.f, _v);
+			glVertex2i(0, 0);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+	}
+}
+
+void Texture::clear() {
+	if (_id != (GLuint)-1) {
+		glDeleteTextures(1, &_id);
+		_id = (GLuint)-1;
+	}
+	free(_rgbData);
+	_rgbData = 0;
+	_raw16Data = 0;
+}
+
+void Texture::readRaw16(const uint8_t *src, const Color *pal) {
+	_raw16Data = src;
+	uploadData(_raw16Data, 320, 320, 200, pal);
+}
+
+void Texture::readBitmap(const uint8_t *src) {
+	if (memcmp(src, "BM", 2) == 0) {
+		const uint32_t imageOffset = READ_LE_UINT32(src + 0xA);
+		const int w = READ_LE_UINT32(src + 0x12);
+		const int h = READ_LE_UINT32(src + 0x16);
+		const int depth = READ_LE_UINT16(src + 0x1C);
+		const int compression = READ_LE_UINT32(src + 0x1E);
+		const int colorsCount = READ_LE_UINT32(src + 0x2E);
+		if (depth == 8 && compression == 0) {
+			Color palette[colorsCount];
+			const uint8_t *colorData = src + 0xE /* BITMAPFILEHEADER */ + 40 /* BITMAPINFOHEADER */;
+			for (int i = 0; i < colorsCount; ++i) {
+				palette[i].b = colorData[0];
+				palette[i].g = colorData[1];
+				palette[i].r = colorData[2];
+				colorData += 4;
+			}
+			uploadData(src + imageOffset, (w + 3) & ~3, w, h, palette);
+		} else {
+			warning("Unsupported BMP depth=%d compression=%d", depth, compression);
+		}
+	}
+}
+
 struct DrawListEntry {
 	uint8_t color;
 	int numVertices;
@@ -33,8 +179,6 @@ struct SystemStub_OGL : SystemStub {
 		DEF_SCREEN_H = 600,
 		SOUND_SAMPLE_RATE = 22050,
 		NUM_LISTS = 4,
-		BMP_TEX_W = 512,
-		BMP_TEX_H = 256
 	};
 
 	uint16_t _w, _h;
@@ -43,9 +187,7 @@ struct SystemStub_OGL : SystemStub {
 	Color _pal[16];
 	DrawList _drawLists[4];
 	uint32_t _fontListIndex;
-	uint8_t *_bmpTex;
-	GLuint _bmpTexId;
-	const uint8_t *_bmpList0;
+	Texture _backgroundTex;
 
 	virtual ~SystemStub_OGL() {}
 	virtual void init(const char *title);
@@ -75,8 +217,6 @@ struct SystemStub_OGL : SystemStub {
 	virtual void lockMutex(void *mutex);
 	virtual void unlockMutex(void *mutex);
 
-	void initBitmapTexture();
-	void createBitmapTexture(const uint8_t *data);
 	uint16_t blitListEntries(uint8_t listNum, uint16_t offset);
 	void resize(int w, int h);
 	void switchGfxMode(bool fullscreen);
@@ -102,7 +242,7 @@ void SystemStub_OGL::init(const char *title) {
 	glShadeModel(GL_SMOOTH);
 	glClearStencil(0);
 	resize(DEF_SCREEN_W, DEF_SCREEN_H);
-	initBitmapTexture();
+	_backgroundTex.init();
 }
 
 void SystemStub_OGL::destroy() {
@@ -193,11 +333,16 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 		_pal[i].g = (c->g << 2) | (c->g & 3);
 		_pal[i].b = (c->b << 2) | (c->b & 3);
 	}
+	_backgroundTex.setPalette(_pal);
 }
 
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 	assert(listNum == 0);
-	_bmpList0 = data;
+	if (memcmp(data, "BM", 2) == 0) {
+		_backgroundTex.readBitmap(data);
+	} else {
+		_backgroundTex.readRaw16(data, _pal);
+	}
 	_drawLists[listNum].vscroll = 0;
 	_drawLists[listNum].color = 0;
 	_drawLists[listNum].entries.clear();
@@ -271,7 +416,7 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 	_drawLists[listNum].color = color;
 	_drawLists[listNum].entries.clear();
 	if (listNum == 0) {
-		_bmpList0 = 0;
+		_backgroundTex.clear();
 	}
 }
 
@@ -283,7 +428,7 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 	dst->entries = src->entries;
 	dst->vscroll = -vscroll;
 	if (dstListNum == 0) {
-		_bmpList0 = 0;
+		_backgroundTex.clear();
 	}
 }
 
@@ -317,8 +462,6 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
-
 	DrawList *dl = &_drawLists[listNum];
 	Color *col = &_pal[dl->color];
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -326,23 +469,9 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 	glClearColor(col->r / 255.f, col->g / 255.f, col->b / 255.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	if (_bmpList0) {
-		glEnable(GL_TEXTURE_2D);
-		glColor4ub(255, 255, 255, 255);
-		createBitmapTexture(_bmpList0);
-		glBindTexture(GL_TEXTURE_2D, _bmpTexId);
-		glBegin(GL_QUADS);
-      		glTexCoord2f(0.f, 0.f);
-      		glVertex2f(0.f, SCREEN_H);
-      		glTexCoord2f(320.f / BMP_TEX_W, 0.f);
-      		glVertex2f(320.f, SCREEN_H);
-      		glTexCoord2f(320.f / BMP_TEX_W, 200.f / BMP_TEX_H);
-      		glVertex2f(320.f, 0.f);
-      		glTexCoord2f(0.f, 200.f / BMP_TEX_H);
-      		glVertex2f(0.f, 0.f);
-    	glEnd();
-		glDisable(GL_TEXTURE_2D);
-	}
+	_backgroundTex.draw(_w, _h);
+
+	glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
 
 	DrawList::Entries::const_iterator it;
 	bool needStencil = false;
@@ -528,37 +657,6 @@ void SystemStub_OGL::lockMutex(void *mutex) {
 
 void SystemStub_OGL::unlockMutex(void *mutex) {
 	SDL_mutexV((SDL_mutex *)mutex);
-}
-
-void SystemStub_OGL::initBitmapTexture() {
-	_bmpTex = (uint8_t *)malloc(BMP_TEX_W * BMP_TEX_H * 3); // XXX free()
-	assert(_bmpTex);
-	memset(_bmpTex, 0, BMP_TEX_W * BMP_TEX_H * 3);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  	glGenTextures(1, &_bmpTexId);
-	glBindTexture(GL_TEXTURE_2D, _bmpTexId);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, BMP_TEX_W, BMP_TEX_H, 0, GL_RGB, GL_UNSIGNED_BYTE, _bmpTex);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	_bmpList0 = 0;
-}
-
-static uint8_t tempBmpTex[320 * 200 * 3];
-
-void SystemStub_OGL::createBitmapTexture(const uint8_t *data) {
-	uint8_t *dst = tempBmpTex;
-	uint16_t h = 200;
-	while (h--) {
-		for (int i = 0; i < 320 * 3; i += 3) {
-			Color *col = &_pal[*data++];
-			*dst++ = col->r;
-			*dst++ = col->g;
-			*dst++ = col->b;
-		}
-	}
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glBindTexture(GL_TEXTURE_2D, _bmpTexId);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 320, 200, GL_RGB, GL_UNSIGNED_BYTE, tempBmpTex);
 }
 
 void SystemStub_OGL::resize(int w, int h) {

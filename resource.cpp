@@ -11,7 +11,7 @@
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0) {
+	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0), _is15th(false), _pak(dataDir) {
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -46,7 +46,14 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 #endif
 }
 
-void Resource::readEntries() {	
+void Resource::readEntries() {
+	_pak.readEntries();
+	if (_pak._entriesCount != 0) {
+		_is15th = true;
+		debug(DBG_INFO, "Using 15th anniversary edition data");
+		return;
+	}
+	// DOS datafiles
 	File f;
 	if (!f.open("memlist.bin", _dataDir)) {
 		error("Resource::readEntries() unable to open 'memlist.bin' file\n");
@@ -146,7 +153,16 @@ const uint16_t Resource::_memListAudio[] = {
 };
 
 void Resource::update(uint16_t num) {
-printf("resource #%d\n", num);
+	if (_is15th) {
+		if (num > 16000) {
+			_newPtrsId = num;
+		} else if (num >= 3000) {
+			loadBmp(num);
+		} else { // 145, 144, 73, 72, 70, 69, 68, 67
+			loadBmp(num);
+		}
+		return;
+	}
 	if (num > _numMemList) {
 		_newPtrsId = num;
 	} else {
@@ -162,7 +178,64 @@ printf("resource #%d\n", num);
 	}
 }
 
+static const int resBmpList[] = { 18, 19, 67, 68, 69, 70, 71, 72, 73, 83, 144, 145, 0xFFFF };
+
+void Resource::loadBmp(int num) {
+	char name[16];
+	if (num >= 3000) {
+		snprintf(name, sizeof(name), "e%04d.bmp", num);
+	} else {
+		snprintf(name, sizeof(name), "file%03d.bmp", num);
+	}
+	const PakEntry *e = _pak.find(name);
+	if (e) {
+		uint8_t *tmp = (uint8_t *)malloc(e->size);
+		if (tmp) {
+			uint32_t size;
+			_pak.loadData(e, tmp, &size);
+			_vid->copyBitmapPtr(tmp);
+			free(tmp);
+		}
+	}
+}
+
+uint8_t *Resource::loadDat(int num) {
+	uint8_t *p = 0;
+	for (int i = 0; resBmpList[i] != 0xFFFF; ++i) {
+		if (resBmpList[i] == num) {
+			loadBmp(num);
+			return 0;
+		}
+	}
+	char name[16];
+	snprintf(name, sizeof(name), "file%03d.dat", num);
+	const PakEntry *e = _pak.find(name);
+	if (e) {
+		uint32_t size;
+		_pak.loadData(e, _scriptCurPtr, &size);
+		p = _scriptCurPtr;
+		_scriptCurPtr += size;
+	}
+	return p;
+}
+
 void Resource::setupPtrs(uint16_t ptrId) {
+	if (_is15th) {
+		if (ptrId >= 16001 && ptrId <= 16009) {
+			_scriptCurPtr = _memPtrStart;
+			static const int order[] = { 0, 1, 2, 3 };
+			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };
+			for (int i = 0; i < 4; ++i) {
+				const int num = _memListParts[ptrId - 16000][order[i]];
+				if (num != 0) {
+					*segments[order[i]] = loadDat(num);
+				}
+			}
+			_curPtrsId = ptrId;
+		}
+		_scriptBakPtr = _scriptCurPtr;
+		return;
+	}
 	if (ptrId != _curPtrsId) {
 		uint8_t ipal = 0;
 		uint8_t icod = 0;
@@ -184,7 +257,6 @@ void Resource::setupPtrs(uint16_t ptrId) {
 		if (ivd2 != 0) {
 			_memList[ivd2].valid = 2;
 		}
-printf("resource #%d #%d #%d #%d\n", ipal, icod, ivd1, ivd2);
 		load();
 		_segVideoPal = _memList[ipal].bufPtr;
 		_segCode = _memList[icod].bufPtr;

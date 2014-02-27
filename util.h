@@ -15,7 +15,8 @@ enum {
 	DBG_VIDEO = 1 << 2,
 	DBG_SND   = 1 << 3,
 	DBG_SER   = 1 << 4,
-	DBG_INFO  = 1 << 5
+	DBG_INFO  = 1 << 5,
+	DBG_PAK   = 1 << 6,
 };
 
 extern uint16_t g_debugMask;

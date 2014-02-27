@@ -47,6 +47,7 @@ struct Video {
 	void fillPage(uint8_t page, uint8_t color);
 	void copyPage(uint8_t src, uint8_t dst, int16_t vscroll);
 	void copyPagePtr(const uint8_t *src);
+	void copyBitmapPtr(const uint8_t *src);
 	void changePal(uint8_t pal);
 	void updateDisplay(uint8_t page);
 };

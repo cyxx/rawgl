@@ -8,6 +8,7 @@
 #define RESOURCE_H__
 
 #include "intern.h"
+#include "pak.h"
 
 struct MemEntry {
 	uint8_t valid;         // 0x0
@@ -51,6 +52,8 @@ struct Resource {
 	uint8_t *_segCode;
 	uint8_t *_segVideo1;
 	uint8_t *_segVideo2;
+	bool _is15th;
+	Pak _pak;
 
 	Resource(Video *vid, const char *dataDir);
 	
@@ -60,6 +63,8 @@ struct Resource {
 	void invalidateAll();
 	void invalidateRes();	
 	void update(uint16_t num);
+	void loadBmp(int num);
+	uint8_t *loadDat(int num);
 	void setupPtrs(uint16_t ptrId);
 	void allocMemBlock();
 	void freeMemBlock();

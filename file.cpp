@@ -35,11 +35,13 @@ struct stdFile : File_impl {
 	}
 	void seek(int32_t off) {
 		if (_fp) {
+			_ioErr = false;
 			fseek(_fp, off, SEEK_SET);
 		}
 	}
 	void read(void *ptr, uint32_t size) {
 		if (_fp) {
+			_ioErr = false;
 			uint32_t r = fread(ptr, 1, size, _fp);
 			if (r != size) {
 				_ioErr = true;
@@ -48,6 +50,7 @@ struct stdFile : File_impl {
 	}
 	void write(void *ptr, uint32_t size) {
 		if (_fp) {
+			_ioErr = false;
 			uint32_t r = fwrite(ptr, 1, size, _fp);
 			if (r != size) {
 				_ioErr = true;
@@ -72,11 +75,13 @@ struct zlibFile : File_impl {
 	}
 	void seek(int32_t off) {
 		if (_fp) {
+			_ioErr = false;
 			gzseek(_fp, off, SEEK_SET);
 		}
 	}
 	void read(void *ptr, uint32_t size) {
 		if (_fp) {
+			_ioErr = false;
 			uint32_t r = gzread(_fp, ptr, size);
 			if (r != size) {
 				_ioErr = true;
@@ -85,6 +90,7 @@ struct zlibFile : File_impl {
 	}
 	void write(void *ptr, uint32_t size) {
 		if (_fp) {
+			_ioErr = false;
 			uint32_t r = gzwrite(_fp, ptr, size);
 			if (r != size) {
 				_ioErr = true;
@@ -110,12 +116,15 @@ bool File::open(const char *filename, const char *directory, const char *mode) {
 	_impl->close();
 	char buf[512];
 	sprintf(buf, "%s/%s", directory, filename);
-	char *p = buf + strlen(directory) + 1;
-	string_lower(p);
 	bool opened = _impl->open(buf, mode);
 	if (!opened) { // let's try uppercase
+		char *p = buf + strlen(directory) + 1;
 		string_upper(p);
 		opened = _impl->open(buf, mode);
+		if (!opened) { // let's try lowercase
+			string_lower(p);
+			opened = _impl->open(buf, mode);
+		}
 	}
 	return opened;
 }

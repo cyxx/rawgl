@@ -193,6 +193,10 @@ void Video::copyPagePtr(const uint8_t *src) {
 	_stub->addBitmapToList(0, _tempBitmap);
 }
 
+void Video::copyBitmapPtr(const uint8_t *src) {
+	_stub->addBitmapToList(0, src);
+}
+
 void Video::changePal(uint8_t palNum) {
 	if (palNum < 32) {
 		uint8_t *p = _res->_segVideoPal + palNum * 32;

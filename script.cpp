@@ -526,6 +526,10 @@ void Script::inp_handleSpecialKeys() {
 
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
+	if (_res->_is15th) {
+		warning("Unimplemented snd_playSound num=%d", resNum);
+		return;
+	}
 	if (_res->_curPtrsId != 16000 && _scriptVar_0xBF != _scriptVars[0xBF]) {
 		warning("snd_playSound() unhandled case _scriptVar_0xBF != _scriptVars[0xBF]");
 		return;
@@ -551,6 +555,12 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
+	if (_res->_is15th) {
+		warning("Unimplemented snd_playMusic num=%d", resNum);
+		// == 7, "intro2004.mod"
+		// == 138, "end2004.mod"
+		return;
+	}
 	if (resNum != 0) {
 		_ply->loadSfxModule(resNum, delay, pos);
 		_ply->start();
