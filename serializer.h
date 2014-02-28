@@ -32,7 +32,7 @@ struct File;
 
 struct Serializer {
 	enum {
-		CUR_VER = 1
+		CUR_VER = 2
 	};
 
 	enum EntryType {
@@ -43,6 +43,7 @@ struct Serializer {
 	};
 
 	enum {
+		SES_BOOL  = 1,
 		SES_INT8  = 1,
 		SES_INT16 = 2,
 		SES_INT32 = 4
@@ -66,6 +67,7 @@ struct Serializer {
 	Mode _mode;
 	uint8 *_ptrBlock;
 	uint16 _saveVer;
+	uint32 _bytesCount;
 	
 	Serializer(File *stream, Mode mode, uint8 *ptrBlock, uint16 saveVer = CUR_VER);
 

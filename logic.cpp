@@ -18,14 +18,16 @@
 
 #include <ctime>
 #include "logic.h"
+#include "mixer.h"
 #include "resource.h"
 #include "video.h"
 #include "serializer.h"
+#include "sfxplayer.h"
 #include "systemstub.h"
 
 
-Logic::Logic(Resource *res, Video *vid, SystemStub *stub)
-	: _res(res), _vid(vid), _stub(stub) {
+Logic::Logic(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub)
+	: _mix(mix), _res(res), _ply(ply), _vid(vid), _stub(stub) {
 }
 
 void Logic::init() {
@@ -33,6 +35,7 @@ void Logic::init() {
 	_scriptVars[0x54] = 0x81;
 	_scriptVars[VAR_RANDOM_SEED] = time(0);
 	_fastMode = false;
+	_ply->_markVar = &_scriptVars[VAR_MUS_MARK];
 }
 
 void Logic::op_movConst() {
@@ -57,6 +60,16 @@ void Logic::op_add() {
 }
 
 void Logic::op_addConst() {
+	if (_res->_curPtrsId == 0x3E86 && _scriptPtr.pc == _res->_segCode + 0x6D48) {
+		warning("Logic::op_addConst() hack for non-stop looping gun sound bug");
+		// the script 0x27 slot 0x17 doesn't stop the gun sound from looping, I 
+		// don't really know why ; for now, let's play the 'stopping sound' like 
+		// the other scripts do
+		//  (0x6D43) jmp(0x6CE5)
+		//  (0x6D46) break
+		//  (0x6D47) VAR(6) += -50
+		snd_playSound(0x5B, 1, 64, 1);
+	}
 	uint8 i = _scriptPtr.fetchByte();
 	int16 n = _scriptPtr.fetchWord();
 	debug(DBG_LOGIC, "Logic::op_addConst(0x%02X, %d)", i, n);
@@ -68,12 +81,18 @@ void Logic::op_call() {
 	uint8 sp = _stackPtr;
 	debug(DBG_LOGIC, "Logic::op_call(0x%X)", off);
 	_scriptStackCalls[sp] = _scriptPtr.pc - _res->_segCode;
+	if (_stackPtr == 0xFF) {
+		error("Logic::op_call() ec=0x%X stack overflow", 0x8F);
+	}
 	++_stackPtr;
 	_scriptPtr.pc = _res->_segCode + off;
 }
 
 void Logic::op_ret() {
 	debug(DBG_LOGIC, "Logic::op_ret()");
+	if (_stackPtr == 0) {
+		error("Logic::op_ret() ec=0x%X stack underflow", 0x8F);
+	}	
 	--_stackPtr;
 	uint8 sp = _stackPtr;
 	_scriptPtr.pc = _res->_segCode + _scriptStackCalls[sp];
@@ -90,11 +109,11 @@ void Logic::op_jmp() {
 	_scriptPtr.pc = _res->_segCode + off;	
 }
 
-void Logic::op_setScriptPos() {
+void Logic::op_setScriptSlot() {
 	uint8 i = _scriptPtr.fetchByte();
 	uint16 n = _scriptPtr.fetchWord();
-	debug(DBG_LOGIC, "Logic::op_setScriptPos(0x%X, 0x%X)", i, n);
-	_scriptPos[1][i] = n;
+	debug(DBG_LOGIC, "Logic::op_setScriptSlot(0x%X, 0x%X)", i, n);
+	_scriptSlotsPos[1][i] = n;
 }
 
 void Logic::op_jnz() {
@@ -118,18 +137,19 @@ void Logic::op_condJmp() {
 		// (0x0D4E) condJmp(0x4, VAR(50), 6, 0xDBC)		
 		*(_scriptPtr.pc + 0x99) = 0x0D;
 		*(_scriptPtr.pc + 0x9A) = 0x5A;
-		warning("Logic::op_condJmp() bypassing protection");	
+		warning("Logic::op_condJmp() bypassing protection");
 	}
 #endif
 	uint8 op = _scriptPtr.fetchByte();
 	int16 b = _scriptVars[_scriptPtr.fetchByte()];
-	int16 a = _scriptPtr.fetchByte();	
+	uint8 c = _scriptPtr.fetchByte();	
+	int16 a;
 	if (op & 0x80) {
-		a = _scriptVars[a];
+		a = _scriptVars[c];
+	} else if (op & 0x40) {
+		a = c * 256 + _scriptPtr.fetchByte();
 	} else {
-		if (op & 0x40) {
-			a = (a << 8) | _scriptPtr.fetchByte();
-		}
+		a = c;
 	}
 	debug(DBG_LOGIC, "Logic::op_condJmp(%d, 0x%02X, 0x%02X)", op, b, a);
 	bool expr = false;
@@ -178,21 +198,19 @@ void Logic::op_resetScript() {
 		return;
 	}
 	++n;
-	uint8 _al = _scriptPtr.fetchByte();
+	uint8 a = _scriptPtr.fetchByte();
 
-	debug(DBG_LOGIC, "Logic::op_resetScript(%d, %d, %d)", j, i, _al);
+	debug(DBG_LOGIC, "Logic::op_resetScript(%d, %d, %d)", j, i, a);
 
-	if (_al == 2) {
-		uint16 *_si = &_scriptPos[1][j];
+	if (a == 2) {
+		uint16 *p = &_scriptSlotsPos[1][j];
 		while (n--) {
-			*_si = 0xFFFE;
-			++_si;
+			*p++ = 0xFFFE;
 		}
-	} else if (_al < 2) {
-		uint8 *_si = &_scriptPaused[1][j];
+	} else if (a < 2) {
+		uint8 *p = &_scriptPaused[1][j];
 		while (n--) {
-			*_si = _al;
-			++_si;
+			*p++ = a;
 		}
 	}
 }
@@ -228,17 +246,16 @@ void Logic::op_updateDisplay() {
 
 	static uint32 tstamp = 0;
 	if (!_fastMode) {
-		// XXX experimental
 		int32 delay = _stub->getTimeStamp() - tstamp;
 		int32 pause = _scriptVars[VAR_PAUSE_SLICES] * 20 - delay;
 		if (pause > 0) {
 			_stub->sleep(pause);
 		}
+		tstamp = _stub->getTimeStamp();
 	}
 	_scriptVars[0xF7] = 0;
 
 	_vid->updateDisplay(page);
-	tstamp = _stub->getTimeStamp();
 }
 
 void Logic::op_halt() {
@@ -267,59 +284,67 @@ void Logic::op_and() {
 	uint8 i = _scriptPtr.fetchByte();
 	uint16 n = _scriptPtr.fetchWord();
 	debug(DBG_LOGIC, "Logic::op_and(0x%02X, %d)", i, n);
-	_scriptVars[i] &= n;
+	_scriptVars[i] = (uint16)_scriptVars[i] & n;
 }
 
 void Logic::op_or() {
 	uint8 i = _scriptPtr.fetchByte();
 	uint16 n = _scriptPtr.fetchWord();
 	debug(DBG_LOGIC, "Logic::op_or(0x%02X, %d)", i, n);
-	_scriptVars[i] |= n;
+	_scriptVars[i] = (uint16)_scriptVars[i] | n;
 }
 
 void Logic::op_shl() {
 	uint8 i = _scriptPtr.fetchByte();
 	uint16 n = _scriptPtr.fetchWord();
 	debug(DBG_LOGIC, "Logic::op_shl(0x%02X, %d)", i, n);
-	_scriptVars[i] <<= n;
+	_scriptVars[i] = (uint16)_scriptVars[i] << n;
 }
 
 void Logic::op_shr() {
 	uint8 i = _scriptPtr.fetchByte();
 	uint16 n = _scriptPtr.fetchWord();
 	debug(DBG_LOGIC, "Logic::op_shr(0x%02X, %d)", i, n);
-	_scriptVars[i] >>= n;
+	_scriptVars[i] = (uint16)_scriptVars[i] >> n;
 }
 
-void Logic::op_soundUnk1() {
-	uint16 b = _scriptPtr.fetchWord();
-	uint16 c = _scriptPtr.fetchWord();
-	uint8 a = _scriptPtr.fetchByte();
-	debug(DBG_LOGIC, "Logic::op_soundUnk1(0x%X, 0x%X, %d)", b, c, a);
-	// XXX
+void Logic::op_playSound() {
+	uint16 resNum = _scriptPtr.fetchWord();
+	uint8 freq = _scriptPtr.fetchByte();
+	uint8 vol = _scriptPtr.fetchByte();
+	uint8 channel = _scriptPtr.fetchByte();
+	debug(DBG_LOGIC, "Logic::op_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
+	snd_playSound(resNum, freq, vol, channel);
 }
 
 void Logic::op_updateMemList() {
 	uint16 num = _scriptPtr.fetchWord();
 	debug(DBG_LOGIC, "Logic::op_updateMemList(%d)", num);
-	_res->update(num);
+	if (num == 0) {
+		_ply->stop();
+		_mix->stopAll();
+		_res->invalidateRes();
+	} else {
+		_res->update(num);
+	}
 }
 
-void Logic::op_soundUnk2() {
-	uint16 b = _scriptPtr.fetchWord();
-	uint16 c = _scriptPtr.fetchWord();
-	uint8 a = _scriptPtr.fetchByte();
-	debug(DBG_LOGIC, "Logic::op_soundUnk2(0x%X, 0x%X, %d)", b, c, a);
-	// XXX
+void Logic::op_playMusic() {
+	uint16 resNum = _scriptPtr.fetchWord();
+	uint16 delay = _scriptPtr.fetchWord();
+	uint8 pos = _scriptPtr.fetchByte();
+	debug(DBG_LOGIC, "Logic::op_playMusic(0x%X, %d, %d)", resNum, delay, pos);
+	snd_playMusic(resNum, delay, pos);
 }
 
 void Logic::restartAt(uint16 ptrId) {
-	// XXX
+	_ply->stop();
+	_mix->stopAll();
 	_scriptVars[0xE4] = 0x14;
 	_res->setupPtrs(ptrId);
-	memset((uint8 *)_scriptPos, 0xFF, sizeof(_scriptPos));
+	memset((uint8 *)_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
 	memset((uint8 *)_scriptPaused, 0, sizeof(_scriptPaused));
-	_scriptPos[0][0] = 0;	
+	_scriptSlotsPos[0][0] = 0;	
 }
 
 void Logic::setupScripts() {
@@ -329,10 +354,10 @@ void Logic::setupScripts() {
 	}
 	for (int i = 0; i < 0x40; ++i) {
 		_scriptPaused[0][i] = _scriptPaused[1][i];
-		uint16 n = _scriptPos[1][i];
+		uint16 n = _scriptSlotsPos[1][i];
 		if (n != 0xFFFF) {
-			_scriptPos[0][i] = (n == 0xFFFE) ? 0xFFFF : n;
-			_scriptPos[1][i] = 0xFFFF;
+			_scriptSlotsPos[0][i] = (n == 0xFFFE) ? 0xFFFF : n;
+			_scriptSlotsPos[1][i] = 0xFFFF;
 		}
 	}
 }
@@ -340,15 +365,15 @@ void Logic::setupScripts() {
 void Logic::runScripts() {
 	for (int i = 0; i < 0x40; ++i) {
 		if (_scriptPaused[0][i] == 0) {
-			uint16 n = _scriptPos[0][i];
+			uint16 n = _scriptSlotsPos[0][i];
 			if (n != 0xFFFF) {
 				_scriptPtr.pc = _res->_segCode + n;
 				_stackPtr = 0;
 				_scriptHalted = false;
 				debug(DBG_LOGIC, "Logic::runScripts() i=0x%02X n=0x%02X *p=0x%02X", i, n, *_scriptPtr.pc);
 				executeScript();
-				_scriptPos[0][i] = _scriptPtr.pc - _res->_segCode;
-				debug(DBG_LOGIC, "Logic::runScripts() i=0x%02X pos=0x%X", i, _scriptPos[0][i]);
+				_scriptSlotsPos[0][i] = _scriptPtr.pc - _res->_segCode;
+				debug(DBG_LOGIC, "Logic::runScripts() i=0x%02X pos=0x%X", i, _scriptSlotsPos[0][i]);
 				if (_stub->_pi.quit) {
 					break;
 				}
@@ -492,11 +517,45 @@ void Logic::inp_handleSpecialKeys() {
 	}
 }
 
+void Logic::snd_playSound(uint16 resNum, uint8 freq, uint8 vol, uint8 channel) {
+	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
+	// XXX if (_res->_curPtrsId != 0x3E80 && _scriptVar_0xBF != _scriptVars[0xBF])
+	MemEntry *me = &_res->_memList[resNum];
+	if (me->valid == 1) {
+		if (vol == 0) {
+			_mix->stopChannel(channel);
+		} else {
+			MixerChunk mc;
+			memset(&mc, 0, sizeof(mc));
+			mc.data = me->bufPtr + 8; // skip header
+			mc.len = READ_BE_UINT16(me->bufPtr) * 2;
+			mc.loopLen = READ_BE_UINT16(me->bufPtr + 2) * 2;
+			if (mc.loopLen != 0) {
+				mc.loopPos = mc.len;
+			}
+			assert(freq < 40);
+			_mix->playChannel(channel & 3, &mc, _freqTable[freq], MIN(vol, 0x3F));
+		}
+	}
+}
+
+void Logic::snd_playMusic(uint16 resNum, uint16 delay, uint8 pos) {
+	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
+	if (resNum != 0) {
+		_ply->loadSfxModule(resNum, delay, pos);
+		_ply->start();
+	} else if (delay != 0) {
+		_ply->setEventsDelay(delay);
+	} else {
+		_ply->stop();
+	}
+}
+
 void Logic::saveOrLoad(Serializer &ser) {
 	Serializer::Entry entries[] = {
 		SE_ARRAY(_scriptVars, 0x100, Serializer::SES_INT16, VER(1)),
 		SE_ARRAY(_scriptStackCalls, 0x100, Serializer::SES_INT16, VER(1)),
-		SE_ARRAY(_scriptPos, 0x40 * 2, Serializer::SES_INT16, VER(1)),
+		SE_ARRAY(_scriptSlotsPos, 0x40 * 2, Serializer::SES_INT16, VER(1)),
 		SE_ARRAY(_scriptPaused, 0x40 * 2, Serializer::SES_INT8, VER(1)),
 		SE_END()
 	};

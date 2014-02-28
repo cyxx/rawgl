@@ -21,8 +21,10 @@
 
 #include "intern.h"
 
+struct Mixer;
 struct Resource;
 struct Serializer;
+struct SfxPlayer;
 struct SystemStub;
 struct Video;
 
@@ -36,6 +38,8 @@ struct Logic {
 
 		VAR_HERO_POS_UP_DOWN     = 0xE5,
 
+		VAR_MUS_MARK             = 0xF4,
+
 		VAR_SCROLL_Y             = 0xF9,
 		VAR_HERO_ACTION          = 0xFA,
 		VAR_HERO_POS_JUMP_DOWN   = 0xFB,
@@ -46,22 +50,25 @@ struct Logic {
 	};
 	
 	static const OpcodeStub _opTable[];
+	static const uint16 _freqTable[];
 
+	Mixer *_mix;
 	Resource *_res;
+	SfxPlayer *_ply;
 	Video *_vid;
 	SystemStub *_stub;
 
 	int16 _scriptVar_0xBF;
 	int16 _scriptVars[0x100];
 	uint16 _scriptStackCalls[0x40];
-	uint16 _scriptPos[2][0x40];
+	uint16 _scriptSlotsPos[2][0x40];
 	uint8 _scriptPaused[2][0x40];
 	Ptr _scriptPtr;
 	uint8 _stackPtr;
 	bool _scriptHalted;
 	bool _fastMode;
 
-	Logic(Resource *res, Video *vid, SystemStub *stub);
+	Logic(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub);
 	void init();
 	
 	void op_movConst();
@@ -72,7 +79,7 @@ struct Logic {
 	void op_ret();
 	void op_break();
 	void op_jmp();
-	void op_setScriptPos();
+	void op_setScriptSlot();
 	void op_jnz();
 	void op_condJmp();
 	void op_setPalette();
@@ -88,9 +95,9 @@ struct Logic {
 	void op_or();
 	void op_shl();
 	void op_shr();
-	void op_soundUnk1();
+	void op_playSound();
 	void op_updateMemList();
-	void op_soundUnk2();
+	void op_playMusic();
 
 	void restartAt(uint16 ptrId);
 	void setupPtrs(uint16 ptrId);
@@ -100,6 +107,9 @@ struct Logic {
 
 	void inp_updatePlayer();
 	void inp_handleSpecialKeys();
+	
+	void snd_playSound(uint16 resNum, uint8 freq, uint8 vol, uint8 channel);
+	void snd_playMusic(uint16 resNum, uint16 delay, uint8 pos);
 	
 	void saveOrLoad(Serializer &ser);
 };

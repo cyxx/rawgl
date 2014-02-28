@@ -16,27 +16,51 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef __UTIL_H__
-#define __UTIL_H__
+#ifndef __MIXER_H__
+#define __MIXER_H__
 
 #include "intern.h"
 
-enum {
-	DBG_LOGIC = 1 << 0,
-	DBG_BANK  = 1 << 1,
-	DBG_VIDEO = 1 << 2,
-	DBG_SND   = 1 << 3,
-	DBG_SER   = 1 << 4,
-	DBG_INFO  = 1 << 5
+struct MixerChunk {
+	const uint8 *data;
+	uint16 len;
+	uint16 loopPos;
+	uint16 loopLen;
 };
 
-extern uint16 g_debugMask;
+struct MixerChannel {
+	uint8 active;
+	uint8 volume;
+	MixerChunk chunk;
+	uint32 chunkPos;
+	uint32 chunkInc;
+};
 
-extern void debug(uint16 cm, const char *msg, ...);
-extern void error(const char *msg, ...);
-extern void warning(const char *msg, ...);
+struct Serializer;
+struct SystemStub;
 
-extern void string_lower(char *p);
-extern void string_upper(char *p);
+struct Mixer {
+	enum {
+		NUM_CHANNELS = 4
+	};
+
+	void *_mutex;
+	SystemStub *_stub;
+	MixerChannel _channels[NUM_CHANNELS];
+
+	Mixer(SystemStub *stub);
+	void init();
+	void free();
+
+	void playChannel(uint8 channel, const MixerChunk *mc, uint16 freq, uint8 volume);
+	void stopChannel(uint8 channel);
+	void setChannelVolume(uint8 channel, uint8 volume);
+	void stopAll();
+	void mix(int8 *buf, int len);
+
+	static void mixCallback(void *param, uint8 *buf, int len);
+
+	void saveOrLoad(Serializer &ser);
+};
 
 #endif

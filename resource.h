@@ -25,13 +25,13 @@ struct MemEntry {
 	uint8 valid;         // 0x0
 	uint8 type;          // 0x1, Resource::ResType
 	uint8 *bufPtr;       // 0x2
-	uint16 unk4;         // 0x4, unused ?
+	uint16 unk4;         // 0x4, unused
 	uint8 rankNum;       // 0x6
 	uint8 bankNum;       // 0x7
 	uint32 bankPos;      // 0x8 0xA
-	uint16 unkC;         // 0xC, unused ?
+	uint16 unkC;         // 0xC, unused
 	uint16 packedSize;   // 0xE
-	uint16 unk10;        // 0x10, unused ?
+	uint16 unk10;        // 0x10, unused
 	uint16 unpackedSize; // 0x12
 };
 
@@ -52,7 +52,6 @@ struct Resource {
 		MEM_BLOCK_SIZE = 600 * 1024
 	};
 	
-	static const uint16 _memListAudio[];
 	static const uint16 _memListParts[][4];
 	
 	Video *_vid;

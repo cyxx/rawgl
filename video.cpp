@@ -432,7 +432,7 @@ void Video::copyPagePtr(const uint8 *src) {
 					p[i & 3] <<= 1;
 				}
 				*dst++ = acc;
-			}			
+			}
 			++src;
 		}
 	}

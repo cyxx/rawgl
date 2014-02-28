@@ -23,14 +23,13 @@
 
 
 Engine::Engine(SystemStub *stub, const char *dataDir, const char *saveDir)
-	: _stub(stub), _log(&_res, &_vid, stub), _res(&_vid, dataDir), _vid(&_res, stub), 
-	_dataDir(dataDir), _saveDir(saveDir), _stateSlot(0) {
+	: _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(_stub), _res(&_vid, dataDir), 
+	_ply(&_mix, &_res, _stub), _vid(&_res, stub), _dataDir(dataDir), _saveDir(saveDir), _stateSlot(0) {
 }
 
 void Engine::run() {
 	_stub->init("Out Of This World");
 	setup();
-	// XXX
 	_log.restartAt(0x3E80); // demo starts at 0x3E81
 	while (!_stub->_pi.quit) {
 		_log.setupScripts();
@@ -47,11 +46,14 @@ void Engine::setup() {
 	_res.allocMemBlock();
 	_res.readEntries();
 	_log.init();
+	_mix.init();
+	_ply.init();
 }
 
 void Engine::finish() {
-	 // XXX
-	 _res.freeMemBlock();
+	_ply.free();
+	_mix.free();
+	_res.freeMemBlock();
 }
 
 void Engine::processInput() {
@@ -100,6 +102,8 @@ void Engine::saveGameState(uint8 slot, const char *desc) {
 		_log.saveOrLoad(s);
 		_res.saveOrLoad(s);
 		_vid.saveOrLoad(s);
+		_ply.saveOrLoad(s);
+		_mix.saveOrLoad(s);
 		if (f.ioErr()) {
 			warning("I/O error when saving game state");
 		} else {
@@ -119,6 +123,10 @@ void Engine::loadGameState(uint8 slot) {
 		if (id != 'AWSV') {
 			warning("Bad savegame format");
 		} else {
+			// mute
+			_ply.stop();
+			_mix.stopAll();
+			// header
 			uint16 ver = f.readUint16BE();
 			f.readUint16BE();
 			char hdrdesc[32];
@@ -128,6 +136,8 @@ void Engine::loadGameState(uint8 slot) {
 			_log.saveOrLoad(s);
 			_res.saveOrLoad(s);
 			_vid.saveOrLoad(s);
+			_ply.saveOrLoad(s);
+			_mix.saveOrLoad(s);
 		}
 		if (f.ioErr()) {
 			warning("I/O error when loading game state");

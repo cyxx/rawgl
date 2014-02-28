@@ -20,6 +20,7 @@
 #include "systemstub.h"
 #include "util.h"
 
+
 static const char *USAGE = 
 	"Raw - Another World Interpreter\n"
 	"Usage: raw [OPTIONS]...\n"
@@ -37,6 +38,7 @@ static bool parseOption(const char *arg, const char *longCmd, const char **opt) 
 	return ret;
 }
 
+#undef main
 int main(int argc, char *argv[]) {
 	const char *dataPath = ".";
 	const char *savePath = ".";
@@ -51,7 +53,7 @@ int main(int argc, char *argv[]) {
 			return 0;
 		}
 	}
-	g_debugMask = DBG_INFO;
+	g_debugMask = DBG_INFO; // DBG_LOGIC | DBG_BANK | DBG_VIDEO | DBG_SER | DBG_SND
 	SystemStub *stub = SystemStub_SDL_create();
 	Engine *e = new Engine(stub, dataPath, savePath);
 	e->run();

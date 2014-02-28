@@ -21,6 +21,8 @@
 
 #include "intern.h"
 #include "logic.h"
+#include "mixer.h"
+#include "sfxplayer.h"
 #include "resource.h"
 #include "video.h"
 
@@ -33,7 +35,9 @@ struct Engine {
 
 	SystemStub *_stub;
 	Logic _log;
+	Mixer _mix;
 	Resource _res;
+	SfxPlayer _ply;
 	Video _vid;
 	const char *_dataDir, *_saveDir;
 	uint8 _stateSlot;

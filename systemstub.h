@@ -41,6 +41,9 @@ struct PlayerInput {
 };
 
 struct SystemStub {
+	typedef void (*AudioCallback)(void *param, uint8 *stream, int len);
+	typedef uint32 (*TimerCallback)(uint32 delay, void *param);
+	
 	PlayerInput _pi;
 
 	virtual ~SystemStub() {}
@@ -54,6 +57,31 @@ struct SystemStub {
 	virtual void processEvents() = 0;
 	virtual void sleep(uint32 duration) = 0;
 	virtual uint32 getTimeStamp() = 0;
+
+	virtual void startAudio(AudioCallback callback, void *param) = 0;
+	virtual void stopAudio() = 0;
+	virtual uint32 getOutputSampleRate() = 0;
+	
+	virtual void *addTimer(uint32 delay, TimerCallback callback, void *param) = 0;
+	virtual void removeTimer(void *timerId) = 0;
+
+	virtual void *createMutex() = 0;
+	virtual void destroyMutex(void *mutex) = 0;
+	virtual void lockMutex(void *mutex) = 0;
+	virtual void unlockMutex(void *mutex) = 0;
+};
+
+struct MutexStack {
+	SystemStub *_stub;
+	void *_mutex;
+
+	MutexStack(SystemStub *stub, void *mutex) 
+		: _stub(stub), _mutex(mutex) {
+		_stub->lockMutex(_mutex);
+	}
+	~MutexStack() {
+		_stub->unlockMutex(_mutex);
+	}
 };
 
 extern SystemStub *SystemStub_SDL_create();

@@ -30,7 +30,7 @@ Resource::Resource(Video *vid, const char *dataDir)
 void Resource::readBank(const MemEntry *me, uint8 *dstBuf) {
 	uint16 n = me - _memList;
 	debug(DBG_BANK, "Resource::readBank(%d)", n);
-#ifdef USE_UNPACKED
+#ifdef USE_UNPACKED_DATA
 	char bankEntryName[64];
 	sprintf(bankEntryName, "ootw-%02X-%d.dump", n, me->type);
 	File f;
@@ -94,10 +94,6 @@ void Resource::load() {
 		}
 
 		uint8 *memPtr = 0;
-		// XXX if (_audio_no_sound != 0 && _audio_use_roland != 0 && me->type < 2) {
-		// XXX		me->valid = 0;
-		// XXX		continue;
-		// XXX }
 		if (me->type == 2) {
 			memPtr = _vidCurPtr;
 		} else {
@@ -127,7 +123,6 @@ void Resource::load() {
 }
 
 void Resource::invalidateRes() {
-	// XXX call ds:sound_stub_1_ptr
 	MemEntry *me = _memList;
 	uint16 i = _numMemList;
 	while (i--) {
@@ -150,23 +145,13 @@ void Resource::invalidateAll() {
 }
 
 void Resource::update(uint16 num) {
-	if (num == 0) {
-		invalidateRes();
+	if (num > _numMemList) {
+		_newPtrsId = num;
 	} else {
-		if (num > _numMemList) {
-			_newPtrsId = num;
-		} else {
-			if (false) { // XXX (_audio_use_pro_or_adlib == 1 || _audio_use_spk == 1) {
-				for (const uint16 *ml = _memListAudio; *ml != 0xFFFF; ++ml) {
-					if (*ml == num)
-						return;
-				}
-			}
-			MemEntry *me = &_memList[num];
-			if (me->valid == 0) {
-				me->valid = 2;
-				load();
-			}
+		MemEntry *me = &_memList[num];
+		if (me->valid == 0) {
+			me->valid = 2;
+			load();
 		}
 	}
 }
@@ -248,12 +233,12 @@ void Resource::saveOrLoad(Serializer &ser) {
 		SE_PTR(&_scriptCurPtr, VER(1)),
 		SE_PTR(&_vidBakPtr, VER(1)),
 		SE_PTR(&_vidCurPtr, VER(1)),
-		SE_INT(&_useSegVideo2, Serializer::SES_INT8, VER(1)),
+		SE_INT(&_useSegVideo2, Serializer::SES_BOOL, VER(1)),
 		SE_PTR(&_segVideoPal, VER(1)),
 		SE_PTR(&_segCode, VER(1)),
 		SE_PTR(&_segVideo1, VER(1)),
 		SE_PTR(&_segVideo2, VER(1)),
-		SE_END()		
+		SE_END()
 	};
 	ser.saveOrLoadEntries(entries);
 	if (ser._mode == Serializer::SM_LOAD) {

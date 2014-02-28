@@ -2,15 +2,15 @@
 SDL_CFLAGS = `sdl-config --cflags`
 SDL_LIBS = `sdl-config --libs`
 
-DEFINES = -DLITTLE_ENDIAN
+DEFINES = -DSYS_LITTLE_ENDIAN
 
 CXX = g++
-CXXFLAGS:= -g -O2 -Wall -Wuninitialized -Wno-unknown-pragmas -Wshadow -Wstrict-prototypes
+CXXFLAGS:= -g -O -Wall -Wuninitialized -Wno-unknown-pragmas -Wshadow -Wstrict-prototypes
 CXXFLAGS+= -Wimplicit -Wundef -Wreorder -Wwrite-strings -Wnon-virtual-dtor -Wno-multichar
 CXXFLAGS+= $(SDL_CFLAGS) $(DEFINES)
 
-SRCS = bank.cpp file.cpp engine.cpp logic.cpp resource.cpp sdlstub.cpp \
-	serializer.cpp staticres.cpp util.cpp video.cpp main.cpp
+SRCS = bank.cpp file.cpp engine.cpp logic.cpp mixer.cpp resource.cpp sdlstub.cpp \
+	serializer.cpp sfxplayer.cpp staticres.cpp util.cpp video.cpp main.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
