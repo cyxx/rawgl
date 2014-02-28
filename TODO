@@ -1,0 +1,13 @@
+
+TODO (in no particular order of priority)
+  - add music and sound
+  - improve SDL backend
+    * scalers (advmame2x, advmame3x)
+    * print on-screen messages when doing quick load/save
+      - SystemStub::displayInfo(const char *text, uint32 duration);
+  - improve timing
+  - support non interactive demo version (inputs are read from demo3.joy)
+  - support non-pc platforms versions (3do)
+  - rewrite video code to use OpenGL
+  - avoid full screen refresh (dirty blocks ?)
+  - rewrite the 'bypass protection' code
