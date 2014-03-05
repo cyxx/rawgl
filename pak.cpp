@@ -15,7 +15,7 @@ Pak::~Pak() {
 }
 
 void Pak::readEntries() {
-	uint8_t header[8];
+	uint8_t header[12];
 
 	memset(header, 0, sizeof(header));
 	_f.read(header, sizeof(header));
@@ -24,31 +24,30 @@ void Pak::readEntries() {
 	}
 	const uint32_t entriesOffset = READ_LE_UINT32(header + 4);
 	_f.seek(entriesOffset);
-
-	uint8_t entry[0x40];
-	int count = 0;
-	while (1) {
-		_f.read(entry, sizeof(entry));
+	const uint32_t entriesSize = READ_LE_UINT32(header + 8);
+	_entriesCount = entriesSize / 0x40;
+	debug(DBG_PAK, "Pak::readEntries() entries count %d", _entriesCount);
+	_entries = (PakEntry *)malloc(_entriesCount * sizeof(PakEntry));
+	if (!_entries) {
+		_entriesCount = 0;
+		return;
+	}
+	for (int i = 0; i < _entriesCount; ++i) {
+		uint8_t buf[0x40];
+		_f.read(buf, sizeof(buf));
 		if (_f.ioErr()) {
 			break;
 		}
-		if (strncmp((const char *)entry, "dlx/", 4) != 0 || strchr((const char *)entry + 4, '/')) {
+		const char *name = (const char *)buf;
+		if (strncmp(name, "dlx/", 4) != 0 || strchr(name + 4, '/')) {
 			continue;
 		}
-		++count;
-		if (count > _entriesCount) {
-			_entriesCount = count * 2;
-			_entries = (PakEntry *)realloc(_entries, sizeof(PakEntry) * _entriesCount);
-		}
-		if (_entries) {
-			PakEntry *e = &_entries[count - 1];
-			strcpy(e->name, (const char *)entry + 4);
-			e->offset = READ_LE_UINT32(entry + 0x38);
-			e->size = READ_LE_UINT32(entry + 0x3C);
-			debug(DBG_PAK, "Pak::readEntries() entry '%s' size %d", e->name, e->size);
-		}
+		PakEntry *e = &_entries[i];
+		strcpy(e->name, name + 4);
+		e->offset = READ_LE_UINT32(buf + 0x38);
+		e->size = READ_LE_UINT32(buf + 0x3C);
+		debug(DBG_PAK, "Pak::readEntries() buf '%s' size %d", e->name, e->size);
 	}
-	_entriesCount = count;
 }
 
 const PakEntry *Pak::find(const char *name) {
