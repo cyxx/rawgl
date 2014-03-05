@@ -11,7 +11,7 @@
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0), _is15th(false), _pak(dataDir) {
+	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0), _is15th(false), _pak(dataDir), _isAmiga(false) {
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -63,6 +63,7 @@ void Resource::readEntries() {
 			for (int i = 0; bank01Sizes[i] != 0; ++i) {
 				if (f.size() == bank01Sizes[i]) {
 					debug(DBG_INFO, "Using Amiga data files");
+					_isAmiga = true;
 					readEntriesAmiga(entries[i], 145);
 					return;
 				}

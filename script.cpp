@@ -25,7 +25,7 @@ void Script::init() {
 	// bypass the protection
 	_scriptVars[0xBC] = 0x10; // 0x4417
 	_scriptVars[0xC6] = 0x80; // 0x78E0
-	_scriptVars[0xF2] = 0xFA0;
+	_scriptVars[0xF2] = _res->_isAmiga ? 0x1770 : 0xFA0;
 	_scriptVars[0xDC] = 0x21;
 }
 
@@ -148,7 +148,8 @@ void Script::op_condJmp() {
 	}
 #endif
 	uint8_t op = _scriptPtr.fetchByte();
-	int16_t b = _scriptVars[_scriptPtr.fetchByte()];
+	const uint8_t var = _scriptPtr.fetchByte();
+	int16_t b = _scriptVars[var];
 	uint8_t c = _scriptPtr.fetchByte();	
 	int16_t a;
 	if (op & 0x80) {
@@ -158,7 +159,7 @@ void Script::op_condJmp() {
 	} else {
 		a = c;
 	}
-	debug(DBG_SCRIPT, "Script::op_condJmp(%d, 0x%02X, 0x%02X)", op, b, a);
+	debug(DBG_SCRIPT, "Script::op_condJmp(%d, 0x%02X, 0x%02X) var=0x%02X", op, b, a, var);
 	bool expr = false;
 	switch (op & 7) {
 	case 0:

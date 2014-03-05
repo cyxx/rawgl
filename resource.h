@@ -65,6 +65,7 @@ struct Resource {
 	uint8_t *_segVideo2;
 	bool _is15th;
 	Pak _pak;
+	bool _isAmiga;
 
 	Resource(Video *vid, const char *dataDir);
 	
