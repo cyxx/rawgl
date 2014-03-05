@@ -33,10 +33,10 @@ struct Engine {
 	Resource _res;
 	SfxPlayer _ply;
 	Video _vid;
-	const char *_dataDir, *_saveDir;
-	uint8_t _stateSlot;
+	const char *_dataDir;
+	int _partNum;
 
-	Engine(SystemStub *stub, const char *dataDir, const char *saveDir);
+	Engine(SystemStub *stub, const char *dataDir, int partNum);
 
 	void run(Version ver);
 	void setup();

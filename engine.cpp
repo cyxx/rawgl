@@ -9,9 +9,9 @@
 #include "systemstub.h"
 
 
-Engine::Engine(SystemStub *stub, const char *dataDir, const char *saveDir)
+Engine::Engine(SystemStub *stub, const char *dataDir, int partNum)
 	: _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(_stub), _res(&_vid, dataDir), 
-	_ply(&_mix, &_res, _stub), _vid(&_res, stub), _dataDir(dataDir), _saveDir(saveDir), _stateSlot(0) {
+	_ply(&_mix, &_res, _stub), _vid(&_res, stub), _dataDir(dataDir), _partNum(partNum) {
 }
 
 void Engine::run(Version ver) {
@@ -32,7 +32,7 @@ void Engine::run(Version ver) {
 		_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x1;
 		break;
 	}
-	_log.restartAt(16001);
+	_log.restartAt(16000 + _partNum);
 	while (!_stub->_pi.quit) {
 		_log.setupScripts();
 		_log.inp_updatePlayer();
@@ -60,24 +60,14 @@ void Engine::finish() {
 
 void Engine::processInput() {
 	if (_stub->_pi.load) {
-		loadGameState(_stateSlot);
 		_stub->_pi.load = false;
 	}
 	if (_stub->_pi.save) {
-		saveGameState(_stateSlot, "quicksave");
 		_stub->_pi.save = false;
 	}
 	if (_stub->_pi.fastMode) {
 		_log._fastMode = !_log._fastMode;
 		_stub->_pi.fastMode = false;
-	}
-	if (_stub->_pi.stateSlot != 0) {
-		int8_t slot = _stateSlot + _stub->_pi.stateSlot;
-		if (slot >= 0 && slot < MAX_SAVE_SLOTS) {
-			_stateSlot = slot;
-			debug(DBG_INFO, "Current game state slot is %d", _stateSlot);
-		}
-		_stub->_pi.stateSlot = 0;
 	}
 }
 
