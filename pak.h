@@ -2,6 +2,7 @@
 #ifndef PAK_H__
 #define PAK_H__
 
+#include "intern.h"
 #include "file.h"
 
 struct PakEntry {
