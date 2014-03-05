@@ -56,8 +56,22 @@ void Resource::readEntries() {
 	// DOS datafiles
 	File f;
 	if (!f.open("memlist.bin", _dataDir)) {
-		error("Resource::readEntries() unable to open 'memlist.bin' file\n");
+		warning("Resource::readEntries() unable to open 'memlist.bin' file");
+		static const uint32_t bank01Sizes[] = { 244674, 244868, 0 };
+		static const AmigaMemEntry *entries[] = { _memListAmigaFR, _memListAmigaEN, 0 };
+		if (f.open("bank01", _dataDir)) {
+			for (int i = 0; bank01Sizes[i] != 0; ++i) {
+				if (f.size() == bank01Sizes[i]) {
+					debug(DBG_INFO, "Using Amiga data files");
+					readEntriesAmiga(entries[i], 145);
+					return;
+				}
+			}
+		}
+		error("No data files found in '%s'", _dataDir);
+		return;
 	}
+	debug(DBG_INFO, "Using DOS data files");
 	_numMemList = 0;
 	MemEntry *me = _memList;
 	while (1) {
@@ -76,6 +90,19 @@ void Resource::readEntries() {
 		++_numMemList;
 		++me;
 	}
+}
+
+void Resource::readEntriesAmiga(const AmigaMemEntry *entries, int count) {
+	_numMemList = count;
+	memset(_memList, 0, sizeof(_memList));
+	for (int i = 0; i < count; ++i) {
+		_memList[i].type = entries[i].type;
+		_memList[i].bankNum = entries[i].bank;
+		_memList[i].bankPos = entries[i].offset;
+		_memList[i].packedSize = entries[i].packedSize;
+		_memList[i].unpackedSize = entries[i].unpackedSize;
+	}
+	_memList[count].valid = 0xFF;
 }
 
 void Resource::load() {

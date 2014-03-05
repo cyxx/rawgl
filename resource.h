@@ -21,6 +21,14 @@ struct MemEntry {
 	uint32_t unpackedSize; // 0x12
 };
 
+struct AmigaMemEntry {
+	uint8_t type;
+	uint8_t bank;
+	uint32_t offset;
+	uint32_t packedSize;
+	uint32_t unpackedSize;
+};
+
 struct Serializer;
 struct Video;
 
@@ -31,7 +39,8 @@ struct Resource {
 		RT_VIDBUF = 2, // full screen video buffer, size=0x7D00
 		RT_PAL    = 3, // palette (1024=vga + 1024=ega), size=2048
 		RT_SCRIPT = 4,
-		RT_VBMP   = 5
+		RT_VBMP   = 5,
+		RT_UNK    = 6,
 	};
 	
 	enum {
@@ -40,7 +49,9 @@ struct Resource {
 	
 	static const uint16_t _memListAudio[];
 	static const uint16_t _memListParts[][4];
-	
+	static const AmigaMemEntry _memListAmigaFR[145];
+	static const AmigaMemEntry _memListAmigaEN[145];
+
 	Video *_vid;
 	const char *_dataDir;
 	MemEntry _memList[150];
@@ -59,6 +70,7 @@ struct Resource {
 	
 	void readBank(const MemEntry *me, uint8_t *dstBuf);
 	void readEntries();
+	void readEntriesAmiga(const AmigaMemEntry *entries, int count);
 	void load();
 	void invalidateAll();
 	void invalidateRes();	
