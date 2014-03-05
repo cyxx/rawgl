@@ -206,8 +206,6 @@ void Resource::update(uint16_t num) {
 	}
 }
 
-static const int resBmpList[] = { 18, 19, 67, 68, 69, 70, 71, 72, 73, 83, 144, 145, 0xFFFF };
-
 void Resource::loadBmp(int num) {
 	char name[16];
 	if (num >= 3000) {
@@ -229,12 +227,6 @@ void Resource::loadBmp(int num) {
 
 uint8_t *Resource::loadDat(int num) {
 	uint8_t *p = 0;
-	for (int i = 0; resBmpList[i] != 0xFFFF; ++i) {
-		if (resBmpList[i] == num) {
-			loadBmp(num);
-			return 0;
-		}
-	}
 	char name[16];
 	snprintf(name, sizeof(name), "file%03d.dat", num);
 	const PakEntry *e = _pak.find(name);
@@ -243,6 +235,8 @@ uint8_t *Resource::loadDat(int num) {
 		_pak.loadData(e, _scriptCurPtr, &size);
 		p = _scriptCurPtr;
 		_scriptCurPtr += size;
+	} else {
+		warning("Unable to load '%s'", name);
 	}
 	return p;
 }
