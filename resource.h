@@ -42,7 +42,13 @@ struct Resource {
 		RT_VBMP   = 5,
 		RT_UNK    = 6,
 	};
-	
+
+	enum DataType {
+		DT_DOS,
+		DT_AMIGA,
+		DT_15TH_EDITION,
+	};
+
 	enum {
 		MEM_BLOCK_SIZE = 600 * 1024
 	};
@@ -63,11 +69,12 @@ struct Resource {
 	uint8_t *_segCode;
 	uint8_t *_segVideo1;
 	uint8_t *_segVideo2;
-	bool _is15th;
 	Pak _pak;
-	bool _isAmiga;
+	DataType _dataType;
 
 	Resource(Video *vid, const char *dataDir);
+
+	DataType getDataType() const { return _dataType; }
 	
 	void readBank(const MemEntry *me, uint8_t *dstBuf);
 	void readEntries();

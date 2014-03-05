@@ -25,7 +25,7 @@ void Script::init() {
 	// bypass the protection
 	_scriptVars[0xBC] = 0x10; // 0x4417
 	_scriptVars[0xC6] = 0x80; // 0x78E0
-	_scriptVars[0xF2] = _res->_isAmiga ? 0x1770 : 0xFA0;
+	_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA) ? 0x1770 : 0xFA0;
 	_scriptVars[0xDC] = 0x21;
 }
 
@@ -527,7 +527,7 @@ void Script::inp_handleSpecialKeys() {
 
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
-	if (_res->_is15th) {
+	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
 		warning("Unimplemented snd_playSound num=%d", resNum);
 		return;
 	}
@@ -556,7 +556,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
-	if (_res->_is15th) {
+	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
 		warning("Unimplemented snd_playMusic num=%d", resNum);
 		// == 7, "intro2004.mod"
 		// == 138, "end2004.mod"

@@ -11,7 +11,7 @@
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0), _is15th(false), _pak(dataDir), _isAmiga(false) {
+	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0), _pak(dataDir), _dataType(DT_DOS) {
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -49,7 +49,7 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 void Resource::readEntries() {
 	_pak.readEntries();
 	if (_pak._entriesCount != 0) {
-		_is15th = true;
+		_dataType = DT_15TH_EDITION;
 		debug(DBG_INFO, "Using 15th anniversary edition data");
 		return;
 	}
@@ -63,7 +63,7 @@ void Resource::readEntries() {
 			for (int i = 0; bank01Sizes[i] != 0; ++i) {
 				if (f.size() == bank01Sizes[i]) {
 					debug(DBG_INFO, "Using Amiga data files");
-					_isAmiga = true;
+					_dataType = DT_AMIGA;
 					readEntriesAmiga(entries[i], 145);
 					return;
 				}
@@ -181,7 +181,7 @@ const uint16_t Resource::_memListAudio[] = {
 };
 
 void Resource::update(uint16_t num) {
-	if (_is15th) {
+	if (_dataType == DT_15TH_EDITION) {
 		if (num > 16000) {
 			_newPtrsId = num;
 		} else if (num >= 3000) {
@@ -248,7 +248,7 @@ uint8_t *Resource::loadDat(int num) {
 }
 
 void Resource::setupPtrs(uint16_t ptrId) {
-	if (_is15th) {
+	if (_dataType == DT_15TH_EDITION) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
 			_scriptCurPtr = _memPtrStart;
 			static const int order[] = { 0, 1, 2, 3 };
