@@ -66,6 +66,7 @@ void Pak::readEntries() {
 }
 
 const PakEntry *Pak::find(const char *name) {
+	debug(DBG_PAK, "Pak::find() '%s'", name);
 	for (int i = 0; i < _entriesCount; ++i) {
 		const PakEntry *e = &_entries[i];
 		if (strcasecmp(e->name, name) == 0) {

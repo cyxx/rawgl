@@ -180,14 +180,23 @@ const uint16_t Resource::_memListAudio[] = {
 	8, 0x10, 0x61, 0x66, 0xFFFF
 };
 
+static const int _memListBmp[] = {
+	145, 144, 73, 72, 70, 69, 68, 67, -1
+};
+
 void Resource::update(uint16_t num) {
 	if (_dataType == DT_15TH_EDITION) {
 		if (num > 16000) {
 			_newPtrsId = num;
 		} else if (num >= 3000) {
 			loadBmp(num);
-		} else { // 145, 144, 73, 72, 70, 69, 68, 67
-			loadBmp(num);
+		} else {
+			for (int i = 0; _memListBmp[i] != -1; ++i) {
+				if (num == _memListBmp[i]) {
+					loadBmp(num);
+					break;
+				}
+			}
 		}
 		return;
 	}
