@@ -51,6 +51,7 @@ void Texture::init() {
 	const char *exts = (const char *)glGetString(GL_EXTENSIONS);
 	_npotTex = hasExtension(exts, "GL_ARB_texture_non_power_of_two");
 	_id = (GLuint)-1;
+	_w = _h = 0;
 	_rgbData = 0;
 	_raw16Data = 0;
 }
@@ -70,6 +71,10 @@ static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h,
 }
 
 void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const Color *pal) {
+	if (w != _w || h != _h) {
+		free(_rgbData);
+		_rgbData = 0;
+	}
 	if (!_rgbData) {
 		_w = _npotTex ? w : roundPow2(w);
 		_h = _npotTex ? h : roundPow2(h);
