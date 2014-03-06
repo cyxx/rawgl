@@ -187,11 +187,9 @@ struct SystemStub_OGL : SystemStub {
 	};
 
 	uint16_t _w, _h;
-	SDL_Surface *_screen;
 	bool _fullscreen;
 	Color _pal[16];
 	DrawList _drawLists[4];
-	uint32_t _fontListIndex;
 	Texture _backgroundTex;
 
 	virtual ~SystemStub_OGL() {}
@@ -222,7 +220,7 @@ struct SystemStub_OGL : SystemStub {
 	virtual void lockMutex(void *mutex);
 	virtual void unlockMutex(void *mutex);
 
-	uint16_t blitListEntries(uint8_t listNum, uint16_t offset);
+	void blitListEntries(uint8_t listNum);
 	void resize(int w, int h);
 	void switchGfxMode(bool fullscreen);
 };
@@ -242,92 +240,18 @@ void SystemStub_OGL::init(const char *title) {
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
 	glEnable(GL_BLEND);
-//	glDisable(GL_LIGHTING);
 	glDisable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
-	glClearStencil(0);
 	resize(DEF_SCREEN_W, DEF_SCREEN_H);
 	_backgroundTex.init();
 }
 
 void SystemStub_OGL::destroy() {
-	SDL_FreeSurface(_screen);
 	SDL_Quit();
 }
 
 void SystemStub_OGL::setFont(const uint8_t *font) {
-	_fontListIndex = glGenLists(96);
-	for (int n = 0; n < 96; ++n) {
-		const uint8_t *ft = font + n * 8;
-		glNewList(_fontListIndex + n, GL_COMPILE);
-#ifdef OLD_FONT_CODE
-			glBegin(GL_POINTS);
-			for (int j = 0; j < 8; ++j) {
-				uint8_t ch = *(ft + j);
-				for (int i = 0; i < 8; ++i) {
-					if (ch & 0x80) {
-						glVertex2i(i, 7 - j - 7);
-					}
-					ch <<= 1;
-				}
-			}
-			glEnd();
-#else
-			int i, j;
-			uint8_t charFont[64];
-			for (j = 0; j < 8; ++j) {
-				uint8_t ch = *(ft + j);
-				for (i = 0; i < 8; ++i) {
-					charFont[j * 8 + i] = (ch & 0x80);
-					ch <<= 1;
-				}
-			}
-			glBegin(GL_LINES);
-			// look for horizontal lines
-			for (j = 0; j < 8; ++j) {
-				int px, cx;
-				px = cx = -1;
-				for (i = 0; i < 8; ++i) {
-					if (charFont[j * 8 + i]) {
-						if (cx != -1) {
-							cx = i;
-						} else {
-							px = cx = i;
-						}
-					} else {
-						if (cx != -1) {
-							glVertex2i(px, -j);
-							glVertex2i(cx, -j);
-						}
-						px = cx = -1;
-					}
-				}
-			}
-			// look for vertical lines
-			for (i = 0; i < 8; ++i) {
-				int py, cy;
-				py = cy = -1;
-				for (j = 0; j < 8; ++j) {
-					if (charFont[j * 8 + i]) {
-						if (cy != -1) {
-							cy = j;
-						} else {
-							py = cy = j;
-						}
-					} else {
-						if (cy != -1) {
-							glVertex2i(i, -py);
-							glVertex2i(i, -cy);
-						}
-						py = cy = -1;
-					}
-				}
-			}
-			// XXX look for diagonals
-			glEnd();
-#endif			
-		glEndList();
-	}
+	// TODO:
 }
 
 void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
@@ -437,11 +361,10 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 	}
 }
 
-uint16_t SystemStub_OGL::blitListEntries(uint8_t listNum, uint16_t offset) {
+void SystemStub_OGL::blitListEntries(uint8_t listNum) {
 	assert(listNum < NUM_LISTS);
 	DrawList *dl = &_drawLists[listNum];
-	assert(offset <= dl->entries.size());
-	DrawList::Entries::const_iterator it = dl->entries.begin() + offset;
+	DrawList::Entries::const_iterator it = dl->entries.begin();
 	for (; it != dl->entries.end(); ++it) {
 		DrawListEntry entry = *it;
 		if (entry.color != COL_PAGE) {
@@ -458,7 +381,6 @@ uint16_t SystemStub_OGL::blitListEntries(uint8_t listNum, uint16_t offset) {
 			drawVertices(entry.numVertices, entry.vertices);
 		}
 	}
-	return dl->entries.size();
 }
 
 void SystemStub_OGL::blitList(uint8_t listNum) {
@@ -472,45 +394,12 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glTranslatef(0, dl->vscroll, 0);
 	glClearColor(col->r / 255.f, col->g / 255.f, col->b / 255.f, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	_backgroundTex.draw(_w, _h);
-
 	glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
+	blitListEntries(listNum);
 
-	DrawList::Entries::const_iterator it;
-	bool needStencil = false;
-//	for (it = dl->entries.begin(); it != dl->entries.end(); ++it) {
-//		DrawListEntry entry = *it;
-//		if (entry.color == COL_PAGE) {
-//			needStencil = true;
-//		}
-//	}
-	
-	if (!needStencil) {
-		blitListEntries(listNum, 0);
-	} else {
-		// 1st step : blit list
-		blitListEntries(listNum, 0);
-		// 2nd step : setup stencil buffer
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glEnable(GL_STENCIL_TEST);
-		glStencilFunc(GL_ALWAYS, 1, 1);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);					
-		for (it = dl->entries.begin(); it != dl->entries.end(); ++it) {
-			DrawListEntry entry = *it;
-			if (entry.color == COL_PAGE) {
-//				glColor3f(1.f, 1.f, 0.f);
-				drawVertices(entry.numVertices, entry.vertices);
-			}
-		}
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-		glStencilFunc(GL_EQUAL, 1, 1);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-		// 3rd step : blit list 0
-		blitListEntries(0, 0);
-		glDisable(GL_STENCIL_TEST);
-	}
 	SDL_GL_SwapBuffers();
 }
 
@@ -668,7 +557,7 @@ void SystemStub_OGL::resize(int w, int h) {
 	_w = w;
 	_h = h;
 
-	_screen = SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | (_fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE));
+	SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | (_fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE));
 	glViewport(0, 0, _w, _h);
 
 	glMatrixMode(GL_PROJECTION);
@@ -683,5 +572,5 @@ void SystemStub_OGL::resize(int w, int h) {
 void SystemStub_OGL::switchGfxMode(bool fullscreen) {
 	_fullscreen = fullscreen;
 	uint32_t flags = _fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE;
-	_screen = SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | flags);
+	SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | flags);
 }
