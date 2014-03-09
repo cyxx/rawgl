@@ -55,8 +55,8 @@ struct Resource {
 	
 	static const uint16_t _memListAudio[];
 	static const uint16_t _memListParts[][4];
-	static const AmigaMemEntry _memListAmigaFR[145];
-	static const AmigaMemEntry _memListAmigaEN[145];
+	static const AmigaMemEntry _memListAmigaFR[146];
+	static const AmigaMemEntry _memListAmigaEN[146];
 
 	Video *_vid;
 	const char *_dataDir;

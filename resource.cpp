@@ -64,7 +64,7 @@ void Resource::readEntries() {
 				if (f.size() == bank01Sizes[i]) {
 					debug(DBG_INFO, "Using Amiga data files");
 					_dataType = DT_AMIGA;
-					readEntriesAmiga(entries[i], 145);
+					readEntriesAmiga(entries[i], 146);
 					return;
 				}
 			}
