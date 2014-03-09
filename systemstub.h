@@ -49,7 +49,6 @@ struct SystemStub {
 
 	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data) = 0;
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt) = 0;
-	virtual void addLineToList(uint8_t listNum, uint8_t color, const Point *pt1, const Point *pt2) = 0;
 	virtual void addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) = 0;
 	virtual void addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) = 0;
 	virtual void clearList(uint8_t listNum, uint8_t color) = 0;

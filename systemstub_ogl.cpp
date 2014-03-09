@@ -11,7 +11,7 @@
 #include "systemstub.h"
 
 
-static const bool _useGfx = true;
+static const bool _useGfx = false;
 
 static bool hasExtension(const char *exts, const char *name) {
 	const char *p = strstr(exts, name);
@@ -203,7 +203,6 @@ struct SystemStub_OGL : SystemStub {
 	virtual void setPalette(const Color *colors, uint8_t n);
 	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data);
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt);
-	virtual void addLineToList(uint8_t listNum, uint8_t color, const Point *pt1, const Point *pt2);
 	virtual void addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs);
 	virtual void addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt);
 	virtual void clearList(uint8_t listNum, uint8_t color);
@@ -303,27 +302,6 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 	_drawLists[listNum].entries.push_back(e);
 }
 
-void SystemStub_OGL::addLineToList(uint8_t listNum, uint8_t color, const Point *pt1, const Point *pt2) {
-	if (_useGfx) {
-		_gfx.setWorkPagePtr(listNum);
-		if (pt1->y == pt2->y) {
-			int x1 = MIN(pt1->x, pt2->x);
-			int x2 = MAX(pt1->x, pt2->x);
-			for (; x1 <= x2; ++x1) {
-				_gfx.drawPoint(x1, pt1->y, color);
-			}
-		}
-		return;
-	}
-	assert(listNum < NUM_LISTS);
-	DrawListEntry e;
-	e.color = color;
-	e.numVertices = 2;
-	e.vertices[0] = *pt1;
-	e.vertices[1] = *pt2;
-	_drawLists[listNum].entries.push_back(e);
-}
-
 void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
 	if (_useGfx) {
 		_gfx.setWorkPagePtr(listNum);
@@ -356,8 +334,13 @@ static void drawVertices(int count, const Point *vertices) {
 		break;
 	case 2:
 		glBegin(GL_LINES);
-			glVertex2i(vertices[0].x, vertices[0].y);
-			glVertex2i(vertices[1].x, vertices[1].y);
+			if (vertices[1].x > vertices[0].x) {
+				glVertex2i(vertices[0].x, vertices[0].y);
+				glVertex2i(vertices[1].x + 1, vertices[1].y);
+			} else {
+				glVertex2i(vertices[1].x, vertices[1].y);
+				glVertex2i(vertices[0].x + 1, vertices[0].y);
+			}
 		glEnd();
 		break;
 	default:
@@ -365,11 +348,11 @@ static void drawVertices(int count, const Point *vertices) {
 			for (int i = 0; i < count / 2; ++i) {
 				const int j = count - 1 - i;
 				if (vertices[j].x > vertices[i].x) {
-					glVertex2f(vertices[i].x, vertices[i].y);
-					glVertex2f(vertices[j].x + 1, vertices[j].y);
+					glVertex2i(vertices[i].x, vertices[i].y);
+					glVertex2i(vertices[j].x + 1, vertices[j].y);
 				} else {
-					glVertex2f(vertices[j].x, vertices[j].y);
-					glVertex2f(vertices[i].x + 1, vertices[i].y);
+					glVertex2i(vertices[j].x, vertices[j].y);
+					glVertex2i(vertices[i].x + 1, vertices[i].y);
 				}
 			}
 		glEnd();

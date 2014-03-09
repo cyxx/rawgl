@@ -68,12 +68,8 @@ void Video::fillPolygon(uint16_t color, uint16_t zoom, const Point *pt) {
 		v->y = y1 + (*p++) * zoom / 64;
 	}
 
-	if (qs.numVertices == 4 && bbw == 0) {
-		if (bbh <= 1) {
-			_stub->addPointToList(_listPtrs[0], color, pt);
-		} else {
-			_stub->addLineToList(_listPtrs[0], color, &qs.vertices[0], &qs.vertices[1]);
-		}
+	if (qs.numVertices == 4 && bbw == 0 && bbh <= 1) {
+		_stub->addPointToList(_listPtrs[0], color, pt);
 	} else {
 		_stub->addQuadStripToList(_listPtrs[0], color, &qs);
 	}
