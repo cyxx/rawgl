@@ -7,8 +7,11 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include <vector>
+#include "graphics.h"
 #include "systemstub.h"
 
+
+static const bool _useGfx = true;
 
 static bool hasExtension(const char *exts, const char *name) {
 	const char *p = strstr(exts, name);
@@ -86,8 +89,8 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		_v = h / (float)_h;
 		glGenTextures(1, &_id);
 		glBindTexture(GL_TEXTURE_2D, _id);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, _useGfx ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, _useGfx ? GL_NEAREST : GL_LINEAR);
 		convertTexture(data, srcPitch, w, h, _rgbData, _w * 3, pal);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _w, _h, 0, GL_RGB, GL_UNSIGNED_BYTE, _rgbData);
 	} else {
@@ -189,6 +192,7 @@ struct SystemStub_OGL : SystemStub {
 	uint16_t _w, _h;
 	bool _fullscreen;
 	Color _pal[16];
+	Graphics _gfx;
 	DrawList _drawLists[4];
 	Texture _backgroundTex;
 
@@ -266,6 +270,14 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 }
 
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
+	if (_useGfx) {
+		if (memcmp(data, "BM", 2) == 0) {
+			// TODO:
+		} else {
+			memcpy(_gfx.getPagePtr(listNum), data, Graphics::GFX_W * Graphics::GFX_H);
+		}
+		return;
+	}
 	assert(listNum == 0);
 	if (memcmp(data, "BM", 2) == 0) {
 		_backgroundTex.readBitmap(data);
@@ -278,6 +290,11 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 }
 
 void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point *pt) {
+	if (_useGfx) {
+		_gfx.setWorkPagePtr(listNum);
+		_gfx.drawPoint(pt->x, pt->y, color);
+		return;
+	}
 	assert(listNum < NUM_LISTS);
 	DrawListEntry e;
 	e.color = color;
@@ -287,6 +304,17 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 }
 
 void SystemStub_OGL::addLineToList(uint8_t listNum, uint8_t color, const Point *pt1, const Point *pt2) {
+	if (_useGfx) {
+		_gfx.setWorkPagePtr(listNum);
+		if (pt1->y == pt2->y) {
+			int x1 = MIN(pt1->x, pt2->x);
+			int x2 = MAX(pt1->x, pt2->x);
+			for (; x1 <= x2; ++x1) {
+				_gfx.drawPoint(x1, pt1->y, color);
+			}
+		}
+		return;
+	}
 	assert(listNum < NUM_LISTS);
 	DrawListEntry e;
 	e.color = color;
@@ -297,6 +325,11 @@ void SystemStub_OGL::addLineToList(uint8_t listNum, uint8_t color, const Point *
 }
 
 void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
+	if (_useGfx) {
+		_gfx.setWorkPagePtr(listNum);
+		_gfx.drawPolygon(color, *qs);
+		return;
+	}
 	assert(listNum < NUM_LISTS);
 	DrawListEntry e;
 	e.color = color;
@@ -306,6 +339,11 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
+	if (_useGfx) {
+		_gfx.setWorkPagePtr(listNum);
+		_gfx.drawChar(c, pt->x / 8, pt->y, color);
+		return;
+	}
 	// TODO:
 }
 
@@ -340,6 +378,10 @@ static void drawVertices(int count, const Point *vertices) {
 }
 
 void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
+	if (_useGfx) {
+		memset(_gfx.getPagePtr(listNum), color, Graphics::GFX_W * Graphics::GFX_H);
+		return;
+	}
 	assert(listNum < NUM_LISTS);
 	_drawLists[listNum].vscroll = 0;
 	_drawLists[listNum].color = color;
@@ -350,6 +392,10 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 }
 
 void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
+	if (_useGfx) {
+		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), Graphics::GFX_W * Graphics::GFX_H);
+		return;
+	}
 	assert(dstListNum < NUM_LISTS && srcListNum < NUM_LISTS);
 	DrawList *dst = &_drawLists[dstListNum];
 	DrawList *src = &_drawLists[srcListNum];
@@ -396,9 +442,14 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 	glClearColor(col->r / 255.f, col->g / 255.f, col->b / 255.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	_backgroundTex.draw(_w, _h);
-	glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
-	blitListEntries(listNum);
+	if (_useGfx) {
+		_backgroundTex.readRaw16(_gfx.getPagePtr(listNum), _pal);
+		_backgroundTex.draw(_w, _h);
+	} else {
+		_backgroundTex.draw(_w, _h);
+		glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
+		blitListEntries(listNum);
+	}
 
 	SDL_GL_SwapBuffers();
 }
@@ -562,7 +613,11 @@ void SystemStub_OGL::resize(int w, int h) {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, _w, _h, 0, 0, 1);
+	if (_useGfx) {
+		glOrtho(0, _w, 0, _h, 0, 1);
+	} else {
+		glOrtho(0, _w, _h, 0, 0, 1);
+	}
 
 	float r = (float)w / SCREEN_W;
 	glLineWidth(r);

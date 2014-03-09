@@ -9,7 +9,7 @@ CXXFLAGS := -g -O -Wall -Wuninitialized -Wno-unknown-pragmas -Wshadow
 CXXFLAGS += -Wundef -Wreorder -Wwrite-strings -Wnon-virtual-dtor -Wno-multichar
 CXXFLAGS += $(SDL_CFLAGS) $(DEFINES)
 
-SRCS = file.cpp engine.cpp script.cpp mixer.cpp pak.cpp resource.cpp systemstub_ogl.cpp \
+SRCS = file.cpp engine.cpp graphics.cpp script.cpp mixer.cpp pak.cpp resource.cpp systemstub_ogl.cpp \
 	sfxplayer.cpp staticres.cpp unpack.cpp util.cpp video.cpp main.cpp
 
 OBJS = $(SRCS:.cpp=.o)

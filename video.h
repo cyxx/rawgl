@@ -20,7 +20,6 @@ struct SystemStub;
 
 struct Video {
 
-	static const uint8_t _font[];
 	static const StrEntry _stringsTableFr[];
 	static const StrEntry _stringsTableEng[];
 
@@ -43,7 +42,7 @@ struct Video {
 	void drawShapeParts(uint16_t zoom, const Point *pt);
 	void drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId);
 	uint8_t getPagePtr(uint8_t page);
-	void changePagePtr1(uint8_t page);
+	void setWorkPagePtr(uint8_t page);
 	void fillPage(uint8_t page, uint8_t color);
 	void copyPage(uint8_t src, uint8_t dst, int16_t vscroll);
 	void copyPagePtr(const uint8_t *src);

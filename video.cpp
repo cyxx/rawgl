@@ -17,7 +17,7 @@ void Video::init() {
 	_newPal = 0xFF;
 	_listPtrs[2] = getPagePtr(1);
 	_listPtrs[1] = getPagePtr(2);
-	changePagePtr1(0xFE);
+	setWorkPagePtr(0xFE);
 }
 
 void Video::setDataBuffer(uint8_t *dataBuf, uint16_t offset) {
@@ -72,7 +72,7 @@ void Video::fillPolygon(uint16_t color, uint16_t zoom, const Point *pt) {
 		if (bbh <= 1) {
 			_stub->addPointToList(_listPtrs[0], color, pt);
 		} else {
-			_stub->addLineToList(_listPtrs[0], color, &qs.vertices[0], &qs.vertices[1]);			
+			_stub->addLineToList(_listPtrs[0], color, &qs.vertices[0], &qs.vertices[1]);
 		}
 	} else {
 		_stub->addQuadStripToList(_listPtrs[0], color, &qs);
@@ -142,8 +142,8 @@ uint8_t Video::getPagePtr(uint8_t page) {
 	return p;
 }
 
-void Video::changePagePtr1(uint8_t page) {
-	debug(DBG_VIDEO, "Video::changePagePtr1(%d)", page);
+void Video::setWorkPagePtr(uint8_t page) {
+	debug(DBG_VIDEO, "Video::setWorkPagePtr(%d)", page);
 	_listPtrs[0] = getPagePtr(page);
 }
 

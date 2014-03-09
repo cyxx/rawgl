@@ -226,7 +226,7 @@ void Script::op_resetScript() {
 void Script::op_selectPage() {
 	uint8_t i = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_selectPage(%d)", i);
-	_vid->changePagePtr1(i);
+	_vid->setWorkPagePtr(i);
 }
 
 void Script::op_fillPage() {
