@@ -242,10 +242,11 @@ void SystemStub_OGL::init(const char *title) {
 	_fullscreen = false;
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
+	resize(DEF_SCREEN_W, DEF_SCREEN_H);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
-	resize(DEF_SCREEN_W, DEF_SCREEN_H);
 	_backgroundTex.init();
 }
 
@@ -391,6 +392,7 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 }
 
 void SystemStub_OGL::blitListEntries(uint8_t listNum) {
+	bool printWarningColor0x11Once = false;
 	assert(listNum < NUM_LISTS);
 	DrawList *dl = &_drawLists[listNum];
 	DrawList::Entries::const_iterator it = dl->entries.begin();
@@ -400,14 +402,17 @@ void SystemStub_OGL::blitListEntries(uint8_t listNum) {
 			Color *col;
 			uint8_t a;
 			if (entry.color == COL_ALPHA) {
-				a = 128;
-				col = &_pal[8]; // XXX
+				a = 192;
+				col = &_pal[8]; // not exact, but seems to do the trick
 			} else {
 				a = 255;
 				col = &_pal[entry.color];
 			}
 			glColor4ub(col->r, col->g, col->b, a);
 			drawVertices(entry.numVertices, entry.vertices);
+		} else if (!printWarningColor0x11Once) {
+			warning("Unhandled color 0x11 with GL rendering");
+			printWarningColor0x11Once = true;
 		}
 	}
 }
@@ -420,7 +425,6 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 
 	DrawList *dl = &_drawLists[listNum];
 	Color *col = &_pal[dl->color];
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glTranslatef(0, dl->vscroll, 0);
 	glClearColor(col->r / 255.f, col->g / 255.f, col->b / 255.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
