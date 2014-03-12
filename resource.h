@@ -50,17 +50,18 @@ struct Resource {
 	};
 
 	enum {
-		MEM_BLOCK_SIZE = 600 * 1024
+		MEM_BLOCK_SIZE = 600 * 1024,
+		ENTRIES_COUNT = 146,
 	};
 	
 	static const uint16_t _memListAudio[];
 	static const uint16_t _memListParts[][4];
-	static const AmigaMemEntry _memListAmigaFR[146];
-	static const AmigaMemEntry _memListAmigaEN[146];
+	static const AmigaMemEntry _memListAmigaFR[ENTRIES_COUNT];
+	static const AmigaMemEntry _memListAmigaEN[ENTRIES_COUNT];
 
 	Video *_vid;
 	const char *_dataDir;
-	MemEntry _memList[150];
+	MemEntry _memList[ENTRIES_COUNT + 1];
 	uint16_t _numMemList;
 	uint16_t _curPtrsId, _newPtrsId;
 	uint8_t *_memPtrStart, *_scriptBakPtr, *_scriptCurPtr, *_vidBakPtr, *_vidCurPtr;
