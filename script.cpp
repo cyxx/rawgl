@@ -545,7 +545,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		}
 	} else {
 		MemEntry *me = &_res->_memList[resNum];
-		if (me->valid == 1) {
+		if (me->status == Resource::STATUS_LOADED) {
 			mc.readRaw(me->bufPtr);
 		}
 	}

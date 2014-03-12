@@ -33,7 +33,7 @@ void SfxPlayer::loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "SfxPlayer::loadSfxModule(0x%X, %d, %d)", resNum, delay, pos);
 	MutexStack(_stub, _mutex);
 	MemEntry *me = &_res->_memList[resNum];
-	if (me->valid == 1 && me->type == 1) {
+	if (me->status == Resource::STATUS_LOADED && me->type == 1) {
 		_resNum = resNum;
 		memset(&_sfxMod, 0, sizeof(SfxModule));
 		_sfxMod.curOrder = pos;
@@ -64,7 +64,7 @@ void SfxPlayer::prepareInstruments(const uint8_t *p) {
 		if (resNum != 0) {
 			ins->volume = READ_BE_UINT16(p);
 			MemEntry *me = &_res->_memList[resNum];
-			if (me->valid == 1 && me->type == 0) {
+			if (me->status == Resource::STATUS_LOADED && me->type == 0) {
 				ins->data = me->bufPtr;
 				memset(ins->data + 8, 0, 4);
 				debug(DBG_SND, "Loaded instrument 0x%X n=%d volume=%d", resNum, i, ins->volume);

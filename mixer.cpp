@@ -27,8 +27,10 @@ void MixerChunk::readWav(uint8_t *buf) {
 			len = READ_LE_UINT32(buf + 40);
 			data = buf + 44;
 			loopLen = 0;
-			for (int i = 0; i < len; ++i) {
-				buf[44 + i] ^= 0x80;
+			if (buf[44] & 0x80) { /* S8 to U8 */
+				for (int i = 0; i < len; ++i) {
+					buf[44 + i] ^= 0x80;
+				}
 			}
 		} else {
 			warning("Unsupported WAV format=%d channels=%d bits=%d rate=%d", format, channels, bits, rate);

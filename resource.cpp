@@ -77,7 +77,7 @@ void Resource::readEntries() {
 	MemEntry *me = _memList;
 	while (1) {
 		assert(_numMemList < ARRAYSIZE(_memList));
-		me->valid = f.readByte();
+		me->status = f.readByte();
 		me->type = f.readByte();
 		me->bufPtr = 0; f.readUint32BE();
 		me->rankNum = f.readByte();
@@ -85,7 +85,7 @@ void Resource::readEntries() {
 		me->bankPos = f.readUint32BE();
 		me->packedSize = f.readUint32BE();
 		me->unpackedSize = f.readUint32BE();
-		if (me->valid == 0xFF) {
+		if (me->status == 0xFF) {
 			break;
 		}
 		++_numMemList;
@@ -103,7 +103,7 @@ void Resource::readEntriesAmiga(const AmigaMemEntry *entries, int count) {
 		_memList[i].packedSize = entries[i].packedSize;
 		_memList[i].unpackedSize = entries[i].unpackedSize;
 	}
-	_memList[count].valid = 0xFF;
+	_memList[count].status = 0xFF;
 }
 
 void Resource::load() {
@@ -115,7 +115,7 @@ void Resource::load() {
 		uint8_t maxNum = 0;
 		uint16_t i = _numMemList;
 		while (i--) {
-			if (it->valid == 2 && maxNum <= it->rankNum) {
+			if (it->status == STATUS_TOLOAD && maxNum <= it->rankNum) {
 				maxNum = it->rankNum;
 				me = it;
 			}
@@ -132,22 +132,22 @@ void Resource::load() {
 			memPtr = _scriptCurPtr;
 			if (me->unpackedSize > uint32_t(_vidBakPtr - _scriptCurPtr)) {
 				warning("Resource::load() not enough memory");
-				me->valid = 0;
+				me->status = STATUS_NULL;
 				continue;
 			}
 		}
 		if (me->bankNum == 0) {
 			warning("Resource::load() ec=0x%X (me->bankNum == 0)", 0xF00);
-			me->valid = 0;
+			me->status = STATUS_NULL;
 		} else {
 			debug(DBG_BANK, "Resource::load() bufPos=%X size=%X type=%X pos=%X bankNum=%X", memPtr - _memPtrStart, me->packedSize, me->type, me->bankPos, me->bankNum);
 			readBank(me, memPtr);
 			if(me->type == 2) {
 				_vid->copyPagePtr(_vidCurPtr);
-				me->valid = 0;
+				me->status = STATUS_NULL;
 			} else {
 				me->bufPtr = memPtr;
-				me->valid = 1;
+				me->status = STATUS_LOADED;
 				_scriptCurPtr += me->unpackedSize;
 			}
 		}
@@ -159,7 +159,7 @@ void Resource::invalidateRes() {
 	uint16_t i = _numMemList;
 	while (i--) {
 		if (me->type <= 2 || me->type > 6) {
-			me->valid = 0;
+			me->status = STATUS_NULL;
 		}
 		++me;
 	}
@@ -170,7 +170,7 @@ void Resource::invalidateAll() {
 	MemEntry *me = _memList;
 	uint16_t i = _numMemList;
 	while (i--) {
-		me->valid = 0;
+		me->status = STATUS_NULL;
 		++me;
 	}
 	_scriptCurPtr = _memPtrStart;
@@ -208,8 +208,8 @@ void Resource::update(uint16_t num) {
 				return;
 		}		
 		MemEntry *me = &_memList[num];
-		if (me->valid == 0) {
-			me->valid = 2;
+		if (me->status == STATUS_NULL) {
+			me->status = STATUS_TOLOAD;
 			load();
 		}
 	}
@@ -235,6 +235,9 @@ void Resource::loadBmp(int num) {
 }
 
 uint8_t *Resource::loadDat(int num) {
+	if (_memList[num].status == STATUS_LOADED) {
+		return _memList[num].bufPtr;
+	}
 	uint8_t *p = 0;
 	char name[16];
 	snprintf(name, sizeof(name), "file%03d.dat", num);
@@ -244,6 +247,8 @@ uint8_t *Resource::loadDat(int num) {
 		_pak.loadData(e, _scriptCurPtr, &size);
 		p = _scriptCurPtr;
 		_scriptCurPtr += size;
+		_memList[num].bufPtr = p;
+		_memList[num].status = STATUS_LOADED;
 	} else {
 		warning("Unable to load '%s'", name);
 	}
@@ -251,6 +256,9 @@ uint8_t *Resource::loadDat(int num) {
 }
 
 uint8_t *Resource::loadWav(int num) {
+	if (_memList[num].status == STATUS_LOADED) {
+		return _memList[num].bufPtr;
+	}
 	uint8_t *p = 0;
 	char name[16];
 	snprintf(name, sizeof(name), "file%03d.wav", num);
@@ -260,6 +268,8 @@ uint8_t *Resource::loadWav(int num) {
 		_pak.loadData(e, _scriptCurPtr, &size);
 		p = _scriptCurPtr;
 		_scriptCurPtr += size;
+		_memList[num].bufPtr = p;
+		_memList[num].status = STATUS_LOADED;
 	}
 	return p;
 }
@@ -267,7 +277,7 @@ uint8_t *Resource::loadWav(int num) {
 void Resource::setupPtrs(uint16_t ptrId) {
 	if (_dataType == DT_15TH_EDITION) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
-			_scriptCurPtr = _memPtrStart;
+			invalidateAll();
 			static const int order[] = { 0, 1, 2, 3 };
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };
 			for (int i = 0; i < 4; ++i) {
@@ -296,11 +306,11 @@ void Resource::setupPtrs(uint16_t ptrId) {
 			error("Resource::setupPtrs() ec=0x%X invalid ptrId", 0xF07);
 		}
 		invalidateAll();
-		_memList[ipal].valid = 2;
-		_memList[icod].valid = 2;
-		_memList[ivd1].valid = 2;
+		_memList[ipal].status = STATUS_TOLOAD;
+		_memList[icod].status = STATUS_TOLOAD;
+		_memList[ivd1].status = STATUS_TOLOAD;
 		if (ivd2 != 0) {
-			_memList[ivd2].valid = 2;
+			_memList[ivd2].status = STATUS_TOLOAD;
 		}
 		load();
 		_segVideoPal = _memList[ipal].bufPtr;

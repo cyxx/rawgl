@@ -11,7 +11,7 @@
 #include "pak.h"
 
 struct MemEntry {
-	uint8_t valid;         // 0x0
+	uint8_t status;        // 0x0
 	uint8_t type;          // 0x1, Resource::ResType
 	uint8_t *bufPtr;       // 0x2
 	uint8_t rankNum;       // 0x6
@@ -53,7 +53,13 @@ struct Resource {
 		MEM_BLOCK_SIZE = 600 * 1024,
 		ENTRIES_COUNT = 146,
 	};
-	
+
+	enum {
+		STATUS_NULL,
+		STATUS_LOADED,
+		STATUS_TOLOAD,
+	};
+
 	static const uint16_t _memListAudio[];
 	static const uint16_t _memListParts[][4];
 	static const AmigaMemEntry _memListAmigaFR[ENTRIES_COUNT];
