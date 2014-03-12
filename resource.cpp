@@ -250,6 +250,20 @@ uint8_t *Resource::loadDat(int num) {
 	return p;
 }
 
+uint8_t *Resource::loadWav(int num) {
+	uint8_t *p = 0;
+	char name[16];
+	snprintf(name, sizeof(name), "file%03d.wav", num);
+	const PakEntry *e = _pak.find(name);
+	if (e) {
+		uint32_t size;
+		_pak.loadData(e, _scriptCurPtr, &size);
+		p = _scriptCurPtr;
+		_scriptCurPtr += size;
+	}
+	return p;
+}
+
 void Resource::setupPtrs(uint16_t ptrId) {
 	if (_dataType == DT_15TH_EDITION) {
 		if (ptrId >= 16001 && ptrId <= 16009) {

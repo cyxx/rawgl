@@ -527,30 +527,31 @@ void Script::inp_handleSpecialKeys() {
 
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
-	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
-		warning("Unimplemented snd_playSound num=%d", resNum);
-		return;
-	}
+#if 0
 	if (_res->_curPtrsId != 16000 && _scriptVar_0xBF != _scriptVars[0xBF]) {
 		warning("snd_playSound() unhandled case _scriptVar_0xBF != _scriptVars[0xBF]");
 		return;
 	}
-	MemEntry *me = &_res->_memList[resNum];
-	if (me->valid == 1) {
-		if (vol == 0) {
-			_mix->stopChannel(channel);
-		} else {
-			MixerChunk mc;
-			memset(&mc, 0, sizeof(mc));
-			mc.data = me->bufPtr + 8; // skip header
-			mc.len = READ_BE_UINT16(me->bufPtr) * 2;
-			mc.loopLen = READ_BE_UINT16(me->bufPtr + 2) * 2;
-			if (mc.loopLen != 0) {
-				mc.loopPos = mc.len;
-			}
-			assert(freq < 40);
-			_mix->playChannel(channel & 3, &mc, _freqTable[freq], MIN(vol, 0x3F));
+#endif
+	if (vol == 0) {
+		_mix->stopChannel(channel);
+		return;
+	}
+	MixerChunk mc;
+	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
+		uint8_t *buf = _res->loadWav(resNum);
+		if (buf) {
+			mc.readWav(buf);
 		}
+	} else {
+		MemEntry *me = &_res->_memList[resNum];
+		if (me->valid == 1) {
+			mc.readRaw(me->bufPtr);
+		}
+	}
+	if (mc.data) {
+		assert(freq < 40);
+		_mix->playChannel(channel & 3, &mc, _freqTable[freq], MIN(vol, 0x3F));
 	}
 }
 

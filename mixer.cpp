@@ -8,6 +8,34 @@
 #include "systemstub.h"
 
 
+void MixerChunk::readRaw(uint8_t *buf) {
+	data = buf + 8; // skip header
+	len = READ_BE_UINT16(buf) * 2;
+	loopLen = READ_BE_UINT16(buf + 2) * 2;
+	if (loopLen != 0) {
+		loopPos = len;
+	}
+}
+
+void MixerChunk::readWav(uint8_t *buf) {
+	if (memcmp(buf, "RIFF", 4) == 0 && memcmp(buf + 8, "WAVEfmt ", 8) == 0) {
+		const int format = READ_LE_UINT16(buf + 20);
+		const int channels = READ_LE_UINT16(buf + 22);
+		const int rate = READ_LE_UINT16(buf + 24);
+		const int bits = READ_LE_UINT16(buf + 34);
+		if (format == 1 && channels == 1 && bits == 8 && memcmp(buf + 36, "data", 4) == 0) {
+			len = READ_LE_UINT32(buf + 40);
+			data = buf + 44;
+			loopLen = 0;
+			for (int i = 0; i < len; ++i) {
+				buf[44 + i] ^= 0x80;
+			}
+		} else {
+			warning("Unsupported WAV format=%d channels=%d bits=%d rate=%d", format, channels, bits, rate);
+		}
+	}
+}
+
 static int8_t addclamp(int a, int b) {
 	int add = a + b;
 	if (add < -128) {

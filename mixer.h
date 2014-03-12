@@ -14,6 +14,13 @@ struct MixerChunk {
 	uint16_t len;
 	uint16_t loopPos;
 	uint16_t loopLen;
+
+	MixerChunk() {
+		memset(this, 0, sizeof(*this));
+	}
+
+	void readRaw(uint8_t *buf);
+	void readWav(uint8_t *buf);
 };
 
 struct MixerChannel {
