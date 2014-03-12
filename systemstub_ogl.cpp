@@ -8,6 +8,7 @@
 #include <SDL_opengl.h>
 #include <vector>
 #include "graphics.h"
+#include "scaler.h"
 #include "systemstub.h"
 
 static int _render = RENDER_ORIGINAL;
@@ -42,11 +43,9 @@ struct Texture {
 
 	void init();
 	void uploadData(const uint8_t *data, int srcPitch, int w, int h, const Color *pal);
-	void setPalette(const Color *pal);
 	void draw(int w, int h);
 	void clear();
 	void readRaw16(const uint8_t *src, const Color *pal, int w = 320, int h = 200);
-	void readBitmap(const uint8_t *src);
 };
 
 void Texture::init() {
@@ -100,12 +99,6 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 	}
 }
 
-void Texture::setPalette(const Color *pal) {
-	if (_raw16Data) {
-		uploadData(_raw16Data, _w, _w, _h, pal);
-	}
-}
-
 void Texture::draw(int w, int h) {
 	if (_id != (GLuint) -1) {
 		glEnable(GL_TEXTURE_2D);
@@ -140,27 +133,33 @@ void Texture::readRaw16(const uint8_t *src, const Color *pal, int w, int h) {
 	uploadData(_raw16Data, w, w, h, pal);
 }
 
-void Texture::readBitmap(const uint8_t *src) {
-	if (memcmp(src, "BM", 2) == 0) {
-		const uint32_t imageOffset = READ_LE_UINT32(src + 0xA);
-		const int w = READ_LE_UINT32(src + 0x12);
-		const int h = READ_LE_UINT32(src + 0x16);
-		const int depth = READ_LE_UINT16(src + 0x1C);
-		const int compression = READ_LE_UINT32(src + 0x1E);
-		const int colorsCount = READ_LE_UINT32(src + 0x2E);
-		if (depth == 8 && compression == 0) {
-			Color palette[colorsCount];
-			const uint8_t *colorData = src + 0xE /* BITMAPFILEHEADER */ + 40 /* BITMAPINFOHEADER */;
-			for (int i = 0; i < colorsCount; ++i) {
-				palette[i].b = colorData[0];
-				palette[i].g = colorData[1];
-				palette[i].r = colorData[2];
-				colorData += 4;
-			}
-			uploadData(src + imageOffset, (w + 3) & ~3, w, h, palette);
-		} else {
-			warning("Unsupported BMP depth=%d compression=%d", depth, compression);
+struct BitmapInfo {
+	int _w, _h;
+	Color _palette[256];
+	const uint8_t *_data;
+
+	void read(const uint8_t *src);
+};
+
+void BitmapInfo::read(const uint8_t *src) {
+	const uint32_t imageOffset = READ_LE_UINT32(src + 0xA);
+	_w = READ_LE_UINT32(src + 0x12);
+	_h = READ_LE_UINT32(src + 0x16);
+	const int depth = READ_LE_UINT16(src + 0x1C);
+	const int compression = READ_LE_UINT32(src + 0x1E);
+	const int colorsCount = READ_LE_UINT32(src + 0x2E);
+	if (depth == 8 && compression == 0) {
+		const uint8_t *colorData = src + 0xE /* BITMAPFILEHEADER */ + 40 /* BITMAPINFOHEADER */;
+		for (int i = 0; i < colorsCount; ++i) {
+			_palette[i].b = colorData[0];
+			_palette[i].g = colorData[1];
+			_palette[i].r = colorData[2];
+			colorData += 4;
 		}
+		_data = src + imageOffset;
+	} else {
+		_data = 0;
+		warning("Unsupported BMP depth=%d compression=%d", depth, compression);
 	}
 }
 
@@ -283,30 +282,46 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 		_pal[i].g = (c->g << 2) | (c->g & 3);
 		_pal[i].b = (c->b << 2) | (c->b & 3);
 	}
-	_backgroundTex.setPalette(_pal);
 }
 
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
-	if (_render == RENDER_ORIGINAL) {
+	switch (_render) {
+	case RENDER_ORIGINAL:
 		if (memcmp(data, "BM", 2) == 0) {
-			// TODO:
+			BitmapInfo bi;
+			bi.read(data);
+			if (bi._w == 320 && bi._h == 200 && bi._data) {
+				for (int y = 0; y < 200; ++y) {
+					memcpy(_gfx.getPagePtr(listNum) + y * _gfx._w, bi._data + (200 - y) * _gfx._w, 320);
+				}
+			}
 		} else {
 			memcpy(_gfx.getPagePtr(listNum), data, _gfx.getPageSize());
 		}
-		return;
-	} else if (_render == RENDER_SOFTWARE) {
-		// TODO:
-		return;
+		break;
+	case RENDER_SOFTWARE:
+		if (memcmp(data, "BM", 2) == 0) {
+			// TODO:
+		} else {
+			nearest(_gfx.getPagePtr(listNum), _gfx._w, _gfx._w, _gfx._h, data, 320, 320, 200);
+		}
+		break;
+	case RENDER_GL:
+		assert(listNum == 0);
+		if (memcmp(data, "BM", 2) == 0) {
+			BitmapInfo bi;
+			bi.read(data);
+			if (bi._data) {
+				_backgroundTex.uploadData(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
+			}
+		} else {
+			_backgroundTex.readRaw16(data, _pal);
+		}
+		_drawLists[listNum].vscroll = 0;
+		_drawLists[listNum].color = 0;
+		_drawLists[listNum].entries.clear();
+		break;
 	}
-	assert(listNum == 0);
-	if (memcmp(data, "BM", 2) == 0) {
-		_backgroundTex.readBitmap(data);
-	} else {
-		_backgroundTex.readRaw16(data, _pal);
-	}
-	_drawLists[listNum].vscroll = 0;
-	_drawLists[listNum].color = 0;
-	_drawLists[listNum].entries.clear();
 }
 
 void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point *pt) {

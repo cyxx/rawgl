@@ -8,7 +8,7 @@ CXX = g++
 CXXFLAGS := -g -O -MMD -Wuninitialized -Wundef -Wreorder $(SDL_CFLAGS) $(DEFINES)
 
 SRCS = file.cpp engine.cpp graphics.cpp script.cpp mixer.cpp pak.cpp resource.cpp systemstub_ogl.cpp \
-	sfxplayer.cpp staticres.cpp unpack.cpp util.cpp video.cpp main.cpp
+	scaler.cpp sfxplayer.cpp staticres.cpp unpack.cpp util.cpp video.cpp main.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
