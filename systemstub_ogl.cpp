@@ -10,8 +10,7 @@
 #include "graphics.h"
 #include "systemstub.h"
 
-
-static const bool _useGfx = false;
+static int _render = RENDER_ORIGINAL;
 
 static bool hasExtension(const char *exts, const char *name) {
 	const char *p = strstr(exts, name);
@@ -46,7 +45,7 @@ struct Texture {
 	void setPalette(const Color *pal);
 	void draw(int w, int h);
 	void clear();
-	void readRaw16(const uint8_t *src, const Color *pal);
+	void readRaw16(const uint8_t *src, const Color *pal, int w = 320, int h = 200);
 	void readBitmap(const uint8_t *src);
 };
 
@@ -87,10 +86,11 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		}
 		_u = w / (float)_w;
 		_v = h / (float)_h;
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glGenTextures(1, &_id);
 		glBindTexture(GL_TEXTURE_2D, _id);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, _useGfx ? GL_NEAREST : GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, _useGfx ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) ? GL_NEAREST : GL_LINEAR);
 		convertTexture(data, srcPitch, w, h, _rgbData, _w * 3, pal);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _w, _h, 0, GL_RGB, GL_UNSIGNED_BYTE, _rgbData);
 	} else {
@@ -102,7 +102,7 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 
 void Texture::setPalette(const Color *pal) {
 	if (_raw16Data) {
-		uploadData(_raw16Data, 320, 320, 200, pal);
+		uploadData(_raw16Data, _w, _w, _h, pal);
 	}
 }
 
@@ -135,9 +135,9 @@ void Texture::clear() {
 	_raw16Data = 0;
 }
 
-void Texture::readRaw16(const uint8_t *src, const Color *pal) {
+void Texture::readRaw16(const uint8_t *src, const Color *pal, int w, int h) {
 	_raw16Data = src;
-	uploadData(_raw16Data, 320, 320, 200, pal);
+	uploadData(_raw16Data, w, w, h, pal);
 }
 
 void Texture::readBitmap(const uint8_t *src) {
@@ -228,7 +228,24 @@ struct SystemStub_OGL : SystemStub {
 	void switchGfxMode(bool fullscreen);
 };
 
-SystemStub *SystemStub_OGL_create() {
+SystemStub *SystemStub_OGL_create(const char *name) {
+	if (name) {
+		struct {
+			const char *name;
+			int render;
+		} modes[] = {
+			{ "original", RENDER_ORIGINAL },
+			{ "software", RENDER_SOFTWARE },
+			{ "gl", RENDER_GL },
+			{ 0, 0 }
+		};
+		for (int i = 0; modes[i].name; ++i) {
+			if (strcasecmp(modes[i].name, name) == 0) {
+				_render = modes[i].render;
+				break;
+			}
+		}
+	}
 	return new SystemStub_OGL();
 }
 
@@ -270,12 +287,15 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 }
 
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
-	if (_useGfx) {
+	if (_render == RENDER_ORIGINAL) {
 		if (memcmp(data, "BM", 2) == 0) {
 			// TODO:
 		} else {
-			memcpy(_gfx.getPagePtr(listNum), data, Graphics::GFX_W * Graphics::GFX_H);
+			memcpy(_gfx.getPagePtr(listNum), data, _gfx.getPageSize());
 		}
+		return;
+	} else if (_render == RENDER_SOFTWARE) {
+		// TODO:
 		return;
 	}
 	assert(listNum == 0);
@@ -290,7 +310,7 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 }
 
 void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point *pt) {
-	if (_useGfx) {
+	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
 		_gfx.setWorkPagePtr(listNum);
 		_gfx.drawPoint(pt->x, pt->y, color);
 		return;
@@ -304,7 +324,7 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 }
 
 void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
-	if (_useGfx) {
+	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
 		_gfx.setWorkPagePtr(listNum);
 		_gfx.drawPolygon(color, *qs);
 		return;
@@ -318,7 +338,7 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
-	if (_useGfx) {
+	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
 		_gfx.setWorkPagePtr(listNum);
 		_gfx.drawChar(c, pt->x / 8, pt->y, color);
 		return;
@@ -362,8 +382,8 @@ static void drawVertices(int count, const Point *vertices) {
 }
 
 void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
-	if (_useGfx) {
-		memset(_gfx.getPagePtr(listNum), color, Graphics::GFX_W * Graphics::GFX_H);
+	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
+		memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
 		return;
 	}
 	assert(listNum < NUM_LISTS);
@@ -376,8 +396,8 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 }
 
 void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
-	if (_useGfx) {
-		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), Graphics::GFX_W * Graphics::GFX_H);
+	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
+		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
 		return;
 	}
 	assert(dstListNum < NUM_LISTS && srcListNum < NUM_LISTS);
@@ -429,13 +449,20 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 	glClearColor(col->r / 255.f, col->g / 255.f, col->b / 255.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	if (_useGfx) {
+	switch (_render){
+	case RENDER_ORIGINAL:
 		_backgroundTex.readRaw16(_gfx.getPagePtr(listNum), _pal);
 		_backgroundTex.draw(_w, _h);
-	} else {
+		break;
+	case RENDER_SOFTWARE:
+		_backgroundTex.readRaw16(_gfx.getPagePtr(listNum), _pal, _w, _h);
+		_backgroundTex.draw(_w, _h);
+		break;
+	case RENDER_GL:
 		_backgroundTex.draw(_w, _h);
 		glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
 		blitListEntries(listNum);
+		break;
 	}
 
 	SDL_GL_SwapBuffers();
@@ -600,10 +627,16 @@ void SystemStub_OGL::resize(int w, int h) {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	if (_useGfx) {
+	switch (_render) {
+	case RENDER_SOFTWARE:
+		_gfx.setSize(_w, _h);
+		/* fall-through */
+	case RENDER_ORIGINAL:
 		glOrtho(0, _w, 0, _h, 0, 1);
-	} else {
+		break;
+	case RENDER_GL:
 		glOrtho(0, _w, _h, 0, 0, 1);
+		break;
 	}
 
 	float r = (float)w / SCREEN_W;

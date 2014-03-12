@@ -13,6 +13,7 @@ static const char *USAGE =
 	"  --datapath=PATH   Path to where the game is installed (default '.')\n"
 	"  --version=VER     Version of the game to load : fr, eur, us (default)\n"
 	"  --part=NUM        Starts at specific game part (1-9)\n"
+	"  --render=NAME     Renderer to use (original,software,gl)\n"
 	;
 
 static const struct {
@@ -50,12 +51,14 @@ int main(int argc, char *argv[]) {
 	const char *version = 0;
 	int part = 1;
 	Engine::Version ver = Engine::VER_US;
+	const char *render = "original";
 	for (int i = 1; i < argc; ++i) {
 		bool opt = false;
 		if (strlen(argv[i]) >= 2) {
 			opt |= parseOption(argv[i], "datapath=", &dataPath);
 			opt |= parseOption(argv[i], "version=", &version);
 			opt |= parseOptionInt(argv[i], "part=", &part);
+			opt |= parseOption(argv[i], "render=", &render);
 		}
 		if (!opt) {
 			printf("%s\n", USAGE);
@@ -71,7 +74,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	g_debugMask = DBG_INFO; // | DBG_VIDEO | DBG_SND | DBG_SCRIPT | DBG_BANK | DBG_SER;
-	SystemStub *stub = SystemStub_OGL_create();
+	SystemStub *stub = SystemStub_OGL_create(render);
 	Engine *e = new Engine(stub, dataPath, part);
 	e->run(ver);
 	delete e;

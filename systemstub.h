@@ -28,6 +28,12 @@ struct PlayerInput {
 	int8_t stateSlot;
 };
 
+enum {
+	RENDER_ORIGINAL, // 320x200
+	RENDER_SOFTWARE,
+	RENDER_GL,
+};
+
 struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
 	typedef uint32_t (*TimerCallback)(uint32_t delay, void *param);
@@ -98,7 +104,6 @@ struct LockAudioStack {
 	SystemStub *_stub;
 };
 
-extern SystemStub *SystemStub_SDL_create();
-extern SystemStub *SystemStub_OGL_create();
+extern SystemStub *SystemStub_OGL_create(const char *name);
 
 #endif

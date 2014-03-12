@@ -46,6 +46,11 @@ struct Point {
 	Point() : x(0), y(0) {}
 	Point(int16_t xx, int16_t yy) : x(xx), y(yy) {}
 	Point(const Point &p) : x(p.x), y(p.y) {}
+
+	void scale(int u, int v) {
+		x = (x * u) >> 16;
+		y = (y * v) >> 16;
+	}
 };
 
 struct QuadStrip {

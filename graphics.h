@@ -21,10 +21,13 @@ struct Graphics {
 
 	uint8_t *_pagePtrs[4];
 	uint8_t *_workPagePtr;
+	int _u, _v;
+	int _w, _h;
 
 	Graphics();
 	~Graphics();
 
+	void setSize(int w, int h);
 	void drawPolygon(uint8_t color, const QuadStrip &qs);
 	void drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color);
 	void drawPoint(int16_t x, int16_t y, uint8_t color);
@@ -32,6 +35,7 @@ struct Graphics {
 	void drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color);
 	void drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color);
 	uint8_t *getPagePtr(uint8_t page);
+	int getPageSize() const { return _w * _h; }
 	void setWorkPagePtr(uint8_t page);
 };
 
