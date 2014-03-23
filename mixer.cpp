@@ -23,14 +23,15 @@ void MixerChunk::readWav(uint8_t *buf) {
 		const int channels = READ_LE_UINT16(buf + 22);
 		const int rate = READ_LE_UINT16(buf + 24);
 		const int bits = READ_LE_UINT16(buf + 34);
-		if (format == 1 && channels == 1 && bits == 8 && memcmp(buf + 36, "data", 4) == 0) {
+		if ((format & 255) == 1 && channels == 1 && bits == 8 && memcmp(buf + 36, "data", 4) == 0) {
 			len = READ_LE_UINT32(buf + 40);
 			data = buf + 44;
 			loopLen = 0;
-			if (buf[44] & 0x80) { /* S8 to U8 */
+			if (buf[21] == 0) { /* S8 to U8 */
 				for (int i = 0; i < len; ++i) {
 					buf[44 + i] ^= 0x80;
 				}
+				buf[21] = 1;
 			}
 		} else {
 			warning("Unsupported WAV format=%d channels=%d bits=%d rate=%d", format, channels, bits, rate);
