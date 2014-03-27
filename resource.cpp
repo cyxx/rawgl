@@ -12,6 +12,7 @@
 
 Resource::Resource(Video *vid, const char *dataDir) 
 	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0), _pak(dataDir), _dataType(DT_DOS) {
+	_bankPrefix = "bank";
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -27,7 +28,7 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 	f.read(dstBuf, me->unpackedSize);
 #else
 	char name[10];
-	snprintf(name, sizeof(name), "bank%02x", me->bankNum);
+	snprintf(name, sizeof(name), "%s%02x", _bankPrefix, me->bankNum);
 	File f;
 	if (f.open(name, _dataDir)) {
 		f.seek(me->bankPos);
@@ -55,6 +56,9 @@ void Resource::readEntries() {
 	}
 	// DOS datafiles
 	File f;
+	if (f.open("demo01", _dataDir)) {
+		_bankPrefix = "demo";
+	}
 	if (!f.open("memlist.bin", _dataDir)) {
 		warning("Resource::readEntries() unable to open 'memlist.bin' file");
 		static const uint32_t bank01Sizes[] = { 244674, 244868, 0 };

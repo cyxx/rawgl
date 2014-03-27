@@ -76,6 +76,7 @@ struct Resource {
 	uint8_t *_segCode;
 	uint8_t *_segVideo1;
 	uint8_t *_segVideo2;
+	const char *_bankPrefix;
 	Pak _pak;
 	DataType _dataType;
 
