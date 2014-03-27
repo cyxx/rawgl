@@ -14,22 +14,18 @@ Engine::Engine(SystemStub *stub, const char *dataDir, int partNum)
 	_ply(&_mix, &_res, _stub), _vid(&_res, stub), _dataDir(dataDir), _partNum(partNum) {
 }
 
-void Engine::run(Version ver) {
-	_stub->init((ver == VER_US) ? "Out Of This World" : "Another World");
+void Engine::run(Language lang) {
+	_stub->init((lang == LANG_US) ? "Out Of This World" : "Another World");
 	setup();
 	// setup specific stuff
-	switch (ver) {
-	case VER_FR:
+	switch (lang) {
+	case LANG_FR:
 		_vid._stringsTable = Video::_stringsTableFr;
 		_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x1;
 		break;
-	case VER_US:
+	case LANG_US:
 		_vid._stringsTable = Video::_stringsTableEng;
 		_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x81;
-		break;
-	case VER_EUR:
-		_vid._stringsTable = Video::_stringsTableEng;
-		_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x1;
 		break;
 	}
 	_log.restartAt(16000 + _partNum);

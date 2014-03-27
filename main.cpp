@@ -11,18 +11,17 @@ static const char *USAGE =
 	"Raw - Another World Interpreter\n"
 	"Usage: raw [OPTIONS]...\n"
 	"  --datapath=PATH   Path to where the game is installed (default '.')\n"
-	"  --version=VER     Version of the game to load : fr, eur, us (default)\n"
+	"  --language=LANG   Language of the game to use (fr,us)\n"
 	"  --part=NUM        Starts at specific game part (1-9)\n"
 	"  --render=NAME     Renderer to use (original,software,gl)\n"
 	;
 
 static const struct {
 	const char *name;
-	Engine::Version ver;
-} VERSIONS[] = {
-	{ "fr",  Engine::VER_FR  },
-	{ "us",  Engine::VER_US  },
-	{ "eur", Engine::VER_EUR }
+	Language lang;
+} LANGUAGES[] = {
+	{ "fr", LANG_FR  },
+	{ "us", LANG_US  },
 };
 
 static bool parseOption(const char *arg, const char *longCmd, const char **opt) {
@@ -48,15 +47,15 @@ static bool parseOptionInt(const char *arg, const char *name, int *i) {
 #undef main
 int main(int argc, char *argv[]) {
 	const char *dataPath = "data";
-	const char *version = 0;
+	const char *language = 0;
 	int part = 1;
-	Engine::Version ver = Engine::VER_US;
+	Language lang = LANG_FR;
 	const char *render = "original";
 	for (int i = 1; i < argc; ++i) {
 		bool opt = false;
 		if (strlen(argv[i]) >= 2) {
 			opt |= parseOption(argv[i], "datapath=", &dataPath);
-			opt |= parseOption(argv[i], "version=", &version);
+			opt |= parseOption(argv[i], "language=", &language);
 			opt |= parseOptionInt(argv[i], "part=", &part);
 			opt |= parseOption(argv[i], "render=", &render);
 		}
@@ -65,10 +64,10 @@ int main(int argc, char *argv[]) {
 			return 0;
 		}
 	}
-	if (version) {
-		for (unsigned int j = 0; j < ARRAYSIZE(VERSIONS); ++j) {
-			if (strcmp(version, VERSIONS[j].name) == 0) {
-				ver = VERSIONS[j].ver;
+	if (language) {
+		for (unsigned int j = 0; j < ARRAYSIZE(LANGUAGES); ++j) {
+			if (strcmp(language, LANGUAGES[j].name) == 0) {
+				lang = LANGUAGES[j].lang;
 				break;
 			}
 		}
@@ -76,7 +75,7 @@ int main(int argc, char *argv[]) {
 	g_debugMask = DBG_INFO; // | DBG_VIDEO | DBG_SND | DBG_SCRIPT | DBG_BANK | DBG_SER;
 	SystemStub *stub = SystemStub_OGL_create(render);
 	Engine *e = new Engine(stub, dataPath, part);
-	e->run(ver);
+	e->run(lang);
 	delete e;
 	delete stub;
 	return 0;

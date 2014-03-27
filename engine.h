@@ -21,12 +21,6 @@ struct Engine {
 		MAX_SAVE_SLOTS = 100
 	};
 	
-	enum Version {
-		VER_FR,
-		VER_US,
-		VER_EUR
-	};
-
 	SystemStub *_stub;
 	Script _log;
 	Mixer _mix;
@@ -38,7 +32,7 @@ struct Engine {
 
 	Engine(SystemStub *stub, const char *dataDir, int partNum);
 
-	void run(Version ver);
+	void run(Language lang);
 	void setup();
 	void finish();
 	void processInput();

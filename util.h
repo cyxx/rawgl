@@ -19,6 +19,11 @@ enum {
 	DBG_PAK   = 1 << 6,
 };
 
+enum Language {
+	LANG_FR,
+	LANG_US,
+};
+
 extern uint16_t g_debugMask;
 
 extern void debug(uint16_t cm, const char *msg, ...);
