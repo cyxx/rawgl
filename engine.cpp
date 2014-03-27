@@ -41,6 +41,7 @@ void Engine::run(Language lang) {
 
 void Engine::setup() {
 	_vid.init();
+	_res.detectVersion();
 	_res.allocMemBlock();
 	_res.readEntries();
 	_log.init();

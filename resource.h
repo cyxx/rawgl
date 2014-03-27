@@ -83,7 +83,7 @@ struct Resource {
 	Resource(Video *vid, const char *dataDir);
 
 	DataType getDataType() const { return _dataType; }
-	
+	void detectVersion();
 	void readBank(const MemEntry *me, uint8_t *dstBuf);
 	void readEntries();
 	void readEntriesAmiga(const AmigaMemEntry *entries, int count);

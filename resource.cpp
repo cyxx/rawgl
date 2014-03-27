@@ -47,22 +47,30 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 #endif
 }
 
-void Resource::readEntries() {
-	_pak.readEntries();
-	if (_pak._entriesCount != 0) {
-		_dataType = DT_15TH_EDITION;
-		debug(DBG_INFO, "Using 15th anniversary edition data");
-		return;
-	}
-	// DOS datafiles
+void Resource::detectVersion() {
 	File f;
-	if (f.open("demo01", _dataDir)) {
-		_bankPrefix = "demo";
+	if (f.open(Pak::FILENAME, _dataDir)) {
+		_dataType = DT_15TH_EDITION;
+		debug(DBG_INFO, "Using 15th anniversary edition data files");
+	} else if (!f.open("memlist.bin", _dataDir)) {
+		_dataType = DT_AMIGA;
+		debug(DBG_INFO, "Using Amiga data files");
+	}  else {
+		_dataType = DT_DOS;
+		debug(DBG_INFO, "Using DOS data files");
 	}
-	if (!f.open("memlist.bin", _dataDir)) {
-		warning("Resource::readEntries() unable to open 'memlist.bin' file");
+}
+
+void Resource::readEntries() {
+	if (_dataType == DT_15TH_EDITION) {
+		_pak.readEntries();
+		if (_pak._entriesCount != 0) {
+			return;
+		}
+	} else if (_dataType == DT_AMIGA) {
 		static const uint32_t bank01Sizes[] = { 244674, 244868, 0 };
 		static const AmigaMemEntry *entries[] = { _memListAmigaFR, _memListAmigaEN, 0 };
+		File f;
 		if (f.open("bank01", _dataDir)) {
 			for (int i = 0; bank01Sizes[i] != 0; ++i) {
 				if (f.size() == bank01Sizes[i]) {
@@ -73,28 +81,32 @@ void Resource::readEntries() {
 				}
 			}
 		}
-		error("No data files found in '%s'", _dataDir);
-		return;
-	}
-	debug(DBG_INFO, "Using DOS data files");
-	_numMemList = 0;
-	MemEntry *me = _memList;
-	while (1) {
-		assert(_numMemList < ARRAYSIZE(_memList));
-		me->status = f.readByte();
-		me->type = f.readByte();
-		me->bufPtr = 0; f.readUint32BE();
-		me->rankNum = f.readByte();
-		me->bankNum = f.readByte();
-		me->bankPos = f.readUint32BE();
-		me->packedSize = f.readUint32BE();
-		me->unpackedSize = f.readUint32BE();
-		if (me->status == 0xFF) {
-			break;
+	} else if (_dataType == DT_DOS) {
+		File f;
+		if (f.open("demo01", _dataDir)) {
+			_bankPrefix = "demo";
 		}
-		++_numMemList;
-		++me;
+		if (f.open("memlist.bin", _dataDir)) {
+			MemEntry *me = _memList;
+			while (1) {
+				assert(_numMemList < ARRAYSIZE(_memList));
+				me->status = f.readByte();
+				me->type = f.readByte();
+				me->bufPtr = 0; f.readUint32BE();
+				me->rankNum = f.readByte();
+				me->bankNum = f.readByte();
+				me->bankPos = f.readUint32BE();
+				me->packedSize = f.readUint32BE();
+				me->unpackedSize = f.readUint32BE();
+				if (me->status == 0xFF) {
+					return;
+				}
+				++_numMemList;
+				++me;
+			}
+		}
 	}
+	error("No data files found in '%s'", _dataDir);
 }
 
 void Resource::readEntriesAmiga(const AmigaMemEntry *entries, int count) {
