@@ -5,6 +5,7 @@
  */
 
 #include <SDL.h>
+#define GL_GLEXT_PROTOTYPES
 #include <SDL_opengl.h>
 #include <vector>
 #include "graphics.h"
@@ -180,6 +181,9 @@ struct DrawList {
 static const int SCREEN_W = 320;
 static const int SCREEN_H = 200;
 
+static const int FB_W = 1280;
+static const int FB_H = 800;
+
 struct SystemStub_OGL : SystemStub {
 	enum {
 		DEF_SCREEN_W = 800,
@@ -194,6 +198,8 @@ struct SystemStub_OGL : SystemStub {
 	Graphics _gfx;
 	DrawList _drawLists[4];
 	Texture _backgroundTex;
+	GLuint _fbPage0;
+	GLuint _page0Tex;
 
 	virtual ~SystemStub_OGL() {}
 	virtual void init(const char *title);
@@ -264,6 +270,22 @@ void SystemStub_OGL::init(const char *title) {
 	glDisable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
 	_backgroundTex.init();
+
+	// TODO: check extension availability GL_EXT_framebuffer_object
+	glGenTextures(1, &_page0Tex);
+	glBindTexture(GL_TEXTURE_2D, _page0Tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glGenFramebuffersEXT(1, &_fbPage0);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, _page0Tex, 0);
+	int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
+		// TODO:
+	}
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 }
 
 void SystemStub_OGL::destroy() {
@@ -396,6 +418,27 @@ static void drawVertices(int count, const Point *vertices) {
 	}
 }
 
+static void drawBackgroundTexture(int count, const Point *vertices) {
+	if (count < 4) {
+		warning("Invalid vertices count for drawing mode 0x11", count);
+		return;
+	}
+	glBegin(GL_QUAD_STRIP);
+		for (int i = 0; i < count / 2; ++i) {
+			const int j = count - 1 - i;
+			int v1 = i;
+			int v2 = j;
+			if (vertices[v2].x < vertices[v1].x) {
+				SWAP(v1, v2);
+			}
+			glTexCoord2f(vertices[v1].x / 320., 1. - vertices[v1].y / 200.);
+			glVertex2i(vertices[v1].x, vertices[v1].y);
+			glTexCoord2f((vertices[v2].x + 1) / 320., 1. - vertices[v2].y / 200.);
+			glVertex2i((vertices[v2].x + 1), vertices[v2].y);
+		}
+	glEnd();
+}
+
 void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
 		memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
@@ -427,7 +470,6 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 }
 
 void SystemStub_OGL::blitListEntries(uint8_t listNum) {
-	bool printWarningColor0x11Once = false;
 	assert(listNum < NUM_LISTS);
 	DrawList *dl = &_drawLists[listNum];
 	DrawList::Entries::const_iterator it = dl->entries.begin();
@@ -445,9 +487,20 @@ void SystemStub_OGL::blitListEntries(uint8_t listNum) {
 			}
 			glColor4ub(col->r, col->g, col->b, a);
 			drawVertices(entry.numVertices, entry.vertices);
-		} else if (!printWarningColor0x11Once) {
-			warning("Unhandled color 0x11 with GL rendering");
-			printWarningColor0x11Once = true;
+		} else {
+			if (listNum == 0) {
+				warning("Unexpected draw entry color 0x11 with listNum %d", listNum); // TODO: check in ::addToList calls
+				continue;
+			}
+			glEnable(GL_TEXTURE_2D);
+			if (1) {
+				glBindTexture(GL_TEXTURE_2D,  _page0Tex);
+			} else { // if fb not available (better than nothing...)
+				glBindTexture(GL_TEXTURE_2D, _backgroundTex._id);
+			}
+			glColor4f(1., 1., 1., 1.);
+			drawBackgroundTexture(entry.numVertices, entry.vertices);
+			glDisable(GL_TEXTURE_2D);
 		}
 	}
 }
@@ -474,6 +527,30 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 		_backgroundTex.draw(_w, _h);
 		break;
 	case RENDER_GL:
+		if (1) {
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+
+			glPushAttrib(GL_VIEWPORT_BIT);
+			glViewport(0, 0, FB_W, FB_H);
+
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			glOrtho(0, FB_W, FB_H, 0, 0, 1);
+
+			_backgroundTex.draw(FB_W, FB_H);
+			glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+			blitListEntries(0);
+
+			glLoadIdentity();
+			glScalef(1., 1., 1.);
+			glPopAttrib();
+
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			glOrtho(0, _w, _h, 0, 0, 1);
+		}
 		_backgroundTex.draw(_w, _h);
 		glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
 		blitListEntries(listNum);
