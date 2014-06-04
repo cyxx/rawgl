@@ -30,7 +30,6 @@ struct PlayerInput {
 
 enum {
 	RENDER_ORIGINAL, // 320x200
-	RENDER_SOFTWARE,
 	RENDER_GL,
 };
 

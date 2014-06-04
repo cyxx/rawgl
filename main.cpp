@@ -13,7 +13,7 @@ static const char *USAGE =
 	"  --datapath=PATH   Path to where the game is installed (default '.')\n"
 	"  --language=LANG   Language of the game to use (fr,us)\n"
 	"  --part=NUM        Starts at specific game part (1-9)\n"
-	"  --render=NAME     Renderer to use (original,software,gl)\n"
+	"  --render=NAME     Renderer to use (original,gl)\n"
 	;
 
 static const struct {
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 	const char *language = 0;
 	int part = 1;
 	Language lang = LANG_FR;
-	const char *render = "original";
+	const char *render = "gl";
 	for (int i = 1; i < argc; ++i) {
 		bool opt = false;
 		if (strlen(argv[i]) >= 2) {

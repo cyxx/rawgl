@@ -12,7 +12,7 @@
 #include "scaler.h"
 #include "systemstub.h"
 
-static int _render = RENDER_ORIGINAL;
+static int _render = RENDER_GL;
 
 static bool hasExtension(const char *exts, const char *name) {
 	const char *p = strstr(exts, name);
@@ -240,7 +240,6 @@ SystemStub *SystemStub_OGL_create(const char *name) {
 			int render;
 		} modes[] = {
 			{ "original", RENDER_ORIGINAL },
-			{ "software", RENDER_SOFTWARE },
 			{ "gl", RENDER_GL },
 			{ 0, 0 }
 		};
@@ -321,13 +320,6 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 			memcpy(_gfx.getPagePtr(listNum), data, _gfx.getPageSize());
 		}
 		break;
-	case RENDER_SOFTWARE:
-		if (memcmp(data, "BM", 2) == 0) {
-			// TODO:
-		} else {
-			nearest(_gfx.getPagePtr(listNum), _gfx._w, _gfx._w, _gfx._h, data, 320, 320, 200);
-		}
-		break;
 	case RENDER_GL:
 		assert(listNum == 0);
 		if (memcmp(data, "BM", 2) == 0) {
@@ -347,7 +339,7 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 }
 
 void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point *pt) {
-	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
+	if (_render == RENDER_ORIGINAL) {
 		_gfx.setWorkPagePtr(listNum);
 		_gfx.drawPoint(pt->x, pt->y, color);
 		return;
@@ -361,7 +353,7 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 }
 
 void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
-	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
+	if (_render == RENDER_ORIGINAL) {
 		_gfx.setWorkPagePtr(listNum);
 		_gfx.drawPolygon(color, *qs);
 		return;
@@ -375,7 +367,7 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
-	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
+	if (_render == RENDER_ORIGINAL) {
 		_gfx.setWorkPagePtr(listNum);
 		_gfx.drawChar(c, pt->x / 8, pt->y, color);
 		return;
@@ -440,7 +432,7 @@ static void drawBackgroundTexture(int count, const Point *vertices) {
 }
 
 void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
-	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
+	if (_render == RENDER_ORIGINAL) {
 		memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
 		return;
 	}
@@ -454,7 +446,7 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 }
 
 void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
-	if (_render == RENDER_ORIGINAL || _render == RENDER_SOFTWARE) {
+	if (_render == RENDER_ORIGINAL) {
 		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
 		return;
 	}
@@ -520,10 +512,6 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 	switch (_render){
 	case RENDER_ORIGINAL:
 		_backgroundTex.readRaw16(_gfx.getPagePtr(listNum), _pal);
-		_backgroundTex.draw(_w, _h);
-		break;
-	case RENDER_SOFTWARE:
-		_backgroundTex.readRaw16(_gfx.getPagePtr(listNum), _pal, _w, _h);
 		_backgroundTex.draw(_w, _h);
 		break;
 	case RENDER_GL:
@@ -720,9 +708,6 @@ void SystemStub_OGL::resize(int w, int h) {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	switch (_render) {
-	case RENDER_SOFTWARE:
-		_gfx.setSize(_w, _h);
-		/* fall-through */
 	case RENDER_ORIGINAL:
 		glOrtho(0, _w, 0, _h, 0, 1);
 		break;
