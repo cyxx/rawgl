@@ -44,6 +44,9 @@ void Engine::setup() {
 	_res.detectVersion();
 	_res.allocMemBlock();
 	_res.readEntries();
+	if (_res.getDataType() == Resource::DT_15TH_EDITION) {
+		_res.loadFont();
+	}
 	_log.init();
 	_mix.init();
 	_ply.init();

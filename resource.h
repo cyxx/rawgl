@@ -93,6 +93,7 @@ struct Resource {
 	void update(uint16_t num);
 	void loadBmp(int num);
 	uint8_t *loadDat(int num);
+	void loadFont();
 	uint8_t *loadWav(int num);
 	void setupPtrs(uint16_t ptrId);
 	void allocMemBlock();

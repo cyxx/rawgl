@@ -74,7 +74,6 @@ void Resource::readEntries() {
 		if (f.open("bank01", _dataDir)) {
 			for (int i = 0; bank01Sizes[i] != 0; ++i) {
 				if (f.size() == bank01Sizes[i]) {
-					debug(DBG_INFO, "Using Amiga data files");
 					_dataType = DT_AMIGA;
 					readEntriesAmiga(entries[i], 146);
 					return;
@@ -269,6 +268,19 @@ uint8_t *Resource::loadDat(int num) {
 		warning("Unable to load '%s'", name);
 	}
 	return p;
+}
+
+void Resource::loadFont() {
+	const PakEntry *e = _pak.find("font.bmp");
+	if (e) {
+		uint32_t size;
+		uint8_t *p = (uint8_t*)malloc(e->size);
+		if (p) {
+			_pak.loadData(e, p, &size);
+			_vid->setFont(p);
+			free(p);
+		}
+	}
 }
 
 uint8_t *Resource::loadWav(int num) {

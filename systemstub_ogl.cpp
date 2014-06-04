@@ -36,6 +36,7 @@ static int roundPow2(int sz) {
 
 struct Texture {
 	bool _npotTex;
+	bool _alpha;
 	GLuint _id;
 	int _w, _h;
 	float _u, _v;
@@ -52,20 +53,24 @@ struct Texture {
 void Texture::init() {
 	const char *exts = (const char *)glGetString(GL_EXTENSIONS);
 	_npotTex = hasExtension(exts, "GL_ARB_texture_non_power_of_two");
+	_alpha = false;
 	_id = (GLuint)-1;
 	_w = _h = 0;
 	_rgbData = 0;
 	_raw16Data = 0;
 }
 
-static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal) {
+static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal, bool alpha) {
 	for (int y = 0; y < h; ++y) {
+		int offset = 0;
 		for (int x = 0; x < w; ++x) {
 			const uint8_t color = src[x];
-			int offset = x * 3;
 			dst[offset++] = pal[color].r;
 			dst[offset++] = pal[color].g;
 			dst[offset++] = pal[color].b;
+			if (alpha) {
+				dst[offset++] = (color == 0) ? 0 : 255;
+			}
 		}
 		dst += dstPitch;
 		src += srcPitch;
@@ -77,10 +82,12 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		free(_rgbData);
 		_rgbData = 0;
 	}
+	const int depth = _alpha ? 4 : 3;
+	const int fmt = _alpha ? GL_RGBA : GL_RGB;
 	if (!_rgbData) {
 		_w = _npotTex ? w : roundPow2(w);
 		_h = _npotTex ? h : roundPow2(h);
-		_rgbData = (uint8_t *)malloc(_w * _h * 3);
+		_rgbData = (uint8_t *)malloc(_w * _h * depth);
 		if (!_rgbData) {
 			return;
 		}
@@ -91,12 +98,12 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		glBindTexture(GL_TEXTURE_2D, _id);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) ? GL_NEAREST : GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) ? GL_NEAREST : GL_LINEAR);
-		convertTexture(data, srcPitch, w, h, _rgbData, _w * 3, pal);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _w, _h, 0, GL_RGB, GL_UNSIGNED_BYTE, _rgbData);
+		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, _alpha);
+		glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, GL_UNSIGNED_BYTE, _rgbData);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, _id);
-		convertTexture(data, srcPitch, w, h, _rgbData, _w * 3, pal);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _w, _h, GL_RGB, GL_UNSIGNED_BYTE, _rgbData);
+		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, _alpha);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _w, _h, fmt, GL_UNSIGNED_BYTE, _rgbData);
 	}
 }
 
@@ -165,7 +172,7 @@ void BitmapInfo::read(const uint8_t *src) {
 }
 
 struct DrawListEntry {
-	uint8_t color;
+	int color;
 	int numVertices;
 	Point vertices[1024];
 };
@@ -198,6 +205,7 @@ struct SystemStub_OGL : SystemStub {
 	Graphics _gfx;
 	DrawList _drawLists[4];
 	Texture _backgroundTex;
+	Texture _fontTex;
 	GLuint _fbPage0;
 	GLuint _page0Tex;
 
@@ -269,6 +277,8 @@ void SystemStub_OGL::init(const char *title) {
 	glDisable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
 	_backgroundTex.init();
+	_fontTex.init();
+	_fontTex._alpha = true;
 
 	// TODO: check extension availability GL_EXT_framebuffer_object
 	glGenTextures(1, &_page0Tex);
@@ -292,7 +302,13 @@ void SystemStub_OGL::destroy() {
 }
 
 void SystemStub_OGL::setFont(const uint8_t *font) {
-	// TODO:
+	if (memcmp(font, "BM", 2) == 0) {
+		BitmapInfo bi;
+		bi.read(font);
+		if (bi._data) {
+			_fontTex.uploadData(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
+		}
+	}
 }
 
 void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
@@ -372,7 +388,11 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 		_gfx.drawChar(c, pt->x / 8, pt->y, color);
 		return;
 	}
-	// TODO:
+	assert(listNum < NUM_LISTS);
+	DrawListEntry e;
+	e.color = (1 << 16) | (color << 8) | c;
+	e.vertices[0] = *pt;
+	_drawLists[listNum].entries.push_back(e);
 }
 
 static void drawVertices(int count, const Point *vertices) {
@@ -461,13 +481,43 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 	}
 }
 
+static void drawFontChar(uint8_t ch, int x, int y, GLuint tex) {
+// TODO: transparency
+	const int x1 = x;
+	const int x2 = x1 + 8;
+	const int y1 = y;
+	const int y2 = y1 + 8;
+	const float u1 = (ch % 16) * 16 / 256.;
+	const float u2 = u1 + 16 / 256.;
+	const float v1 = (16 - ch / 16) * 16 / 256.;
+	const float v2 = v1 - 16 / 256.;
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glBegin(GL_QUADS);
+		glTexCoord2f(u1, v1);
+		glVertex2i(x1, y1);
+		glTexCoord2f(u2, v1);
+		glVertex2i(x2, y1);
+		glTexCoord2f(u2, v2);
+		glVertex2i(x2, y2);
+		glTexCoord2f(u1, v2);
+		glVertex2i(x1, y2);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+}
+
 void SystemStub_OGL::blitListEntries(uint8_t listNum) {
 	assert(listNum < NUM_LISTS);
 	DrawList *dl = &_drawLists[listNum];
 	DrawList::Entries::const_iterator it = dl->entries.begin();
 	for (; it != dl->entries.end(); ++it) {
 		DrawListEntry entry = *it;
-		if (entry.color != COL_PAGE) {
+		if (entry.color & 0x10000) {
+			const uint8_t color = (entry.color >> 8) & 15;
+			Color *col = &_pal[color];
+			glColor4ub(col->r, col->g, col->b, 255);
+			drawFontChar(entry.color & 255,  entry.vertices[0].x, entry.vertices[0].y, _fontTex._id);
+		} else if (entry.color != COL_PAGE) {
 			Color *col;
 			uint8_t a;
 			if (entry.color == COL_ALPHA) {

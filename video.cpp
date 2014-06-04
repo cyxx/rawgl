@@ -20,6 +20,10 @@ void Video::init() {
 	setWorkPagePtr(0xFE);
 }
 
+void Video::setFont(const uint8_t *font) {
+	_stub->setFont(font);
+}
+
 void Video::setDataBuffer(uint8_t *dataBuf, uint16_t offset) {
 	_dataBuf = dataBuf;
 	_pData.pc = dataBuf + offset;

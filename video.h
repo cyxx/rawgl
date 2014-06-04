@@ -36,6 +36,7 @@ struct Video {
 	Video(Resource *res, SystemStub *stub);
 	void init();
 
+	void setFont(const uint8_t *font);
 	void setDataBuffer(uint8_t *dataBuf, uint16_t offset);
 	void drawShape(uint8_t color, uint16_t zoom, const Point *pt);
 	void fillPolygon(uint16_t color, uint16_t zoom, const Point *pt);
