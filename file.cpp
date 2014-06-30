@@ -4,6 +4,9 @@
  * Copyright (C) 2004-2005 Gregory Montoir (cyx@users.sourceforge.net)
  */
 
+#include <dirent.h>
+#include <sys/stat.h>
+#include <string.h>
 #include "file.h"
 
 struct File_impl {
@@ -78,11 +81,33 @@ File::~File() {
 	delete _impl;
 }
 
+static bool getFilePathNoCase(const char *filename, const char *path, char *out) {
+	bool ret = false;
+	DIR *d = opendir(path);
+	if (d) {
+		dirent *de;
+		while ((de = readdir(d)) != NULL) {
+			if (de->d_name[0] == '.') {
+				continue;
+			}
+			if (strcasecmp(de->d_name, filename) == 0) {
+				sprintf(out, "%s/%s", path, de->d_name);
+				ret = true;
+				break;
+			}
+		}
+		closedir(d);
+	}
+	return true;
+}
+
 bool File::open(const char *filename, const char *path, const char *mode) {
 	_impl->close();
 	char filepath[512];
-	snprintf(filepath, sizeof(filepath), "%s/%s", path, filename);
-	return _impl->open(filepath, mode);
+	if (getFilePathNoCase(filename, path, filepath)) {
+		return _impl->open(filepath, mode);
+	}
+	return false;
 }
 
 void File::close() {
