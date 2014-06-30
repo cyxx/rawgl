@@ -12,7 +12,7 @@ static const char *USAGE =
 	"Usage: raw [OPTIONS]...\n"
 	"  --datapath=PATH   Path to where the game is installed (default '.')\n"
 	"  --language=LANG   Language of the game to use (fr,us)\n"
-	"  --part=NUM        Starts at specific game part (1-9)\n"
+	"  --part=NUM        Starts at specific game part (0-35 or 16001-16009)\n"
 	"  --render=NAME     Renderer to use (original,gl)\n"
 	;
 
@@ -48,7 +48,7 @@ static bool parseOptionInt(const char *arg, const char *name, int *i) {
 int main(int argc, char *argv[]) {
 	const char *dataPath = "data";
 	const char *language = 0;
-	int part = 1;
+	int part = 16001;
 	Language lang = LANG_FR;
 	const char *render = "gl";
 	for (int i = 1; i < argc; ++i) {
