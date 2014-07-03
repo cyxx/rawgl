@@ -103,19 +103,46 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 	}
 }
 
+static const char *findString15th(int id) {
+	static const int COUNT = 157;
+	for (int i = 0; i < COUNT; ++i) {
+		if (Video::_stringsId15th[i] == id) {
+			return Video::_stringsTable15th[i];
+		}
+	}
+	return 0;
+}
+
+static const char *findString(const StrEntry *stringsTable, int id) {
+	for (const StrEntry *se = stringsTable; se->id != 0xFFFF; ++se) {
+		if (se->id == id) {
+			return se->str;
+		}
+	}
+	return 0;
+}
+
 void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
-	const StrEntry *se = _stringsTable;
-	while (se->id != 0xFFFF && se->id != strId) ++se;
-	debug(DBG_VIDEO, "drawString(%d, %d, %d, '%s')", color, x, y, se->str);
+	const char *str;
+	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
+		str = findString15th(strId);
+	} else {
+		str = findString(_stringsTable, strId);
+	}
+	if (!str) {
+		warning("Unknown string id 0x%x", strId);
+		return;
+	}
+	debug(DBG_VIDEO, "drawString(%d, %d, %d, '%s')", color, x, y, str);
 	uint16_t xx = x;
-	int len = strlen(se->str);
+	int len = strlen(str);
 	for (int i = 0; i < len; ++i) {
-		if (se->str[i] == '\n') {
+		if (str[i] == '\n') {
 			y += 8;
 			x = xx;
 		} else {
 			Point pt(x * 8, y);
-			_stub->addCharToList(_listPtrs[0], color, se->str[i], &pt);
+			_stub->addCharToList(_listPtrs[0], color, str[i], &pt);
 			++x;
 		}
 	}
