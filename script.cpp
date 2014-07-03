@@ -357,6 +357,10 @@ void Script::restartAt(uint16_t ptrId) {
 		if (ptrId == 16002) {
 			// the setpal call is made after the background page3 rendering
 			_vid->changePal(3);
+		} else if (ptrId == 16005) {
+			_vid->changePal(11);
+		} else if (ptrId == 16007) {
+			_vid->changePal(10);
 		}
 	}
 }
