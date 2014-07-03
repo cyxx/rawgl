@@ -52,12 +52,14 @@ void Resource::detectVersion() {
 	if (f.open(Pak::FILENAME, _dataDir)) {
 		_dataType = DT_15TH_EDITION;
 		debug(DBG_INFO, "Using 15th anniversary edition data files");
-	} else if (!f.open("memlist.bin", _dataDir)) {
-		_dataType = DT_AMIGA;
-		debug(DBG_INFO, "Using Amiga data files");
-	}  else {
+	} else if (f.open("memlist.bin", _dataDir)) {
 		_dataType = DT_DOS;
 		debug(DBG_INFO, "Using DOS data files");
+	}  else if (f.open("bank01", _dataDir)) {
+		_dataType = DT_AMIGA;
+		debug(DBG_INFO, "Using Amiga data files");
+	} else {
+		error("No data files found in '%s'", _dataDir);
 	}
 }
 
@@ -74,7 +76,6 @@ void Resource::readEntries() {
 		if (f.open("bank01", _dataDir)) {
 			for (int i = 0; bank01Sizes[i] != 0; ++i) {
 				if (f.size() == bank01Sizes[i]) {
-					_dataType = DT_AMIGA;
 					readEntriesAmiga(entries[i], 146);
 					return;
 				}
