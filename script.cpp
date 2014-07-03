@@ -354,7 +354,9 @@ void Script::restartAt(uint16_t ptrId) {
 	memset((uint8_t *)_scriptPaused, 0, sizeof(_scriptPaused));
 	_scriptSlotsPos[0][0] = 0;
 	if (g_workaround) {
-		if (ptrId == 16002) {
+		if (ptrId == 16001) {
+			_vid->changePal(1);
+		} else if (ptrId == 16002) {
 			// the setpal call is made after the background page3 rendering
 			_vid->changePal(3);
 		} else if (ptrId == 16005) {
