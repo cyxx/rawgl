@@ -13,6 +13,8 @@
 #include "systemstub.h"
 
 static int _render = RENDER_GL;
+static int _newRender = _render;
+static bool _canChangeRender;
 
 static bool hasExtension(const char *exts, const char *name) {
 	const char *p = strstr(exts, name);
@@ -240,6 +242,7 @@ SystemStub *SystemStub_OGL_create(const char *name) {
 		for (int i = 0; modes[i].name; ++i) {
 			if (strcasecmp(modes[i].name, name) == 0) {
 				_render = modes[i].render;
+				_newRender = _render;
 				break;
 			}
 		}
@@ -264,14 +267,14 @@ void SystemStub_OGL::init(const char *title) {
 	_backgroundTex.init();
 	_fontTex.init();
 	_fontTex._alpha = true;
-	if (_render == RENDER_GL) {
-		const bool err = initFBO();
-		if (!err) {
-			warning("Error initializing GL FBO, using default renderer");
-			_render = RENDER_ORIGINAL;
-		} else {
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		}
+	const bool err = initFBO();
+	if (!err) {
+		warning("Error initializing GL FBO, using default renderer");
+		_canChangeRender = false;
+		_render = RENDER_ORIGINAL;
+	} else {
+		_canChangeRender = true;
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
 }
 
@@ -305,10 +308,6 @@ bool SystemStub_OGL::initFBO() {
 	}
 
 	glViewport(0, 0, FB_W, FB_H);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
 	const float r = (float)FB_W / SCREEN_W;
 	glLineWidth(r);
@@ -407,11 +406,9 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 }
 
 void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point *pt) {
-	if (_render == RENDER_ORIGINAL) {
-		_gfx.setWorkPagePtr(listNum);
-		_gfx.drawPoint(pt->x, pt->y, color);
-		return;
-	}
+	_gfx.setWorkPagePtr(listNum);
+	_gfx.drawPoint(pt->x, pt->y, color);
+
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -424,11 +421,9 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 }
 
 void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
-	if (_render == RENDER_ORIGINAL) {
-		_gfx.setWorkPagePtr(listNum);
-		_gfx.drawPolygon(color, *qs);
-		return;
-	}
+	_gfx.setWorkPagePtr(listNum);
+	_gfx.drawPolygon(color, *qs);
+
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -441,11 +436,9 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
-	if (_render == RENDER_ORIGINAL) {
-		_gfx.setWorkPagePtr(listNum);
-		_gfx.drawChar(c, pt->x / 8, pt->y, color);
-		return;
-	}
+	_gfx.setWorkPagePtr(listNum);
+	_gfx.drawChar(c, pt->x / 8, pt->y, color);
+
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -520,10 +513,8 @@ static void drawBackgroundTexture(int count, const Point *vertices) {
 }
 
 void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
-	if (_render == RENDER_ORIGINAL) {
-		memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
-		return;
-	}
+	memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
+
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -554,11 +545,9 @@ static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
 }
 
 void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
-	if (_render == RENDER_ORIGINAL) {
-		// TODO: handle vscroll
-		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
-		return;
-	}
+	// TODO: handle vscroll
+	memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
+
 	assert(dstListNum < NUM_LISTS && srcListNum < NUM_LISTS);
 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
@@ -601,6 +590,8 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 
 	switch (_render){
 	case RENDER_ORIGINAL:
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
 		glViewport(0, 0, _w, _h);
 
 		glMatrixMode(GL_PROJECTION);
@@ -630,6 +621,13 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 	}
 
 	SDL_GL_SwapBuffers();
+
+	if (_newRender != _render) {
+		_render = _newRender;
+		if (_render == RENDER_GL) {
+			glViewport(0, 0, FB_W, FB_H);
+		}
+	}
 }
 
 void SystemStub_OGL::processEvents() {
@@ -681,6 +679,18 @@ void SystemStub_OGL::processEvents() {
 					_pi.stateSlot = 1;
 				} else if (ev.key.keysym.sym == SDLK_KP_MINUS) {
 					_pi.stateSlot = -1;
+				} else if (ev.key.keysym.sym == SDLK_r) {
+					if (!_canChangeRender) {
+						break;
+					}
+					switch (_render) {
+					case RENDER_ORIGINAL:
+						_newRender = RENDER_GL;
+						break;
+					case RENDER_GL:
+						_newRender = RENDER_ORIGINAL;
+						break;
+					}
 				}
 				break;
 			}
