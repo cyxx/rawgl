@@ -171,20 +171,6 @@ void BitmapInfo::read(const uint8_t *src) {
 	}
 }
 
-struct DrawListEntry {
-	int color;
-	int numVertices;
-	Point vertices[1024];
-};
-
-struct DrawList {
-	typedef std::vector<DrawListEntry> Entries;
-	
-	int16_t vscroll;
-	uint8_t color;
-	Entries entries;
-};
-
 static const int SCREEN_W = 320;
 static const int SCREEN_H = 200;
 
@@ -203,11 +189,10 @@ struct SystemStub_OGL : SystemStub {
 	bool _fullscreen;
 	Color _pal[16];
 	Graphics _gfx;
-	DrawList _drawLists[4];
 	Texture _backgroundTex;
 	Texture _fontTex;
 	GLuint _fbPage0;
-	GLuint _page0Tex;
+	GLuint _pageTex[NUM_LISTS];
 
 	virtual ~SystemStub_OGL() {}
 	virtual void init(const char *title);
@@ -236,7 +221,8 @@ struct SystemStub_OGL : SystemStub {
 	virtual void lockMutex(void *mutex);
 	virtual void unlockMutex(void *mutex);
 
-	void blitListEntries(uint8_t listNum);
+	bool initFBO();
+	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
 	void resize(int w, int h);
 	void switchGfxMode(bool fullscreen);
 };
@@ -267,7 +253,6 @@ void SystemStub_OGL::init(const char *title) {
 	SDL_ShowCursor(SDL_DISABLE);
 	SDL_WM_SetCaption(title, NULL);
 	memset(&_pi, 0, sizeof(_pi));
-	memset(&_drawLists, 0, sizeof(_drawLists));
 	_fullscreen = false;
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
@@ -279,22 +264,57 @@ void SystemStub_OGL::init(const char *title) {
 	_backgroundTex.init();
 	_fontTex.init();
 	_fontTex._alpha = true;
+	if (_render == RENDER_GL) {
+		const bool err = initFBO();
+		if (!err) {
+			warning("Error initializing GL FBO, using default renderer");
+			_render = RENDER_ORIGINAL;
+		} else {
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		}
+	}
+}
+
+bool SystemStub_OGL::initFBO() {
 
 	// TODO: check extension availability GL_EXT_framebuffer_object
-	glGenTextures(1, &_page0Tex);
-	glBindTexture(GL_TEXTURE_2D, _page0Tex);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glBindTexture(GL_TEXTURE_2D, 0);
+
+	GLint buffersCount;
+	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &buffersCount);
+	if (buffersCount < NUM_LISTS) {
+		warning("GL_MAX_COLOR_ATTACHMENTS is %d", buffersCount);
+		return false;
+	}
+
 	glGenFramebuffersEXT(1, &_fbPage0);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, _page0Tex, 0);
-	int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-	if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
-		// TODO:
+
+	glGenTextures(NUM_LISTS, _pageTex);
+	for (int i = 0; i < NUM_LISTS; ++i) {
+		glBindTexture(GL_TEXTURE_2D, _pageTex[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, _pageTex[i], 0);
+		int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+		if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
+			warning("glCheckFramebufferStatusEXT failed, ret %d\n", status);
+			return false;
+		}
 	}
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+	glViewport(0, 0, FB_W, FB_H);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	const float r = (float)FB_W / SCREEN_W;
+	glLineWidth(r);
+	glPointSize(r);
+
+	return true;
 }
 
 void SystemStub_OGL::destroy() {
@@ -347,11 +367,43 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 		} else {
 			_backgroundTex.readRaw16(data, _pal);
 		}
-		_drawLists[listNum].vscroll = 0;
-		_drawLists[listNum].color = 0;
-		_drawLists[listNum].entries.clear();
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+		_backgroundTex.draw(FB_W, FB_H);
 		break;
 	}
+}
+
+static void drawVertices(int count, const Point *vertices);
+static void drawBackgroundTexture(int count, const Point *vertices);
+static void drawFontChar(uint8_t ch, int x, int y, GLuint tex);
+
+void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {
+	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+
+	if (color == COL_PAGE) {
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D,  _pageTex[0]);
+		glColor4f(1., 1., 1., 1.);
+		drawBackgroundTexture(count, vertices);
+		glDisable(GL_TEXTURE_2D);
+	} else {
+		if (color == COL_ALPHA) {
+			glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
+		} else {
+			assert(color < 16);
+			glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
+		}
+		drawVertices(count, vertices);
+	}
+
+	glLoadIdentity();
+	glScalef(1., 1., 1.);
 }
 
 void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point *pt) {
@@ -361,11 +413,14 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 		return;
 	}
 	assert(listNum < NUM_LISTS);
-	DrawListEntry e;
-	e.color = color;
-	e.numVertices = 1;
-	e.vertices[0] = *pt;
-	_drawLists[listNum].entries.push_back(e);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	drawVerticesToFb(color, 1, pt);
 }
 
 void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
@@ -375,11 +430,14 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 		return;
 	}
 	assert(listNum < NUM_LISTS);
-	DrawListEntry e;
-	e.color = color;
-	e.numVertices = qs->numVertices;
-	memcpy(e.vertices, qs->vertices, qs->numVertices * sizeof(Point));
-	_drawLists[listNum].entries.push_back(e);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	drawVerticesToFb(color, qs->numVertices, qs->vertices);
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
@@ -389,10 +447,20 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 		return;
 	}
 	assert(listNum < NUM_LISTS);
-	DrawListEntry e;
-	e.color = (1 << 16) | (color << 8) | c;
-	e.vertices[0] = *pt;
-	_drawLists[listNum].entries.push_back(e);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+
+	glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
+	drawFontChar(c, pt->x, pt->y, _fontTex._id);
+
+	glLoadIdentity();
+	glScalef(1., 1., 1.);
 }
 
 static void drawVertices(int count, const Point *vertices) {
@@ -443,9 +511,9 @@ static void drawBackgroundTexture(int count, const Point *vertices) {
 			if (vertices[v2].x < vertices[v1].x) {
 				SWAP(v1, v2);
 			}
-			glTexCoord2f(vertices[v1].x / 320., 1. - vertices[v1].y / 200.);
+			glTexCoord2f(vertices[v1].x / 320., vertices[v1].y / 200.);
 			glVertex2i(vertices[v1].x, vertices[v1].y);
-			glTexCoord2f((vertices[v2].x + 1) / 320., 1. - vertices[v2].y / 200.);
+			glTexCoord2f((vertices[v2].x + 1) / 320., vertices[v2].y / 200.);
 			glVertex2i((vertices[v2].x + 1), vertices[v2].y);
 		}
 	glEnd();
@@ -457,32 +525,54 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 		return;
 	}
 	assert(listNum < NUM_LISTS);
-	_drawLists[listNum].vscroll = 0;
-	_drawLists[listNum].color = color;
-	_drawLists[listNum].entries.clear();
-	if (listNum == 0) {
-		_backgroundTex.clear();
-	}
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
+static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
+	glEnable(GL_TEXTURE_2D);
+	glColor4ub(255, 255, 255, 255);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glBegin(GL_QUADS);
+		glTexCoord2f(0, 0);
+		glVertex2i(0, vscroll);
+		glTexCoord2f(1, 0);
+		glVertex2i(w, vscroll);
+		glTexCoord2f(1, 1);
+		glVertex2i(w, h + vscroll);
+		glTexCoord2f(0, 1);
+		glVertex2i(0, h + vscroll);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
 }
 
 void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
 	if (_render == RENDER_ORIGINAL) {
+		// TODO: handle vscroll
 		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
 		return;
 	}
 	assert(dstListNum < NUM_LISTS && srcListNum < NUM_LISTS);
-	DrawList *dst = &_drawLists[dstListNum];
-	DrawList *src = &_drawLists[srcListNum];
-	dst->color = src->color;
-	dst->entries = src->entries;
-	dst->vscroll = -vscroll;
-	if (dstListNum == 0) {
-		_backgroundTex.clear();
-	}
+
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + dstListNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	const int yoffset = vscroll * FB_H / SCREEN_H;
+	drawTextureFb(_pageTex[srcListNum], FB_W, FB_H, yoffset);
 }
 
 static void drawFontChar(uint8_t ch, int x, int y, GLuint tex) {
-// TODO: transparency
 	const int x1 = x;
 	const int x2 = x1 + 8;
 	const int y1 = y;
@@ -506,92 +596,36 @@ static void drawFontChar(uint8_t ch, int x, int y, GLuint tex) {
 	glDisable(GL_TEXTURE_2D);
 }
 
-void SystemStub_OGL::blitListEntries(uint8_t listNum) {
-	assert(listNum < NUM_LISTS);
-	DrawList *dl = &_drawLists[listNum];
-	DrawList::Entries::const_iterator it = dl->entries.begin();
-	for (; it != dl->entries.end(); ++it) {
-		DrawListEntry entry = *it;
-		if (entry.color & 0x10000) {
-			const uint8_t color = (entry.color >> 8) & 15;
-			Color *col = &_pal[color];
-			glColor4ub(col->r, col->g, col->b, 255);
-			drawFontChar(entry.color & 255,  entry.vertices[0].x, entry.vertices[0].y, _fontTex._id);
-		} else if (entry.color != COL_PAGE) {
-			Color *col;
-			uint8_t a;
-			if (entry.color == COL_ALPHA) {
-				a = 192;
-				col = &_pal[8]; // not exact, but seems to do the trick
-			} else {
-				a = 255;
-				col = &_pal[entry.color];
-			}
-			glColor4ub(col->r, col->g, col->b, a);
-			drawVertices(entry.numVertices, entry.vertices);
-		} else {
-			if (listNum == 0) {
-				warning("Unexpected draw entry color 0x11 with listNum %d", listNum); // TODO: check in ::addToList calls
-				continue;
-			}
-			glEnable(GL_TEXTURE_2D);
-			if (1) {
-				glBindTexture(GL_TEXTURE_2D,  _page0Tex);
-			} else { // if fb not available (better than nothing...)
-				glBindTexture(GL_TEXTURE_2D, _backgroundTex._id);
-			}
-			glColor4f(1., 1., 1., 1.);
-			drawBackgroundTexture(entry.numVertices, entry.vertices);
-			glDisable(GL_TEXTURE_2D);
-		}
-	}
-}
-
 void SystemStub_OGL::blitList(uint8_t listNum) {
 	assert(listNum < NUM_LISTS);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	DrawList *dl = &_drawLists[listNum];
-	Color *col = &_pal[dl->color];
-	glTranslatef(0, dl->vscroll, 0);
-	glClearColor(col->r / 255.f, col->g / 255.f, col->b / 255.f, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	switch (_render){
 	case RENDER_ORIGINAL:
+		glViewport(0, 0, _w, _h);
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, _w, 0, _h, 0, 1);
+
 		_backgroundTex.readRaw16(_gfx.getPagePtr(listNum), _pal);
 		_backgroundTex.draw(_w, _h);
 		break;
 	case RENDER_GL:
-		if (1) {
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-			glPushAttrib(GL_VIEWPORT_BIT);
-			glViewport(0, 0, FB_W, FB_H);
+		glPushAttrib(GL_VIEWPORT_BIT);
+		glViewport(0, 0, _w, _h);
 
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			glOrtho(0, FB_W, FB_H, 0, 0, 1);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, _w, _h, 0, 0, 1);
 
-			_backgroundTex.draw(FB_W, FB_H);
-			glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
-			blitListEntries(0);
+		drawTextureFb(_pageTex[listNum], _w, _h, 0);
 
-			glLoadIdentity();
-			glScalef(1., 1., 1.);
-			glPopAttrib();
+		glLoadIdentity();
+		glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			glOrtho(0, _w, _h, 0, 0, 1);
-		}
-		_backgroundTex.draw(_w, _h);
-		glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
-		blitListEntries(listNum);
+		glPopAttrib();
 		break;
 	}
 
@@ -751,24 +785,7 @@ void SystemStub_OGL::unlockMutex(void *mutex) {
 void SystemStub_OGL::resize(int w, int h) {
 	_w = w;
 	_h = h;
-
 	SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | (_fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE));
-	glViewport(0, 0, _w, _h);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	switch (_render) {
-	case RENDER_ORIGINAL:
-		glOrtho(0, _w, 0, _h, 0, 1);
-		break;
-	case RENDER_GL:
-		glOrtho(0, _w, _h, 0, 0, 1);
-		break;
-	}
-
-	float r = (float)w / SCREEN_W;
-	glLineWidth(r);
-	glPointSize(r);	
 }
 
 void SystemStub_OGL::switchGfxMode(bool fullscreen) {

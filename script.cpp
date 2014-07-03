@@ -352,7 +352,13 @@ void Script::restartAt(uint16_t ptrId) {
 	_res->setupPtrs(ptrId);
 	memset((uint8_t *)_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
 	memset((uint8_t *)_scriptPaused, 0, sizeof(_scriptPaused));
-	_scriptSlotsPos[0][0] = 0;	
+	_scriptSlotsPos[0][0] = 0;
+	if (g_workaround) {
+		if (ptrId == 16002) {
+			// the setpal call is made after the background page3 rendering
+			_vid->changePal(3);
+		}
+	}
 }
 
 void Script::setupScripts() {

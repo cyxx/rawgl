@@ -24,6 +24,8 @@ enum Language {
 	LANG_US,
 };
 
+extern const bool g_workaround;
+
 extern uint16_t g_debugMask;
 
 extern void debug(uint16_t cm, const char *msg, ...);

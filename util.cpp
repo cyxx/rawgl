@@ -7,6 +7,7 @@
 #include <cstdarg>
 #include "util.h"
 
+const bool g_workaround = true;
 
 uint16_t g_debugMask;
 
