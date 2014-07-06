@@ -173,6 +173,34 @@ void BitmapInfo::read(const uint8_t *src) {
 	}
 }
 
+struct DrawListEntry {
+	static const int NUM_VERTICES = 1024;
+
+	int color;
+	int numVertices;
+	Point vertices[NUM_VERTICES];
+};
+
+struct DrawList {
+	typedef std::vector<DrawListEntry> Entries;
+
+	Entries entries;
+
+	void clear(uint8_t color) {
+		entries.clear();
+	}
+
+	void append(uint8_t color, int count, const Point *vertices) {
+		if (count <= DrawListEntry::NUM_VERTICES) {
+			DrawListEntry e;
+			e.color = color;
+			e.numVertices = count;
+			memcpy(e.vertices, vertices, count * sizeof(Point));
+			entries.push_back(e);
+		}
+	}
+};
+
 static const int SCREEN_W = 320;
 static const int SCREEN_H = 200;
 
@@ -195,6 +223,7 @@ struct SystemStub_OGL : SystemStub {
 	Texture _fontTex;
 	GLuint _fbPage0;
 	GLuint _pageTex[NUM_LISTS];
+	DrawList _drawLists[NUM_LISTS];
 
 	virtual ~SystemStub_OGL() {}
 	virtual void init(const char *title);
@@ -224,6 +253,7 @@ struct SystemStub_OGL : SystemStub {
 	virtual void unlockMutex(void *mutex);
 
 	bool initFBO();
+	void drawVertices(int count, const Point *vertices);
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
 	void resize(int w, int h);
 	void switchGfxMode(bool fullscreen);
@@ -338,6 +368,31 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 		_pal[i].g = (c->g << 2) | (c->g & 3);
 		_pal[i].b = (c->b << 2) | (c->b & 3);
 	}
+
+	if (_render == RENDER_GL) {
+		for (int i = 0; i < NUM_LISTS; ++i) {
+			DrawList::Entries::const_iterator it = _drawLists[i].entries.begin();
+			for (; it != _drawLists[i].entries.end(); ++it) {
+				DrawListEntry e = *it;
+				if (e.color < 16) {
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+					glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
+
+					glMatrixMode(GL_PROJECTION);
+					glLoadIdentity();
+					glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+					glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+
+					glColor4ub(_pal[e.color].r, _pal[e.color].g, _pal[e.color].b, 255);
+					drawVertices(e.numVertices, e.vertices);
+
+					glLoadIdentity();
+					glScalef(1., 1., 1.);
+				}
+			}
+		}
+	}
 }
 
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
@@ -376,9 +431,10 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 		_backgroundTex.draw(FB_W, FB_H);
 		break;
 	}
+
+	_drawLists[listNum].clear(0);
 }
 
-static void drawVertices(int count, const Point *vertices);
 static void drawBackgroundTexture(int count, const Point *vertices);
 static void drawFontChar(uint8_t ch, int x, int y, GLuint tex);
 
@@ -418,6 +474,8 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
 	drawVerticesToFb(color, 1, pt);
+
+	_drawLists[listNum].append(color, 1, pt);
 }
 
 void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
@@ -433,6 +491,8 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
 	drawVerticesToFb(color, qs->numVertices, qs->vertices);
+
+	_drawLists[listNum].append(color, qs->numVertices, qs->vertices);
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
@@ -454,9 +514,11 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 
 	glLoadIdentity();
 	glScalef(1., 1., 1.);
+
+	// TODO: _drawLists
 }
 
-static void drawVertices(int count, const Point *vertices) {
+void SystemStub_OGL::drawVertices(int count, const Point *vertices) {
 	switch (count) {
 	case 1:
 		glBegin(GL_POINTS);
@@ -523,8 +585,11 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
+	assert(color < 16);
 	glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
+
+	_drawLists[listNum].clear(color);
 }
 
 static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
@@ -559,6 +624,8 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 
 	const int yoffset = vscroll * FB_H / SCREEN_H;
 	drawTextureFb(_pageTex[srcListNum], FB_W, FB_H, yoffset);
+
+	_drawLists[dstListNum] = _drawLists[srcListNum];
 }
 
 static void drawFontChar(uint8_t ch, int x, int y, GLuint tex) {
