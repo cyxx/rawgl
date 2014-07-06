@@ -39,7 +39,8 @@ struct SystemStub {
 	
 	enum {
 		COL_ALPHA = 0x10,
-		COL_PAGE  = 0x11
+		COL_PAGE  = 0x11,
+		COL_BMP   = 0xFF,
 	};
 
 	PlayerInput _pi;

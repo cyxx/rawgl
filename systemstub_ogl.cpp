@@ -184,9 +184,15 @@ struct DrawListEntry {
 struct DrawList {
 	typedef std::vector<DrawListEntry> Entries;
 
+	int fillColor;
 	Entries entries;
 
+	DrawList()
+		: fillColor(0) {
+	}
+
 	void clear(uint8_t color) {
+		fillColor = color;
 		entries.clear();
 	}
 
@@ -371,26 +377,33 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 
 	if (_render == RENDER_GL) {
 		for (int i = 0; i < NUM_LISTS; ++i) {
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
+
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+			const int color = _drawLists[i].fillColor;
+			if (color != COL_BMP) {
+				assert(color < 16);
+				glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
+				glClear(GL_COLOR_BUFFER_BIT);
+			}
+
+			glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+
 			DrawList::Entries::const_iterator it = _drawLists[i].entries.begin();
 			for (; it != _drawLists[i].entries.end(); ++it) {
 				DrawListEntry e = *it;
 				if (e.color < 16) {
-					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-					glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
-
-					glMatrixMode(GL_PROJECTION);
-					glLoadIdentity();
-					glOrtho(0, FB_W, 0, FB_H, 0, 1);
-
-					glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
-
 					glColor4ub(_pal[e.color].r, _pal[e.color].g, _pal[e.color].b, 255);
 					drawVertices(e.numVertices, e.vertices);
-
-					glLoadIdentity();
-					glScalef(1., 1., 1.);
 				}
 			}
+
+			glLoadIdentity();
+			glScalef(1., 1., 1.);
 		}
 	}
 }
@@ -432,7 +445,7 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 		break;
 	}
 
-	_drawLists[listNum].clear(0);
+	_drawLists[listNum].clear(COL_BMP);
 }
 
 static void drawBackgroundTexture(int count, const Point *vertices);
