@@ -499,6 +499,10 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawChar(c, pt->x / 8, pt->y, color);
 
+	if (!_fontTex._rgbData) {
+		return;
+	}
+
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
