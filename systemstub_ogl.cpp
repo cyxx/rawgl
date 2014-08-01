@@ -416,7 +416,7 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 			bi.read(data);
 			if (bi._w == 320 && bi._h == 200 && bi._data) {
 				for (int y = 0; y < 200; ++y) {
-					memcpy(_gfx.getPagePtr(listNum) + y * _gfx._w, bi._data + (200 - y) * _gfx._w, 320);
+					memcpy(_gfx.getPagePtr(listNum) + y * _gfx._w, bi._data + (199 - y) * _gfx._w, 320);
 				}
 			}
 		} else {
@@ -627,8 +627,16 @@ static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
 }
 
 void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
-	// TODO: handle vscroll
-	memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
+	if (vscroll == 0) {
+		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
+	} else if (vscroll >= -199 && vscroll <= 199) {
+		const int dy = vscroll * _gfx._h / Graphics::GFX_H;
+		if (dy < 0) {
+			memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum) - dy * _gfx._w, (_gfx._h + dy) * _gfx._w);
+		} else {
+			memcpy(_gfx.getPagePtr(dstListNum) + dy * _gfx._w, _gfx.getPagePtr(srcListNum), (_gfx._h - dy) * _gfx._w);
+		}
+	}
 
 	assert(dstListNum < NUM_LISTS && srcListNum < NUM_LISTS);
 

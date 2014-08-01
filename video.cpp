@@ -64,7 +64,11 @@ void Video::fillPolygon(uint16_t color, uint16_t zoom, const Point *pt) {
 
 	QuadStrip qs;
 	qs.numVertices = *p++;
-	assert((qs.numVertices & 1) == 0 && qs.numVertices < QuadStrip::MAX_VERTICES);
+	if ((qs.numVertices & 1) != 0) {
+		warning("Unexpected number of vertices %d", qs.numVertices);
+		return;
+	}
+	assert(qs.numVertices < QuadStrip::MAX_VERTICES);
 
 	for (int i = 0; i < qs.numVertices; ++i) {
 		Point *v = &qs.vertices[i];
@@ -193,9 +197,8 @@ void Video::copyPage(uint8_t src, uint8_t dst, int16_t vscroll) {
 }
 
 void Video::copyPagePtr(const uint8_t *src) {
-	uint8_t *dst = _tempBitmap;
-	int h = 200;
-	while (h--) {
+	for (int y = 0; y < 200; ++y) {
+		uint8_t *dst = _tempBitmap + (199 - y) * 320;
 		int w = 40;
 		while (w--) {
 			uint8_t p[] = {
