@@ -28,16 +28,17 @@ static const int _restartPos[36 * 2] = {
 void Engine::run(Language lang) {
 	_stub->init((lang == LANG_US) ? "Out Of This World" : "Another World");
 	setup();
-	// setup specific stuff
-	switch (lang) {
-	case LANG_FR:
-		_vid._stringsTable = Video::_stringsTableFr;
-		_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x1;
-		break;
-	case LANG_US:
-		_vid._stringsTable = Video::_stringsTableEng;
-		_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x81;
-		break;
+	if (_res.getDataType() == Resource::DT_DOS) {
+		switch (lang) {
+		case LANG_FR:
+			_vid._stringsTable = Video::_stringsTableFr;
+			_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x1;
+			break;
+		case LANG_US:
+			_vid._stringsTable = Video::_stringsTableEng;
+			_log._scriptVars[Script::VAR_LOCAL_VERSION] = 0x81;
+			break;
+		}
 	}
 	const int num = _partNum;
 	if (num < 36) {
