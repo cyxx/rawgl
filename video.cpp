@@ -232,11 +232,13 @@ void Video::changePal(uint8_t palNum) {
 		uint8_t *p = _res->_segVideoPal + palNum * 32;
 		Color pal[16];
 		for (int i = 0; i < 16; ++i) {
-			uint8_t c1 = *p++;
-			uint8_t c2 = *p++;
-			pal[i].r = ((c1 & 0x0F) << 2) | ((c1 & 0x0F) >> 2);
-			pal[i].g = ((c2 & 0xF0) >> 2) | ((c2 & 0xF0) >> 6);
-			pal[i].b = ((c2 & 0x0F) >> 2) | ((c2 & 0x0F) << 2);
+			const uint16_t color = READ_BE_UINT16(p); p += 2;
+			const uint8_t r = (color >> 8) & 0xF;
+			const uint8_t g = (color >> 4) & 0xF;
+			const uint8_t b =  color       & 0xF;
+			pal[i].r = (r << 4) | r;
+			pal[i].g = (g << 4) | g;
+			pal[i].b = (b << 4) | b;
 		}
 		_stub->setPalette(pal, 16);
 		_curPal = palNum;

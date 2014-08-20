@@ -369,10 +369,7 @@ void SystemStub_OGL::setFont(const uint8_t *font) {
 void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 	assert(n <= 16);
 	for (int i = 0; i < n; ++i) {
-		const Color *c = &colors[i];
-		_pal[i].r = (c->r << 2) | (c->r & 3);
-		_pal[i].g = (c->g << 2) | (c->g & 3);
-		_pal[i].b = (c->b << 2) | (c->b & 3);
+		_pal[i] = colors[i];
 	}
 
 	if (_render == RENDER_GL) {
