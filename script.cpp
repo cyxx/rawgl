@@ -247,7 +247,7 @@ void Script::op_updateDisplay() {
 	uint8_t page = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_updateDisplay(%d)", page);
 	inp_handleSpecialKeys();
-	if (_res->_curPtrsId == 16000 && _scriptVars[0x67] == 1) {
+	if (_res->_curPtrsId == 16000 && _scriptVars[VAR_SCREEN_NUM] == 1) {
 		_scriptVar_0xBF = _scriptVars[0xBF];
 		_scriptVars[0xDC] = 0x21;
 	}
