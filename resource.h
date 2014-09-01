@@ -36,10 +36,10 @@ struct Resource {
 	enum ResType {
 		RT_SOUND  = 0,
 		RT_MUSIC  = 1,
-		RT_VIDBUF = 2, // full screen video buffer, size=0x7D00
+		RT_BITMAP = 2, // full screen video buffer, size=0x7D00
 		RT_PAL    = 3, // palette (1024=vga + 1024=ega), size=2048
 		RT_SCRIPT = 4,
-		RT_VBMP   = 5,
+		RT_VERTICES = 5,
 		RT_UNK    = 6,
 	};
 
@@ -69,7 +69,7 @@ struct Resource {
 	const char *_dataDir;
 	MemEntry _memList[ENTRIES_COUNT + 1];
 	uint16_t _numMemList;
-	uint16_t _curPtrsId, _newPtrsId;
+	uint16_t _currentPart, _nextPart;
 	uint8_t *_memPtrStart, *_scriptBakPtr, *_scriptCurPtr, *_vidBakPtr, *_vidCurPtr;
 	bool _useSegVideo2;
 	uint8_t *_segVideoPal;
@@ -95,7 +95,7 @@ struct Resource {
 	uint8_t *loadDat(int num);
 	void loadFont();
 	uint8_t *loadWav(int num);
-	void setupPtrs(uint16_t ptrId);
+	void setupPart(int part);
 	void allocMemBlock();
 	void freeMemBlock();
 };

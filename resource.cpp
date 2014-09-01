@@ -11,7 +11,7 @@
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _curPtrsId(0), _newPtrsId(0), _pak(dataDir), _dataType(DT_DOS) {
+	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _pak(dataDir), _dataType(DT_DOS) {
 	_bankPrefix = "bank";
 }
 
@@ -124,18 +124,16 @@ void Resource::readEntriesAmiga(const AmigaMemEntry *entries, int count) {
 
 void Resource::load() {
 	while (1) {
-		MemEntry *it = _memList;
 		MemEntry *me = 0;
 
 		// get resource with max rankNum
 		uint8_t maxNum = 0;
-		uint16_t i = _numMemList;
-		while (i--) {
+		for (int i = 0; i < _numMemList; ++i) {
+			MemEntry *it = &_memList[i];
 			if (it->status == STATUS_TOLOAD && maxNum <= it->rankNum) {
 				maxNum = it->rankNum;
 				me = it;
 			}
-			++it;
 		}
 		if (me == 0) {
 			break; // no entry found
@@ -171,24 +169,20 @@ void Resource::load() {
 }
 
 void Resource::invalidateRes() {
-	MemEntry *me = _memList;
-	uint16_t i = _numMemList;
-	while (i--) {
+	for (int i = 0; i < _numMemList; ++i) {
+		MemEntry *me = &_memList[i];
 		if (me->type <= 2 || me->type > 6) {
 			me->status = STATUS_NULL;
 		}
-		++me;
 	}
 	_scriptCurPtr = _scriptBakPtr;
-	_vid->_curPal = 0xFF;
+	_vid->_currentPal = 0xFF;
 }
 
 void Resource::invalidateAll() {
-	MemEntry *me = _memList;
-	uint16_t i = _numMemList;
-	while (i--) {
+	for (int i = 0; i < _numMemList; ++i) {
+		MemEntry *me = &_memList[i];
 		me->status = STATUS_NULL;
-		++me;
 	}
 	_scriptCurPtr = _memPtrStart;
 }
@@ -204,7 +198,7 @@ static const int _memListBmp[] = {
 void Resource::update(uint16_t num) {
 	if (_dataType == DT_15TH_EDITION) {
 		if (num > 16000) {
-			_newPtrsId = num;
+			_nextPart = num;
 		} else if (num >= 3000) {
 			loadBmp(num);
 		} else {
@@ -218,7 +212,7 @@ void Resource::update(uint16_t num) {
 		return;
 	}
 	if (num > _numMemList) {
-		_newPtrsId = num;
+		_nextPart = num;
 	} else {
 		for (const uint16_t *ml = _memListAudio; *ml != 0xFFFF; ++ml) {
 			if (*ml == num)
@@ -304,24 +298,23 @@ uint8_t *Resource::loadWav(int num) {
 	return p;
 }
 
-void Resource::setupPtrs(uint16_t ptrId) {
+void Resource::setupPart(int ptrId) {
 	if (_dataType == DT_15TH_EDITION) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
 			invalidateAll();
-			static const int order[] = { 0, 1, 2, 3 };
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };
 			for (int i = 0; i < 4; ++i) {
-				const int num = _memListParts[ptrId - 16000][order[i]];
+				const int num = _memListParts[ptrId - 16000][i];
 				if (num != 0) {
-					*segments[order[i]] = loadDat(num);
+					*segments[i] = loadDat(num);
 				}
 			}
-			_curPtrsId = ptrId;
+			_currentPart = ptrId;
 		}
 		_scriptBakPtr = _scriptCurPtr;
 		return;
 	}
-	if (ptrId != _curPtrsId) {
+	if (ptrId != _currentPart) {
 		uint8_t ipal = 0;
 		uint8_t icod = 0;
 		uint8_t ivd1 = 0;
@@ -333,7 +326,7 @@ void Resource::setupPtrs(uint16_t ptrId) {
 			ivd1 = _memListParts[part][2];
 			ivd2 = _memListParts[part][3];
 		} else {
-			error("Resource::setupPtrs() ec=0x%X invalid ptrId", 0xF07);
+			error("Resource::setupPart() ec=0x%X invalid part", 0xF07);
 		}
 		invalidateAll();
 		_memList[ipal].status = STATUS_TOLOAD;
@@ -349,7 +342,7 @@ void Resource::setupPtrs(uint16_t ptrId) {
 		if (ivd2 != 0) {
 			_segVideo2 = _memList[ivd2].bufPtr;
 		}
-		_curPtrsId = ptrId;
+		_currentPart = ptrId;
 	}
 	_scriptBakPtr = _scriptCurPtr;	
 }

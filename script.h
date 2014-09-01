@@ -92,8 +92,8 @@ struct Script {
 	void op_updateMemList();
 	void op_playMusic();
 
-	void restartAt(uint16_t ptrId);
-	void setupPtrs(uint16_t ptrId);
+	void restartAt(int part, int pos = -1);
+	void setupPart(int num);
 	void setupScripts();
 	void runScripts();
 	void executeScript();

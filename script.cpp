@@ -53,7 +53,7 @@ void Script::op_add() {
 }
 
 void Script::op_addConst() {
-	if (_res->_curPtrsId == 16006 && _scriptPtr.pc == _res->_segCode + 0x6D48) {
+	if (_res->_currentPart == 16006 && _scriptPtr.pc == _res->_segCode + 0x6D48) {
 		warning("Script::op_addConst() hack for non-stop looping gun sound bug");
 		// the script 0x27 slot 0x17 doesn't stop the gun sound from looping, I 
 		// don't really know why ; for now, let's play the 'stopping sound' like 
@@ -121,7 +121,7 @@ void Script::op_jmpIfVar() {
 
 void Script::op_condJmp() {
 #ifdef BYPASS_PROTECTION
-	if (_res->_curPtrsId == 16000) {
+	if (_res->_currentPart == 16000) {
 		if (_scriptVars[VAR_LOCAL_VERSION] == 0x81 && _scriptPtr.pc == _res->_segCode + 0xCB9) { // us
 			// (0x0CB8) condJmp(VAR(0x29) == VAR(0x1E), 0x0CD3)
 			// (0x0CB8) condJmp(VAR(0x29) != VAR(0x1E), 0x0D24)
@@ -190,7 +190,7 @@ void Script::op_condJmp() {
 		op_jmp();
 		if (var == VAR_SCREEN_NUM && _screenNum != _scriptVars[VAR_SCREEN_NUM]) {
 			if (g_fixUpPalette) {
-//				fixUpPalette_changeScreen(_res->_curPtrsId, _scriptVars[VAR_SCREEN_NUM]);
+//				fixUpPalette_changeScreen(_res->_currentPart, _scriptVars[VAR_SCREEN_NUM]);
 			}
 			_screenNum = _scriptVars[VAR_SCREEN_NUM];
 		}
@@ -204,7 +204,7 @@ void Script::op_setPalette() {
 	debug(DBG_SCRIPT, "Script::op_changePalette(%d)", i);
 	const int num = i >> 8;
 	if (g_fixUpPalette) {
-		if (_res->_curPtrsId == 16001) {
+		if (_res->_currentPart == 16001) {
 			if (num == 24 || num == 26) {
 				return;
 			}
@@ -246,7 +246,7 @@ void Script::op_selectPage() {
 	debug(DBG_SCRIPT, "Script::op_selectPage(%d)", i);
 	_vid->setWorkPagePtr(i);
 	if (g_fixUpPalette) {
-		fixUpPalette_selectPage(_res->_curPtrsId, i, _vid->_curPal);
+		fixUpPalette_selectPage(_res->_currentPart, i, _vid->_currentPal);
 	}
 }
 
@@ -255,7 +255,7 @@ void Script::op_fillPage() {
 	uint8_t color = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_fillPage(%d, %d)", i, color);
 	if (g_fixUpPalette) {
-		fixUpPalette_fillPage(_res->_curPtrsId, i, color, _vid->_curPal);
+		fixUpPalette_fillPage(_res->_currentPart, i, color, _vid->_currentPal);
 	}
 	_vid->fillPage(i, color);
 }
@@ -271,7 +271,7 @@ void Script::op_updateDisplay() {
 	uint8_t page = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_updateDisplay(%d)", page);
 	inp_handleSpecialKeys();
-	if (_res->_curPtrsId == 16000 && _scriptVars[VAR_SCREEN_NUM] == 1) {
+	if (_res->_currentPart == 16000 && _scriptVars[VAR_SCREEN_NUM] == 1) {
 		_scriptVar_0xBF = _scriptVars[0xBF];
 		_scriptVars[0xDC] = 0x21;
 	}
@@ -369,24 +369,27 @@ void Script::op_playMusic() {
 	snd_playMusic(resNum, delay, pos);
 }
 
-void Script::restartAt(uint16_t ptrId) {
+void Script::restartAt(int part, int pos) {
 	_ply->stop();
 	_mix->stopAll();
 	_scriptVars[0xE4] = 0x14;
-	_res->setupPtrs(ptrId);
-	memset((uint8_t *)_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
-	memset((uint8_t *)_scriptPaused, 0, sizeof(_scriptPaused));
+	_res->setupPart(part);
+	memset(_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
+	memset(_scriptPaused, 0, sizeof(_scriptPaused));
 	_scriptSlotsPos[0][0] = 0;
 	_screenNum = -1;
+	if (pos >= 0) {
+		_scriptVars[0] = pos;
+	}
 	if (g_fixUpPalette) {
-		fixUpPalette_changeScreen(ptrId);
+		fixUpPalette_changeScreen(part);
 	}
 }
 
 void Script::setupScripts() {
-	if (_res->_newPtrsId != 0) {
-		restartAt(_res->_newPtrsId);
-		_res->_newPtrsId = 0;
+	if (_res->_nextPart != 0) {
+		restartAt(_res->_nextPart);
+		_res->_nextPart = 0;
 	}
 	for (int i = 0; i < 0x40; ++i) {
 		_scriptPaused[0][i] = _scriptPaused[1][i];
@@ -486,7 +489,7 @@ void Script::executeScript() {
 
 void Script::inp_updatePlayer() {
 	_stub->processEvents();
-	if (_res->_curPtrsId == 16009) {
+	if (_res->_currentPart == 16009) {
 		char c = _stub->_pi.lastChar;
 		if (c == 8 || /*c == 0xD ||*/ c == 0 || (c >= 'a' && c <= 'z')) {
 			_scriptVars[VAR_LAST_KEYCHAR] = c & ~0x20;
@@ -530,7 +533,7 @@ void Script::inp_updatePlayer() {
 
 void Script::inp_handleSpecialKeys() {
 	if (_stub->_pi.pause) {
-		if (_res->_curPtrsId != 16000 && _res->_curPtrsId != 16001) {
+		if (_res->_currentPart != 16000 && _res->_currentPart != 16001) {
 			_stub->_pi.pause = false;
 			while (!_stub->_pi.pause) {
 				_stub->processEvents();
@@ -541,8 +544,8 @@ void Script::inp_handleSpecialKeys() {
 	}
 	if (_stub->_pi.code) {
 		_stub->_pi.code = false;
-		if (_res->_curPtrsId != 16009 && _res->_curPtrsId != 16000) {
-			_res->_newPtrsId = 16009;
+		if (_res->_currentPart != 16009 && _res->_currentPart != 16000) {
+			_res->_nextPart = 16009;
 		}
 	}
 	// XXX
@@ -556,7 +559,7 @@ void Script::inp_handleSpecialKeys() {
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
 #if 0
-	if (_res->_curPtrsId != 16000 && _scriptVar_0xBF != _scriptVars[0xBF]) {
+	if (_res->_currentPart != 16000 && _scriptVar_0xBF != _scriptVars[0xBF]) {
 		warning("snd_playSound() unhandled case _scriptVar_0xBF != _scriptVars[0xBF]");
 		return;
 	}

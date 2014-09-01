@@ -42,8 +42,7 @@ void Engine::run(Language lang) {
 	}
 	const int num = _partNum;
 	if (num < 36) {
-		_log.restartAt(_restartPos[num * 2]);
-		_log._scriptVars[0] = _restartPos[num * 2 + 1];
+		_log.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
 	} else {
 		_log.restartAt(num);
 	}

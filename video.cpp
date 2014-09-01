@@ -14,7 +14,7 @@ Video::Video(Resource *res, SystemStub *stub)
 }
 
 void Video::init() {
-	_newPal = _curPal = 0xFF;
+	_nextPal = _currentPal = 0xFF;
 	_listPtrs[2] = getPagePtr(1);
 	_listPtrs[1] = getPagePtr(2);
 	setWorkPagePtr(0xFE);
@@ -228,7 +228,7 @@ void Video::copyBitmapPtr(const uint8_t *src) {
 }
 
 void Video::changePal(uint8_t palNum) {
-	if (palNum < 32 && palNum != _curPal) {
+	if (palNum < 32 && palNum != _currentPal) {
 		uint8_t *p = _res->_segVideoPal + palNum * 32;
 		Color pal[16];
 		for (int i = 0; i < 16; ++i) {
@@ -241,7 +241,7 @@ void Video::changePal(uint8_t palNum) {
 			pal[i].b = (b << 4) | b;
 		}
 		_stub->setPalette(pal, 16);
-		_curPal = palNum;
+		_currentPal = palNum;
 	}
 }
 
@@ -254,9 +254,9 @@ void Video::updateDisplay(uint8_t page) {
 			_listPtrs[1] = getPagePtr(page);
 		}
 	}
-	if (_newPal != 0xFF) {
-		changePal(_newPal);
-		_newPal = 0xFF;
+	if (_nextPal != 0xFF) {
+		changePal(_nextPal);
+		_nextPal = 0xFF;
 	}
 	_stub->blitList(_listPtrs[1]);
 }

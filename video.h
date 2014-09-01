@@ -28,7 +28,7 @@ struct Video {
 	Resource *_res;
 	SystemStub *_stub;
 
-	uint8_t _newPal, _curPal;
+	uint8_t _nextPal, _currentPal;
 	uint8_t _listPtrs[3];
 	Ptr _pData;
 	uint8_t *_dataBuf;
