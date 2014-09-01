@@ -180,6 +180,7 @@ void Resource::invalidateRes() {
 		++me;
 	}
 	_scriptCurPtr = _scriptBakPtr;
+	_vid->_curPal = 0xFF;
 }
 
 void Resource::invalidateAll() {

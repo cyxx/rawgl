@@ -13,6 +13,8 @@
 #include "systemstub.h"
 
 
+static bool g_fixUpPalette = true;
+
 Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub)
 	: _mix(mix), _res(res), _ply(ply), _vid(vid), _stub(stub) {
 }
@@ -186,6 +188,12 @@ void Script::op_condJmp() {
 	}
 	if (expr) {
 		op_jmp();
+		if (var == VAR_SCREEN_NUM && _screenNum != _scriptVars[VAR_SCREEN_NUM]) {
+			if (g_fixUpPalette) {
+//				fixUpPalette_changeScreen(_res->_curPtrsId, _scriptVars[VAR_SCREEN_NUM]);
+			}
+			_screenNum = _scriptVars[VAR_SCREEN_NUM];
+		}
 	} else {
 		_scriptPtr.fetchWord();
 	}
@@ -194,7 +202,17 @@ void Script::op_condJmp() {
 void Script::op_setPalette() {
 	uint16_t i = _scriptPtr.fetchWord();
 	debug(DBG_SCRIPT, "Script::op_changePalette(%d)", i);
-	_vid->_newPal = i >> 8;
+	const int num = i >> 8;
+	if (g_fixUpPalette) {
+		if (_res->_curPtrsId == 16001) {
+			if (num == 24 || num == 26) {
+				return;
+			}
+		}
+		_vid->changePal(num);
+	} else {
+		_vid->_nextPal = num;
+	}
 }
 
 void Script::op_resetScript() {
@@ -227,13 +245,19 @@ void Script::op_selectPage() {
 	uint8_t i = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_selectPage(%d)", i);
 	_vid->setWorkPagePtr(i);
+	if (g_fixUpPalette) {
+		fixUpPalette_selectPage(_res->_curPtrsId, i, _vid->_curPal);
+	}
 }
 
 void Script::op_fillPage() {
-	uint8_t screen = _scriptPtr.fetchByte();
+	uint8_t i = _scriptPtr.fetchByte();
 	uint8_t color = _scriptPtr.fetchByte();
-	debug(DBG_SCRIPT, "Script::op_fillPage(%d, %d)", screen, color);
-	_vid->fillPage(screen, color);
+	debug(DBG_SCRIPT, "Script::op_fillPage(%d, %d)", i, color);
+	if (g_fixUpPalette) {
+		fixUpPalette_fillPage(_res->_curPtrsId, i, color, _vid->_curPal);
+	}
+	_vid->fillPage(i, color);
 }
 
 void Script::op_copyPage() {
@@ -353,6 +377,10 @@ void Script::restartAt(uint16_t ptrId) {
 	memset((uint8_t *)_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
 	memset((uint8_t *)_scriptPaused, 0, sizeof(_scriptPaused));
 	_scriptSlotsPos[0][0] = 0;
+	_screenNum = -1;
+	if (g_fixUpPalette) {
+		fixUpPalette_changeScreen(ptrId);
+	}
 }
 
 void Script::setupScripts() {
@@ -570,5 +598,115 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		_ply->setEventsDelay(delay);
 	} else {
 		_ply->stop();
+	}
+}
+
+void Script::fixUpPalette_changeScreen(int part, int screen) {
+	int pal = -1;
+	switch (part) {
+	case 16001:
+		if (screen < 0) {
+			pal = 1;
+		}
+		break;
+	case 16002:
+		if (screen < 0) {
+			// the setpal call is made after rendering background to page3
+			pal = 3;
+		} else if (screen == 1) {
+			pal = 9;
+		} else if (screen == 2) {
+			pal = 7;
+		}
+		break;
+	case 16003:
+		if (screen < 0) {
+			if (_scriptVars[0] != 0) {
+				pal = 2;
+			}
+		}
+		break;
+	case 16004:
+		if (screen == 0x45) {
+			pal = 2;
+		} else if (screen == 0x47) { // bitmap resource #68
+			pal = 8;
+		} else if (screen == 0x67) {
+			pal = 0xE;
+		} else if (screen == 0x69) {
+			pal = 0x11;
+		}
+		break;
+	case 16005:
+		if (screen < 0) {
+			pal = 0xB;
+		}
+		break;
+	case 16006:
+		if (screen == 0x4A) { // bitmap resources #144, #145
+			pal = 1;
+		} else if (screen == 0x91) {
+			pal = 0xB;
+		}
+		break;
+	}
+	if (pal != -1) {
+		_vid->changePal(pal);
+	}
+}
+
+void Script::fixUpPalette_selectPage(int part, int page, int currentPal) {
+	int pal = -1;
+	switch (part) {
+	case 16001:
+		if (page == 3 && currentPal == 6) {
+			pal = 14;
+		}
+		break;
+	case 16003:
+		if (currentPal == 9) {
+			pal = 11; // jail, eyes opening
+		}
+		break;
+	}
+	if (pal != -1) {
+		_vid->changePal(pal);
+	}
+}
+
+void Script::fixUpPalette_fillPage(int part, int page, int color, int currentPal) {
+	if (part != 16001) {
+		return;
+	}
+	int pal = -1;
+	if (page == 0 && color == 7 && currentPal == 12) { // exit lift
+		pal = 6;
+	} else if (page == 0 && color == 6 && currentPal == 14) { // intro, numpad screen
+		pal = 15;
+	} else if (page == 255 && color == 8 && currentPal == 14) {
+		pal = 17;
+	} else if (page == 255 && color == 2 && currentPal == 17) { // body scan
+		pal = 11;
+	} else if (page == 255 && color == 2 && currentPal == 11) { // desk
+		pal = 8;
+	} else if (page == 255 && color == 2 && currentPal == 8) {
+		static int flag = 0;
+		if (flag == 0) {
+			pal = 18;
+			flag = 1;
+		}
+	} else if (page == 255 && color == 2 && currentPal == 18) {
+		pal = 9;
+	} else if (page == 255 && color == 4 && currentPal == 9) {
+		pal = 19;
+	} else if (page == 0 && color == 0 && currentPal == 9) {
+		pal = 25;
+	} else if (page == 3 && color == 1 && currentPal == 25) {
+		pal = 21;
+	} else if (page == 3 && color == 2 && currentPal == 21) { // desk, after storm
+		pal = 8;
+	}
+	if (pal != -1) {
+		_vid->changePal(pal);
 	}
 }

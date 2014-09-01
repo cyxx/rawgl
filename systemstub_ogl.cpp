@@ -372,7 +372,7 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 		_pal[i] = colors[i];
 	}
 
-	if (_render == RENDER_GL) {
+	if (0 && _render == RENDER_GL) {
 		for (int i = 0; i < NUM_LISTS; ++i) {
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);

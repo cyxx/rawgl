@@ -14,7 +14,7 @@ Video::Video(Resource *res, SystemStub *stub)
 }
 
 void Video::init() {
-	_newPal = 0xFF;
+	_newPal = _curPal = 0xFF;
 	_listPtrs[2] = getPagePtr(1);
 	_listPtrs[1] = getPagePtr(2);
 	setWorkPagePtr(0xFE);
@@ -228,7 +228,7 @@ void Video::copyBitmapPtr(const uint8_t *src) {
 }
 
 void Video::changePal(uint8_t palNum) {
-	if (palNum < 32) {
+	if (palNum < 32 && palNum != _curPal) {
 		uint8_t *p = _res->_segVideoPal + palNum * 32;
 		Color pal[16];
 		for (int i = 0; i < 16; ++i) {
