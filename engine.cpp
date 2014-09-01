@@ -28,7 +28,7 @@ static const int _restartPos[36 * 2] = {
 void Engine::run(Language lang) {
 	_stub->init((lang == LANG_US) ? "Out Of This World" : "Another World");
 	setup();
-	if (_res.getDataType() == Resource::DT_DOS) {
+	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA) {
 		switch (lang) {
 		case LANG_FR:
 			_vid._stringsTable = Video::_stringsTableFr;
