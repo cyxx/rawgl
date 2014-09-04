@@ -46,7 +46,7 @@ static bool parseOptionInt(const char *arg, const char *name, int *i) {
 
 #undef main
 int main(int argc, char *argv[]) {
-	const char *dataPath = "data";
+	const char *dataPath = ".";
 	const char *language = 0;
 	int part = 16001;
 	Language lang = LANG_FR;

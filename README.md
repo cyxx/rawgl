@@ -9,7 +9,7 @@ non-implemented features that make it impossible to finish the game.
 
 ## Supported Versions
 
-Amiga and PC DOS releases (English and French)  
+Amiga and PC DOS releases (Bank*)
 15th anniversary edition (Pak01.pak)
 
 ## Running
