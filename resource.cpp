@@ -6,13 +6,19 @@
 
 #include "resource.h"
 #include "file.h"
+#include "pak.h"
+#include "resource_nth.h"
 #include "unpack.h"
 #include "video.h"
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _pak(dataDir), _dataType(DT_DOS) {
+	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0) {
 	_bankPrefix = "bank";
+}
+
+Resource::~Resource() {
+	delete _nth;
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -65,8 +71,8 @@ void Resource::detectVersion() {
 
 void Resource::readEntries() {
 	if (_dataType == DT_15TH_EDITION) {
-		_pak.readEntries();
-		if (_pak._entriesCount != 0) {
+		_nth = ResourceNth::create(15, _dataDir);
+		if (_nth && _nth->init()) {
 			return;
 		}
 	} else if (_dataType == DT_AMIGA) {
@@ -227,20 +233,11 @@ void Resource::update(uint16_t num) {
 }
 
 void Resource::loadBmp(int num) {
-	char name[16];
-	if (num >= 3000) {
-		snprintf(name, sizeof(name), "e%04d.bmp", num);
-	} else {
-		snprintf(name, sizeof(name), "file%03d.bmp", num);
-	}
-	const PakEntry *e = _pak.find(name);
-	if (e) {
-		uint8_t *tmp = (uint8_t *)malloc(e->size);
-		if (tmp) {
-			uint32_t size;
-			_pak.loadData(e, tmp, &size);
-			_vid->copyBitmapPtr(tmp);
-			free(tmp);
+	if (_nth) {
+		uint8_t *p = _nth->loadBmp(num);
+		if (p) {
+			_vid->copyBitmapPtr(p);
+			free(p);
 		}
 	}
 }
@@ -250,29 +247,22 @@ uint8_t *Resource::loadDat(int num) {
 		return _memList[num].bufPtr;
 	}
 	uint8_t *p = 0;
-	char name[16];
-	snprintf(name, sizeof(name), "file%03d.dat", num);
-	const PakEntry *e = _pak.find(name);
-	if (e) {
+	if (_nth) {
 		uint32_t size;
-		_pak.loadData(e, _scriptCurPtr, &size);
-		p = _scriptCurPtr;
-		_scriptCurPtr += size;
-		_memList[num].bufPtr = p;
-		_memList[num].status = STATUS_LOADED;
-	} else {
-		warning("Unable to load '%s'", name);
+		p = _nth->loadDat(num, _scriptCurPtr, &size);
+		if (p) {
+			_scriptCurPtr += size;
+			_memList[num].bufPtr = p;
+			_memList[num].status = STATUS_LOADED;
+		}
 	}
 	return p;
 }
 
 void Resource::loadFont() {
-	const PakEntry *e = _pak.find("font.bmp");
-	if (e) {
-		uint32_t size;
-		uint8_t *p = (uint8_t*)malloc(e->size);
+	if (_nth) {
+		uint8_t *p = _nth->load("font.bmp");
 		if (p) {
-			_pak.loadData(e, p, &size);
 			_vid->setFont(p);
 			free(p);
 		}
@@ -284,16 +274,14 @@ uint8_t *Resource::loadWav(int num) {
 		return _memList[num].bufPtr;
 	}
 	uint8_t *p = 0;
-	char name[16];
-	snprintf(name, sizeof(name), "file%03d.wav", num);
-	const PakEntry *e = _pak.find(name);
-	if (e) {
+	if (_nth) {
 		uint32_t size;
-		_pak.loadData(e, _scriptCurPtr, &size);
-		p = _scriptCurPtr;
-		_scriptCurPtr += size;
-		_memList[num].bufPtr = p;
-		_memList[num].status = STATUS_LOADED;
+		p = _nth->loadWav(num, _scriptCurPtr, &size);
+		if (p) {
+			_scriptCurPtr += size;
+			_memList[num].bufPtr = p;
+			_memList[num].status = STATUS_LOADED;
+		}
 	}
 	return p;
 }

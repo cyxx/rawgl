@@ -8,7 +8,6 @@
 #define RESOURCE_H__
 
 #include "intern.h"
-#include "pak.h"
 
 struct MemEntry {
 	uint8_t status;        // 0x0
@@ -29,6 +28,7 @@ struct AmigaMemEntry {
 	uint32_t unpackedSize;
 };
 
+struct ResourceNth;
 struct Serializer;
 struct Video;
 
@@ -77,10 +77,11 @@ struct Resource {
 	uint8_t *_segVideo1;
 	uint8_t *_segVideo2;
 	const char *_bankPrefix;
-	Pak _pak;
 	DataType _dataType;
+	ResourceNth *_nth;
 
 	Resource(Video *vid, const char *dataDir);
+	~Resource();
 
 	DataType getDataType() const { return _dataType; }
 	void detectVersion();
