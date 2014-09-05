@@ -7,7 +7,7 @@
 #include <cstdarg>
 #include "util.h"
 
-const bool g_workaround = true;
+const int g_fixUpPalette = FIXUP_PALETTE_RENDER;
 
 uint16_t g_debugMask;
 

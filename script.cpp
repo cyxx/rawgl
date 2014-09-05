@@ -13,8 +13,6 @@
 #include "systemstub.h"
 
 
-static bool g_fixUpPalette = true;
-
 Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub)
 	: _mix(mix), _res(res), _ply(ply), _vid(vid), _stub(stub) {
 }
@@ -189,7 +187,7 @@ void Script::op_condJmp() {
 	if (expr) {
 		op_jmp();
 		if (var == VAR_SCREEN_NUM && _screenNum != _scriptVars[VAR_SCREEN_NUM]) {
-			if (g_fixUpPalette) {
+			if (g_fixUpPalette == FIXUP_PALETTE_SCRIPT) {
 //				fixUpPalette_changeScreen(_res->_currentPart, _scriptVars[VAR_SCREEN_NUM]);
 			}
 			_screenNum = _scriptVars[VAR_SCREEN_NUM];
@@ -203,7 +201,7 @@ void Script::op_setPalette() {
 	uint16_t i = _scriptPtr.fetchWord();
 	debug(DBG_SCRIPT, "Script::op_changePalette(%d)", i);
 	const int num = i >> 8;
-	if (g_fixUpPalette) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SCRIPT) {
 		if (_res->_currentPart == 16001) {
 			if (num == 24 || num == 26) {
 				return;
@@ -245,7 +243,7 @@ void Script::op_selectPage() {
 	uint8_t i = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_selectPage(%d)", i);
 	_vid->setWorkPagePtr(i);
-	if (g_fixUpPalette) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SCRIPT) {
 		fixUpPalette_selectPage(_res->_currentPart, i, _vid->_currentPal);
 	}
 }
@@ -254,7 +252,7 @@ void Script::op_fillPage() {
 	uint8_t i = _scriptPtr.fetchByte();
 	uint8_t color = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_fillPage(%d, %d)", i, color);
-	if (g_fixUpPalette) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SCRIPT) {
 		fixUpPalette_fillPage(_res->_currentPart, i, color, _vid->_currentPal);
 	}
 	_vid->fillPage(i, color);
@@ -381,7 +379,7 @@ void Script::restartAt(int part, int pos) {
 	if (pos >= 0) {
 		_scriptVars[0] = pos;
 	}
-	if (g_fixUpPalette) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SCRIPT) {
 		fixUpPalette_changeScreen(part);
 	}
 }

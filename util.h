@@ -24,7 +24,13 @@ enum Language {
 	LANG_US,
 };
 
-extern const bool g_workaround;
+enum {
+	FIXUP_PALETTE_NONE,
+	FIXUP_PALETTE_SCRIPT, // workaround script code to issue the setPal calls earlier
+	FIXUP_PALETTE_RENDER, // redraw all primitives on setPal script call
+};
+
+extern const int g_fixUpPalette;
 
 extern uint16_t g_debugMask;
 
