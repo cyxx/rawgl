@@ -97,6 +97,7 @@ struct Resource {
 	uint8_t *loadDat(int num);
 	void loadFont();
 	uint8_t *loadWav(int num);
+	const char *getString(int num);
 	void setupPart(int part);
 	void allocMemBlock();
 	void freeMemBlock();

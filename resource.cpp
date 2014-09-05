@@ -300,6 +300,13 @@ uint8_t *Resource::loadWav(int num) {
 	return p;
 }
 
+const char *Resource::getString(int num) {
+	if (_nth) {
+		return _nth->getString(LANG_US, num);
+	}
+	return 0;
+}
+
 void Resource::setupPart(int ptrId) {
 	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION) {
 		if (ptrId >= 16001 && ptrId <= 16009) {

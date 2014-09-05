@@ -114,9 +114,16 @@ static uint8_t *inflateGzip(const char *filepath) {
 
 struct Resource20th: ResourceNth {
 	const char *_dataPath;
+	char *_textBuf;
+	const char *_stringsTable[192];
 
 	Resource20th(const char *dataPath)
-		: _dataPath(dataPath) {
+		: _dataPath(dataPath), _textBuf(0) {
+		memset(_stringsTable, 0, sizeof(_stringsTable));
+	}
+
+	virtual ~Resource20th() {
+		free(_textBuf);
 	}
 
 	virtual bool init() {
@@ -178,6 +185,55 @@ struct Resource20th: ResourceNth {
 			snprintf(path, sizeof(path), "%s/game/WGZ/file%03dB.wgz", _dataPath, num);
 		}
 		return inflateGzip(path);
+	}
+
+	const char *getString(Language lang, int num) {
+		if (!_textBuf) {
+			const char *name = 0;
+			switch (lang) {
+			case LANG_FR:
+				name = "FR";
+				break;
+			case LANG_US:
+				name = "EN";
+				break;
+			default:
+				return 0;
+			}
+			char path[512];
+			snprintf(path, sizeof(path), "%s/game/TXT/%s.txt", _dataPath, name);
+			File f;
+			if (!f.open(path)) {
+				warning("Unable to open '%s'", path);
+			} else {
+				const int size = f.size();
+				_textBuf = (char *)malloc(size + 1);
+				if (_textBuf) {
+					int count = f.read(_textBuf, size);
+					if (count != size) {
+						warning("Failed to read %d bytes (%d expected)", count, size);
+						free(_textBuf);
+						_textBuf = 0;
+						return 0;
+					}
+					_textBuf[count] = 0;
+					count = 0;
+					for (char *p = _textBuf; count < ARRAYSIZE(_stringsTable); ) {
+						_stringsTable[count++] = p;
+						char *end = strchr(p, '\n');
+						if (!end) {
+							break;
+						}
+						*end++ = 0;
+						p = end;
+					}
+				}
+			}
+		}
+		if (num >= 0 && num < ARRAYSIZE(_stringsTable)) {
+			return _stringsTable[num];
+		}
+		return 0;
 	}
 };
 

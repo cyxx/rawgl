@@ -107,11 +107,21 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 	}
 }
 
+static const int NTH_EDITION_STRINGS_COUNT = 157;
+
 static const char *findString15th(int id) {
-	static const int COUNT = 157;
-	for (int i = 0; i < COUNT; ++i) {
+	for (int i = 0; i < NTH_EDITION_STRINGS_COUNT; ++i) {
 		if (Video::_stringsId15th[i] == id) {
 			return Video::_stringsTable15th[i];
+		}
+	}
+	return 0;
+}
+
+static const char *findString20th(Resource *res, int id) {
+	for (int i = 0; i < NTH_EDITION_STRINGS_COUNT; ++i) {
+		if (Video::_stringsId15th[i] == id) {
+			return res->getString(i);
 		}
 	}
 	return 0;
@@ -131,8 +141,7 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
 		str = findString15th(strId);
 	} else if (_res->getDataType() == Resource::DT_20TH_EDITION) {
-		// TODO:
-		return;
+		str = findString20th(_res, strId);
 	} else {
 		str = findString(_stringsTable, strId);
 	}
