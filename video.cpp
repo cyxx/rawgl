@@ -137,11 +137,13 @@ static const char *findString(const StrEntry *stringsTable, int id) {
 }
 
 void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
+	bool escapedChars = false;
 	const char *str;
 	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
 		str = findString15th(strId);
 	} else if (_res->getDataType() == Resource::DT_20TH_EDITION) {
 		str = findString20th(_res, strId);
+		escapedChars = true;
 	} else {
 		str = findString(_stringsTable, strId);
 	}
@@ -156,6 +158,16 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 		if (str[i] == '\n') {
 			y += 8;
 			x = xx;
+		} else if (str[i] == '\\' && escapedChars) {
+			++i;
+			if (i < len) {
+				switch (str[i]) {
+				case 'n':
+					y += 8;
+					x = xx;
+					break;
+				}
+			}
 		} else {
 			Point pt(x * 8, y);
 			_stub->addCharToList(_listPtrs[0], color, str[i], &pt);
