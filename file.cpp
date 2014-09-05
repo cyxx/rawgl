@@ -16,7 +16,7 @@ struct File_impl {
 	virtual bool open(const char *path, const char *mode) = 0;
 	virtual void close() = 0;
 	virtual uint32_t size() = 0;
-	virtual void seek(int off) = 0;
+	virtual void seek(int off, int whence) = 0;
 	virtual int read(void *ptr, uint32_t len) = 0;
 	virtual int write(void *ptr, uint32_t len) = 0;
 };
@@ -45,9 +45,9 @@ struct stdFile : File_impl {
 		}
 		return sz;
 	}
-	void seek(int32_t off) {
+	void seek(int32_t off, int whence) {
 		if (_fp) {
-			fseek(_fp, off, SEEK_SET);
+			fseek(_fp, off, whence);
 		}
 	}
 	int read(void *ptr, uint32_t len) {
@@ -81,6 +81,11 @@ File::~File() {
 	delete _impl;
 }
 
+bool File::open(const char *filepath) {
+	_impl->close();
+	return _impl->open(filepath, "rb");
+}
+
 static bool getFilePathNoCase(const char *filename, const char *path, char *out) {
 	bool ret = false;
 	DIR *d = opendir(path);
@@ -101,11 +106,11 @@ static bool getFilePathNoCase(const char *filename, const char *path, char *out)
 	return true;
 }
 
-bool File::open(const char *filename, const char *path, const char *mode) {
+bool File::open(const char *filename, const char *path) {
 	_impl->close();
 	char filepath[512];
 	if (getFilePathNoCase(filename, path, filepath)) {
-		return _impl->open(filepath, mode);
+		return _impl->open(filepath, "rb");
 	}
 	return false;
 }
@@ -122,8 +127,8 @@ uint32_t File::size() {
 	return _impl->size();
 }
 
-void File::seek(int32_t off) {
-	_impl->seek(off);
+void File::seek(int32_t off, int whence) {
+	_impl->seek(off, whence);
 }
 
 int File::read(void *ptr, uint32_t len) {

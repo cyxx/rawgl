@@ -53,11 +53,20 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 #endif
 }
 
+static bool check20th(File &f, const char *dataDir) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/game/DAT", dataDir);
+	return f.open("FILE017.DAT", path);
+}
+
 void Resource::detectVersion() {
 	File f;
 	if (f.open(Pak::FILENAME, _dataDir)) {
 		_dataType = DT_15TH_EDITION;
 		debug(DBG_INFO, "Using 15th anniversary edition data files");
+	} else if (check20th(f, _dataDir)) {
+		_dataType = DT_20TH_EDITION;
+		debug(DBG_INFO, "Using 20th anniversary edition data files");
 	} else if (f.open("memlist.bin", _dataDir)) {
 		_dataType = DT_DOS;
 		debug(DBG_INFO, "Using DOS data files");
@@ -72,6 +81,11 @@ void Resource::detectVersion() {
 void Resource::readEntries() {
 	if (_dataType == DT_15TH_EDITION) {
 		_nth = ResourceNth::create(15, _dataDir);
+		if (_nth && _nth->init()) {
+			return;
+		}
+	} else if (_dataType == DT_20TH_EDITION) {
+		_nth = ResourceNth::create(20, _dataDir);
 		if (_nth && _nth->init()) {
 			return;
 		}
@@ -202,7 +216,7 @@ static const int _memListBmp[] = {
 };
 
 void Resource::update(uint16_t num) {
-	if (_dataType == DT_15TH_EDITION) {
+	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION) {
 		if (num > 16000) {
 			_nextPart = num;
 		} else if (num >= 3000) {
@@ -287,7 +301,7 @@ uint8_t *Resource::loadWav(int num) {
 }
 
 void Resource::setupPart(int ptrId) {
-	if (_dataType == DT_15TH_EDITION) {
+	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
 			invalidateAll();
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };

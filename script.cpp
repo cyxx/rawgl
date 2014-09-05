@@ -569,7 +569,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		return;
 	}
 	MixerChunk mc;
-	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
+	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION) {
 		uint8_t *buf = _res->loadWav(resNum);
 		if (buf) {
 			mc.readWav(buf);
@@ -588,7 +588,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
-	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
+	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION) {
 		warning("Unimplemented snd_playMusic num=%d", resNum);
 		// == 7, "intro2004.mod"
 		// == 138, "end2004.mod"

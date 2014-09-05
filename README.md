@@ -11,6 +11,7 @@ non-implemented features that make it impossible to finish the game.
 
 Amiga and PC DOS releases (Bank*)
 15th anniversary edition (Pak01.pak)
+20th anniversary edition (game/*)
 
 ## Running
 

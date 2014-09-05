@@ -61,7 +61,7 @@ void Engine::setup() {
 	_res.detectVersion();
 	_res.allocMemBlock();
 	_res.readEntries();
-	if (_res.getDataType() == Resource::DT_15TH_EDITION) {
+	if (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION) {
 		_res.loadFont();
 	}
 	_log.init();

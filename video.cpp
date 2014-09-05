@@ -130,6 +130,9 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 	const char *str;
 	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
 		str = findString15th(strId);
+	} else if (_res->getDataType() == Resource::DT_20TH_EDITION) {
+		// TODO:
+		return;
 	} else {
 		str = findString(_stringsTable, strId);
 	}

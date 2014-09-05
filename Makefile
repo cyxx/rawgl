@@ -14,7 +14,7 @@ OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
 rawgl: $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LIBS)
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LIBS) -lz
 
 clean:
 	rm -f $(OBJS) $(DEPS)
