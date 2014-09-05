@@ -272,3 +272,32 @@ void Video::updateDisplay(uint8_t page) {
 	}
 	_stub->blitList(_listPtrs[1]);
 }
+
+void Video::buildPalette256() {
+	Color palette[512];
+	int count = 0;
+
+	const uint8_t *data = _res->_segVideoPal;
+	// 32 palettes of 16 colors
+	for (int i = 0; i < 32 * 16; ++i) {
+		uint16_t color = READ_BE_UINT16(data + i * 2);
+		Color c;
+		c.b = color & 15; color >>= 4;
+		c.g = color & 15; color >>= 4;
+		c.r = color & 15;
+		// look for exact match
+		int match = -1;
+		for (int j = 0; j < count; ++j) {
+			if (palette[j].r == c.r && palette[j].g == c.g && palette[j].b == c.b) {
+				match = j;
+				break;
+			}
+		}
+		if (match < 0) {
+			palette[count] = c;
+			++count;
+		}
+	}
+	// all palette resources have less than 256 unique colors
+	debug(DBG_VIDEO, "%d unique colors", count);
+}

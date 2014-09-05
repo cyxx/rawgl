@@ -353,7 +353,10 @@ void Resource::setupPart(int ptrId) {
 		}
 		_currentPart = ptrId;
 	}
-	_scriptBakPtr = _scriptCurPtr;	
+	_scriptBakPtr = _scriptCurPtr;
+	if (0) {
+		_vid->buildPalette256();
+	}
 }
 
 void Resource::allocMemBlock() {
