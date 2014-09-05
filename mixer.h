@@ -39,7 +39,6 @@ struct Mixer {
 		NUM_CHANNELS = 4
 	};
 
-	void *_mutex;
 	SystemStub *_stub;
 	MixerChannel _channels[NUM_CHANNELS];
 

@@ -56,20 +56,18 @@ Mixer::Mixer(SystemStub *stub)
 
 void Mixer::init() {
 	memset(_channels, 0, sizeof(_channels));
-	_mutex = _stub->createMutex();
 	_stub->startAudio(Mixer::mixCallback, this);
 }
 
 void Mixer::free() {
 	stopAll();
 	_stub->stopAudio();
-	_stub->destroyMutex(_mutex);
 }
 
 void Mixer::playChannel(uint8_t channel, const MixerChunk *mc, uint16_t freq, uint8_t volume) {
 	debug(DBG_SND, "Mixer::playChannel(%d, %d, %d)", channel, freq, volume);
 	assert(channel < NUM_CHANNELS);
-	MutexStack(_stub, _mutex);
+	LockAudioStack las(_stub);
 	MixerChannel *ch = &_channels[channel];
 	ch->active = true;
 	ch->volume = volume;
@@ -81,27 +79,26 @@ void Mixer::playChannel(uint8_t channel, const MixerChunk *mc, uint16_t freq, ui
 void Mixer::stopChannel(uint8_t channel) {
 	debug(DBG_SND, "Mixer::stopChannel(%d)", channel);
 	assert(channel < NUM_CHANNELS);
-	MutexStack(_stub, _mutex);	
+	LockAudioStack las(_stub);
 	_channels[channel].active = false;
 }
 
 void Mixer::setChannelVolume(uint8_t channel, uint8_t volume) {
 	debug(DBG_SND, "Mixer::setChannelVolume(%d, %d)", channel, volume);
 	assert(channel < NUM_CHANNELS);
-	MutexStack(_stub, _mutex);
+	LockAudioStack las(_stub);
 	_channels[channel].volume = volume;
 }
 
 void Mixer::stopAll() {
 	debug(DBG_SND, "Mixer::stopAll()");
-	MutexStack(_stub, _mutex);
+	LockAudioStack las(_stub);
 	for (uint8_t i = 0; i < NUM_CHANNELS; ++i) {
 		_channels[i].active = false;		
 	}
 }
 
 void Mixer::mix(int8_t *buf, int len) {
-	MutexStack(_stub, _mutex);
 	memset(buf, 0, len);
 	for (uint8_t i = 0; i < NUM_CHANNELS; ++i) {
 		MixerChannel *ch = &_channels[i];
