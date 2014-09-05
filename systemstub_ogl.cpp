@@ -227,6 +227,8 @@ struct SystemStub_OGL : SystemStub {
 	Graphics _gfx;
 	Texture _backgroundTex;
 	Texture _fontTex;
+	Texture _spritesTex;
+	int _spritesSizeX, _spritesSizeY;
 	GLuint _fbPage0;
 	GLuint _pageTex[NUM_LISTS];
 	DrawList _drawLists[NUM_LISTS];
@@ -236,6 +238,8 @@ struct SystemStub_OGL : SystemStub {
 	virtual void destroy();
 	virtual void setFont(const uint8_t *font);
 	virtual void setPalette(const Color *colors, uint8_t n);
+	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize);
+	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt);
 	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data);
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt);
 	virtual void addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs);
@@ -303,6 +307,8 @@ void SystemStub_OGL::init(const char *title) {
 	_backgroundTex.init();
 	_fontTex.init();
 	_fontTex._alpha = true;
+	_spritesTex.init();
+	_spritesTex._alpha = true;
 	const bool err = initFBO();
 	if (!err) {
 		warning("Error initializing GL FBO, using default renderer");
@@ -403,6 +409,64 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 			glScalef(1., 1., 1.);
 		}
 	}
+}
+
+void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int xSize, int ySize) {
+	if (memcmp(src, "BM", 2) == 0) {
+		BitmapInfo bi;
+		bi.read(src);
+		if (bi._data) {
+			_spritesTex.uploadData(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
+		}
+	}
+	_spritesSizeX = xSize * 2;
+	_spritesSizeY = ySize * 2;
+}
+
+static void drawSprite(const int *pos, const float *uv, GLuint tex) {
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glBegin(GL_QUADS);
+		glTexCoord2f(uv[0], uv[1]);
+		glVertex2i(pos[0], pos[1]);
+		glTexCoord2f(uv[2], uv[1]);
+		glVertex2i(pos[2], pos[1]);
+		glTexCoord2f(uv[2], uv[3]);
+		glVertex2i(pos[2], pos[3]);
+		glTexCoord2f(uv[0], uv[3]);
+		glVertex2i(pos[0], pos[3]);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+}
+
+void SystemStub_OGL::addSpriteToList(uint8_t listNum, int num, const Point *pt) {
+	assert(listNum < NUM_LISTS);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+
+	glColor4ub(255, 255, 255, 255);
+	const int xSize = 9;
+	const int ySize = FB_H * xSize / FB_H;
+	const int pos[4] = {
+		pt->x, pt->y,
+		pt->x + xSize, pt->y + ySize
+	};
+	int u = num % _spritesSizeX;
+	int v = num / _spritesSizeY;
+	const float uv[4] = {
+		u * 1. / _spritesSizeX, 1. - v * 1. / _spritesSizeY,
+		(u + 1) * 1. / _spritesSizeX, 1. - (v + 1) * 1. / _spritesSizeY
+	};
+	drawSprite(pos, uv, _spritesTex._id);
+
+	glLoadIdentity();
+	glScalef(1., 1., 1.);
 }
 
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {

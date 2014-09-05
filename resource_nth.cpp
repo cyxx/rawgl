@@ -145,6 +145,10 @@ struct Resource20th: ResourceNth {
 			char path[512];
 			snprintf(path, sizeof(path), "%s/game/BGZ/Font.bgz", _dataPath);
 			return inflateGzip(path);
+		} else if (strcmp(name, "heads.bmp") == 0) {
+			char path[512];
+			snprintf(path, sizeof(path), "%s/game/BGZ/Heads.bgz", _dataPath);
+			return inflateGzip(path);
 		}
 		return 0;
 	}

@@ -283,6 +283,16 @@ void Resource::loadFont() {
 	}
 }
 
+void Resource::loadHeads() {
+	if (_nth) {
+		uint8_t *p = _nth->load("heads.bmp");
+		if (p) {
+			_vid->setHeads(p);
+			free(p);
+		}
+	}
+}
+
 uint8_t *Resource::loadWav(int num) {
 	if (_memList[num].status == STATUS_LOADED) {
 		return _memList[num].bufPtr;

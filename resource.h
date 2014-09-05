@@ -96,6 +96,7 @@ struct Resource {
 	void loadBmp(int num);
 	uint8_t *loadDat(int num);
 	void loadFont();
+	void loadHeads();
 	uint8_t *loadWav(int num);
 	const char *getString(int num);
 	void setupPart(int part);

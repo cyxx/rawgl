@@ -63,6 +63,7 @@ void Engine::setup() {
 	_res.readEntries();
 	if (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION) {
 		_res.loadFont();
+		_res.loadHeads();
 	}
 	_log.init();
 	_mix.init();

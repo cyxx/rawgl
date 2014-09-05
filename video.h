@@ -27,6 +27,7 @@ struct Video {
 
 	Resource *_res;
 	SystemStub *_stub;
+	bool _hasHeadSprites;
 
 	uint8_t _nextPal, _currentPal;
 	uint8_t _listPtrs[3];
@@ -39,6 +40,7 @@ struct Video {
 	void init();
 
 	void setFont(const uint8_t *font);
+	void setHeads(const uint8_t *src);
 	void setDataBuffer(uint8_t *dataBuf, uint16_t offset);
 	void drawShape(uint8_t color, uint16_t zoom, const Point *pt);
 	void fillPolygon(uint16_t color, uint16_t zoom, const Point *pt);

@@ -652,6 +652,11 @@ void Script::fixUpPalette_changeScreen(int part, int screen) {
 			pal = 0xB;
 		}
 		break;
+	case 16007:
+		if (screen < 0) {
+			pal = 10;
+		}
+		break;
 	}
 	if (pal != -1) {
 		_vid->changePal(pal);

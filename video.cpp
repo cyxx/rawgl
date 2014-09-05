@@ -10,7 +10,7 @@
 
 
 Video::Video(Resource *res, SystemStub *stub) 
-	: _res(res), _stub(stub) {
+	: _res(res), _stub(stub), _hasHeadSprites(false) {
 }
 
 void Video::init() {
@@ -22,6 +22,11 @@ void Video::init() {
 
 void Video::setFont(const uint8_t *font) {
 	_stub->setFont(font);
+}
+
+void Video::setHeads(const uint8_t *src) {
+	_stub->setSpriteAtlas(src, 2, 2);
+	_hasHeadSprites = true;
 }
 
 void Video::setDataBuffer(uint8_t *dataBuf, uint16_t offset) {
@@ -97,6 +102,21 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 		uint16_t color = 0xFF;
 		if (off & 0x8000) {
 			color = *_pData.pc & 0x7F;
+			if (_hasHeadSprites) {
+				const int id = _pData.pc[1];
+				switch (id) {
+				case 0x4D: { // 0x4A - facing right
+						Point pos(po.x - 3, po.y - 6);
+						_stub->addSpriteToList(_listPtrs[0], 0, &pos);
+					}
+					return;
+				case 0x50: { // 0x4F - facing left
+						Point pos(po.x - 6, po.y - 6);
+						_stub->addSpriteToList(_listPtrs[0], 2, &pos);
+					}
+					return;
+				}
+			}
 			_pData.pc += 2;
 		}
 		off &= 0x7FFF;
