@@ -58,6 +58,10 @@ struct Resource15th: ResourceNth {
 		char name[16];
 		snprintf(name, sizeof(name), "file%03d.wav", num);
 		const PakEntry *e = _pak.find(name);
+		if (!e) {
+			snprintf(name, sizeof(name), "file%03db.wav", num);
+			e = _pak.find(name);
+		}
 		if (e) {
 			_pak.loadData(e, dst, size);
 			return dst;
