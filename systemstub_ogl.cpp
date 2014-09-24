@@ -5,8 +5,7 @@
  */
 
 #include <SDL.h>
-#define GL_GLEXT_PROTOTYPES
-#include <SDL_opengl.h>
+#include <GL/glew.h>
 #include <vector>
 #include "graphics.h"
 #include "scaler.h"
@@ -300,6 +299,10 @@ void SystemStub_OGL::init(const char *title) {
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
 	resize(DEF_SCREEN_W, DEF_SCREEN_H);
+	GLenum ret = glewInit();
+	if (ret != GLEW_OK) {
+		error("glewInit() returned %d", ret);
+	}
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
@@ -309,15 +312,17 @@ void SystemStub_OGL::init(const char *title) {
 	_fontTex._alpha = true;
 	_spritesTex.init();
 	_spritesTex._alpha = true;
-	const bool err = initFBO();
-	if (!err) {
-		warning("Error initializing GL FBO, using default renderer");
-		_canChangeRender = false;
-		_render = RENDER_ORIGINAL;
-	} else {
-		_canChangeRender = true;
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	if (GLEW_ARB_framebuffer_object) {
+		const bool err = initFBO();
+		if (err) {
+			_canChangeRender = true;
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+			return;
+		}
 	}
+	warning("Error initializing GL FBO, using default renderer");
+	_canChangeRender = false;
+	_render = RENDER_ORIGINAL;
 }
 
 bool SystemStub_OGL::initFBO() {
