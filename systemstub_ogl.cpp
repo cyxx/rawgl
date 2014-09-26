@@ -7,6 +7,7 @@
 #include <SDL.h>
 #include <GL/glew.h>
 #include <vector>
+#include "file.h"
 #include "graphics.h"
 #include "scaler.h"
 #include "systemstub.h"
@@ -15,13 +16,44 @@ static int _render = RENDER_GL;
 static int _newRender = _render;
 static bool _canChangeRender;
 
-static bool hasExtension(const char *exts, const char *name) {
-	const char *p = strstr(exts, name);
-	if (p) {
-		p += strlen(name);
-		return *p == ' ' || *p == 0;
+static GLuint kNoTextureId = (GLuint)-1;
+
+struct Palette {
+	static const int COLORS_COUNT = 16;
+
+	GLuint _id;
+
+	void init();
+	void uploadData(const Color *colors, int count);
+};
+
+void Palette::init() {
+	_id = kNoTextureId;
+}
+
+void Palette::uploadData(const Color *colors, int count) {
+	if (_id == kNoTextureId) {
+		glGenTextures(1, &_id);
+		glBindTexture(GL_TEXTURE_1D, _id);
+		glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB8, COLORS_COUNT, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	} else {
+		glBindTexture(GL_TEXTURE_1D, _id);
 	}
-	return false;
+	if (count > COLORS_COUNT) {
+		warning("Palette::uploadData() Unhandled colors count %d", count);
+		count = COLORS_COUNT;
+	}
+	uint8_t buf[COLORS_COUNT * 3];
+	for (int i = 0; i < count; ++i) {
+		buf[i * 3] = colors[i].r;
+		buf[i * 3 + 1] = colors[i].g;
+		buf[i * 3 + 2] = colors[i].b;
+	}
+	glTexSubImage1D(GL_TEXTURE_1D, 0, 0, 16, GL_RGB, GL_UNSIGNED_BYTE, buf);
 }
 
 static int roundPow2(int sz) {
@@ -52,10 +84,9 @@ struct Texture {
 };
 
 void Texture::init() {
-	const char *exts = (const char *)glGetString(GL_EXTENSIONS);
-	_npotTex = hasExtension(exts, "GL_ARB_texture_non_power_of_two");
+	_npotTex = GLEW_ARB_texture_non_power_of_two;
 	_alpha = false;
-	_id = (GLuint)-1;
+	_id = kNoTextureId;
 	_w = _h = 0;
 	_rgbData = 0;
 	_raw16Data = 0;
@@ -109,7 +140,7 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 }
 
 void Texture::draw(int w, int h) {
-	if (_id != (GLuint) -1) {
+	if (_id != kNoTextureId) {
 		glEnable(GL_TEXTURE_2D);
 		glColor4ub(255, 255, 255, 255);
 		glBindTexture(GL_TEXTURE_2D, _id);
@@ -128,9 +159,9 @@ void Texture::draw(int w, int h) {
 }
 
 void Texture::clear() {
-	if (_id != (GLuint)-1) {
+	if (_id != kNoTextureId) {
 		glDeleteTextures(1, &_id);
-		_id = (GLuint)-1;
+		_id = kNoTextureId;
 	}
 	free(_rgbData);
 	_rgbData = 0;
@@ -224,6 +255,8 @@ struct SystemStub_OGL : SystemStub {
 	bool _fullscreen;
 	Color _pal[16];
 	Graphics _gfx;
+	GLuint _palShader;
+	Palette _palTex;
 	Texture _backgroundTex;
 	Texture _fontTex;
 	Texture _spritesTex;
@@ -262,6 +295,7 @@ struct SystemStub_OGL : SystemStub {
 	virtual void unlockMutex(void *mutex);
 
 	bool initFBO();
+	void initPaletteShader();
 	void drawVertices(int count, const Point *vertices);
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
 	void resize(int w, int h);
@@ -312,6 +346,10 @@ void SystemStub_OGL::init(const char *title) {
 	_fontTex._alpha = true;
 	_spritesTex.init();
 	_spritesTex._alpha = true;
+	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		_palTex.init();
+		initPaletteShader();
+	}
 	if (GLEW_ARB_framebuffer_object) {
 		const bool err = initFBO();
 		if (err) {
@@ -326,9 +364,6 @@ void SystemStub_OGL::init(const char *title) {
 }
 
 bool SystemStub_OGL::initFBO() {
-
-	// TODO: check extension availability GL_EXT_framebuffer_object
-
 	GLint buffersCount;
 	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &buffersCount);
 	if (buffersCount < NUM_LISTS) {
@@ -342,14 +377,18 @@ bool SystemStub_OGL::initFBO() {
 	glGenTextures(NUM_LISTS, _pageTex);
 	for (int i = 0; i < NUM_LISTS; ++i) {
 		glBindTexture(GL_TEXTURE_2D, _pageTex[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, g_fixUpPalette == FIXUP_PALETTE_SHADER ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, g_fixUpPalette == FIXUP_PALETTE_SHADER ? GL_NEAREST : GL_LINEAR);
+		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, FB_W, FB_H, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
+		} else {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		}
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, _pageTex[i], 0);
 		int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 		if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
-			warning("glCheckFramebufferStatusEXT failed, ret %d\n", status);
+			warning("glCheckFramebufferStatusEXT failed, ret %d", status);
 			return false;
 		}
 	}
@@ -361,6 +400,65 @@ bool SystemStub_OGL::initFBO() {
 	glPointSize(r);
 
 	return true;
+}
+
+static void printShaderLog(GLuint obj) {
+	int len = 0;
+	char buf[1024];
+
+	if (glIsShader(obj)) {
+		glGetShaderInfoLog(obj, sizeof(buf), &len, buf);
+	} else {
+		glGetProgramInfoLog(obj, sizeof(buf), &len, buf);
+	}
+	if (len > 0) {
+		warning("shader log : %s", buf);
+	}
+}
+
+static char *loadFile(const char *path) {
+	char *buf = 0;
+	File f;
+	if (f.open(path)) {
+		const int sz = f.size();
+		buf = (char *)malloc(sz + 1);
+		if (buf) {
+			const int count = f.read(buf, sz);
+			if (count != sz) {
+				warning("Failed to read %d bytes (ret %d)", sz, count);
+				free(buf);
+				buf = 0;
+			} else {
+				buf[count] = 0;
+			}
+		}
+	}
+	return buf;
+}
+
+void SystemStub_OGL::initPaletteShader() {
+	char *ptr;
+	const char *buf[1];
+
+	buf[0] = ptr = loadFile("palette.vert");
+	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vs, 1, buf, NULL);
+	glCompileShader(vs);
+	free(ptr);
+	printShaderLog(vs);
+
+	buf[0] = ptr = loadFile("palette.frag");
+	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fs, 1, buf, NULL);
+	glCompileShader(fs);
+	free(ptr);
+	printShaderLog(fs);
+
+	_palShader = glCreateProgram();
+	glAttachShader(_palShader, vs);
+	glAttachShader(_palShader, fs);
+	glLinkProgram(_palShader);
+	printShaderLog(_palShader);
 }
 
 void SystemStub_OGL::destroy() {
@@ -381,6 +479,9 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 	assert(n <= 16);
 	for (int i = 0; i < n; ++i) {
 		_pal[i] = colors[i];
+	}
+	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		_palTex.uploadData(colors, n);
 	}
 
 	if (g_fixUpPalette == FIXUP_PALETTE_RENDER && _render == RENDER_GL) {
@@ -445,6 +546,10 @@ static void drawSprite(const int *pos, const float *uv, GLuint tex) {
 }
 
 void SystemStub_OGL::addSpriteToList(uint8_t listNum, int num, const Point *pt) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		// TODO: draw on display
+		return;
+	}
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -491,6 +596,12 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 		break;
 	case RENDER_GL:
 		assert(listNum == 0);
+		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			// TODO:
+			// "BM" : color key ?
+			// raw  : GL_R8
+			return;
+		}
 		if (memcmp(data, "BM", 2) == 0) {
 			BitmapInfo bi;
 			bi.read(data);
@@ -527,11 +638,19 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 		drawBackgroundTexture(count, vertices);
 		glDisable(GL_TEXTURE_2D);
 	} else {
-		if (color == COL_ALPHA) {
-			glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
+		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			if (color == COL_ALPHA) {
+				// TODO:
+				return;
+			}
+			glColor3f(color / 15., 0, 0);
 		} else {
-			assert(color < 16);
-			glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
+			if (color == COL_ALPHA) {
+				glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
+			} else {
+				assert(color < 16);
+				glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
+			}
 		}
 		drawVertices(count, vertices);
 	}
@@ -669,7 +788,11 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
 	assert(color < 16);
-	glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
+	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		glClearColor(color / 16., 0, 0, 1.);
+	} else {
+		glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
+	}
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	_drawLists[listNum].clear(color);
@@ -769,7 +892,22 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 		glLoadIdentity();
 		glOrtho(0, _w, _h, 0, 0, 1);
 
+		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			glUseProgram(_palShader);
+
+			glActiveTexture(GL_TEXTURE1);
+			glUniform1i(glGetUniformLocation(_palShader, "Palette"), 1);
+			glBindTexture(GL_TEXTURE_1D, _palTex._id);
+
+			glActiveTexture(GL_TEXTURE0);
+			glUniform1i(glGetUniformLocation(_palShader, "IndexedColorTexture"), 0);
+		}
+
 		drawTextureFb(_pageTex[listNum], _w, _h, 0);
+
+		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			glUseProgram(0);
+		}
 
 		glLoadIdentity();
 		glOrtho(0, FB_W, 0, FB_H, 0, 1);

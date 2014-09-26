@@ -7,7 +7,7 @@
 #include <cstdarg>
 #include "util.h"
 
-const int g_fixUpPalette = FIXUP_PALETTE_RENDER;
+const int g_fixUpPalette = FIXUP_PALETTE_SHADER;
 
 uint16_t g_debugMask;
 

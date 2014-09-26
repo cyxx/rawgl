@@ -28,6 +28,7 @@ enum {
 	FIXUP_PALETTE_NONE,
 	FIXUP_PALETTE_SCRIPT, // workaround script code to issue the setPal calls earlier
 	FIXUP_PALETTE_RENDER, // redraw all primitives on setPal script call
+	FIXUP_PALETTE_SHADER, // use shader to handle paletted display
 };
 
 extern const int g_fixUpPalette;
