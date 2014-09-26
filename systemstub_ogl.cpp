@@ -19,7 +19,7 @@ static bool _canChangeRender;
 static GLuint kNoTextureId = (GLuint)-1;
 
 struct Palette {
-	static const int COLORS_COUNT = 16;
+	static const int COLORS_COUNT = 32;
 
 	GLuint _id;
 
@@ -155,10 +155,10 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glGenTextures(1, &_id);
 		glBindTexture(GL_TEXTURE_2D, _id);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) || (g_fixUpPalette == FIXUP_PALETTE_SHADER) ? GL_NEAREST : GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) || (g_fixUpPalette == FIXUP_PALETTE_SHADER) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) || (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) || (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
 		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, fmt);
-		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		if (fmt == GL_RED) {
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _w, _h, 0, fmt, GL_UNSIGNED_BYTE, _rgbData);
 		} else {
 			glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, GL_UNSIGNED_BYTE, _rgbData);
@@ -639,8 +639,8 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 		assert(listNum == 0);
 		if (memcmp(data, "BM", 2) == 0) {
 			if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
-				// TODO:
-				return;
+				_backgroundTex.clear();
+				_backgroundTex._fmt = Texture::FMT_RGB;
 			}
 			BitmapInfo bi;
 			bi.read(data);
@@ -648,6 +648,10 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 				_backgroundTex.uploadData(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
 			}
 		} else {
+			if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+				_backgroundTex.clear();
+				_backgroundTex._fmt = Texture::FMT_PAL16;
+			}
 			_backgroundTex.readRaw16(data, _pal);
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
@@ -657,7 +661,12 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 		glLoadIdentity();
 		glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
-		_backgroundTex.draw(FB_W, FB_H);
+		if (g_fixUpPalette == FIXUP_PALETTE_SHADER && _backgroundTex._fmt == Texture::FMT_RGB) {
+			glClearColor(1., 0., 0., 1.);
+			glClear(GL_COLOR_BUFFER_BIT);
+		} else {
+			_backgroundTex.draw(FB_W, FB_H);
+		}
 		break;
 	}
 
@@ -682,7 +691,7 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 				// TODO:
 				return;
 			}
-			glColor3f(color / 15., 0, 0);
+			glColor3f(color / 31., 0, 0);
 		} else {
 			if (color == COL_ALPHA) {
 				glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
@@ -832,7 +841,7 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 
 	assert(color < 16);
 	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		glClearColor(color / 16., 0, 0, 1.);
+		glClearColor(color / 31., 0, 0, 1.);
 	} else {
 		glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
 	}
@@ -936,6 +945,10 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 		glOrtho(0, _w, _h, 0, 0, 1);
 
 		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			if (_backgroundTex._fmt == Texture::FMT_RGB) {
+				_backgroundTex.draw(_w, _h);
+			}
+
 			glUseProgram(_palShader);
 
 			glActiveTexture(GL_TEXTURE1);
