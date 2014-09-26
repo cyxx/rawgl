@@ -20,6 +20,7 @@ static GLuint kNoTextureId = (GLuint)-1;
 
 struct Palette {
 	static const int COLORS_COUNT = 32;
+	uint8_t buf[COLORS_COUNT * 3];
 
 	GLuint _id;
 
@@ -43,15 +44,16 @@ void Palette::uploadData(const Color *colors, int count) {
 	} else {
 		glBindTexture(GL_TEXTURE_1D, _id);
 	}
-	if (count > COLORS_COUNT) {
+	if (count != 16) {
 		warning("Palette::uploadData() Unhandled colors count %d", count);
-		count = COLORS_COUNT;
+		return;
 	}
-	uint8_t buf[COLORS_COUNT * 3];
-	for (int i = 0; i < count; ++i) {
-		buf[i * 3] = colors[i].r;
-		buf[i * 3 + 1] = colors[i].g;
-		buf[i * 3 + 2] = colors[i].b;
+	uint8_t *p = buf;
+	for (int i = 0; i < COLORS_COUNT; ++i) {
+		p[0] = colors[i].r;
+		p[1] = colors[i].g;
+		p[2] = colors[i].b;
+		p += 3;
 	}
 	glTexSubImage1D(GL_TEXTURE_1D, 0, 0, COLORS_COUNT, GL_RGB, GL_UNSIGNED_BYTE, buf);
 }
@@ -688,8 +690,7 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 	} else {
 		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
 			if (color == COL_ALPHA) {
-				// TODO:
-				return;
+				color = 16;
 			}
 			glColor3f(color / 31., 0, 0);
 		} else {
