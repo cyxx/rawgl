@@ -53,7 +53,7 @@ void Palette::uploadData(const Color *colors, int count) {
 		buf[i * 3 + 1] = colors[i].g;
 		buf[i * 3 + 2] = colors[i].b;
 	}
-	glTexSubImage1D(GL_TEXTURE_1D, 0, 0, 16, GL_RGB, GL_UNSIGNED_BYTE, buf);
+	glTexSubImage1D(GL_TEXTURE_1D, 0, 0, COLORS_COUNT, GL_RGB, GL_UNSIGNED_BYTE, buf);
 }
 
 static int roundPow2(int sz) {
@@ -69,12 +69,16 @@ static int roundPow2(int sz) {
 
 struct Texture {
 	bool _npotTex;
-	bool _alpha;
 	GLuint _id;
 	int _w, _h;
 	float _u, _v;
 	uint8_t *_rgbData;
 	const uint8_t *_raw16Data;
+	enum {
+		FMT_PAL16,
+		FMT_RGB,
+		FMT_RGBA,
+	} _fmt;
 
 	void init();
 	void uploadData(const uint8_t *data, int srcPitch, int w, int h, const Color *pal);
@@ -85,14 +89,23 @@ struct Texture {
 
 void Texture::init() {
 	_npotTex = GLEW_ARB_texture_non_power_of_two;
-	_alpha = false;
 	_id = kNoTextureId;
 	_w = _h = 0;
 	_rgbData = 0;
 	_raw16Data = 0;
 }
 
-static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal, bool alpha) {
+static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal, int fmt) {
+	if (fmt == GL_RED) {
+		for (int y = 0; y < h; ++y) {
+			for (int x = 0; x < w; ++x) {
+				dst[x] = src[x] * 256 / 16;
+			}
+			dst += dstPitch;
+			src += srcPitch;
+		}
+		return;
+	}
 	for (int y = 0; y < h; ++y) {
 		int offset = 0;
 		for (int x = 0; x < w; ++x) {
@@ -100,7 +113,7 @@ static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h,
 			dst[offset++] = pal[color].r;
 			dst[offset++] = pal[color].g;
 			dst[offset++] = pal[color].b;
-			if (alpha) {
+			if (fmt == GL_RGBA) {
 				dst[offset++] = (color == 0) ? 0 : 255;
 			}
 		}
@@ -114,8 +127,22 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		free(_rgbData);
 		_rgbData = 0;
 	}
-	const int depth = _alpha ? 4 : 3;
-	const int fmt = _alpha ? GL_RGBA : GL_RGB;
+	int depth = 1;
+	int fmt = GL_RGB;
+	switch (_fmt) {
+	case FMT_PAL16:
+		depth = 1;
+		fmt = GL_RED;
+		break;
+	case FMT_RGB:
+		depth = 3;
+		fmt = GL_RGB;
+		break;
+	case FMT_RGBA:
+		depth = 4;
+		fmt = GL_RGBA;
+		break;
+	}
 	if (!_rgbData) {
 		_w = _npotTex ? w : roundPow2(w);
 		_h = _npotTex ? h : roundPow2(h);
@@ -128,13 +155,17 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glGenTextures(1, &_id);
 		glBindTexture(GL_TEXTURE_2D, _id);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) ? GL_NEAREST : GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) ? GL_NEAREST : GL_LINEAR);
-		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, _alpha);
-		glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, GL_UNSIGNED_BYTE, _rgbData);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) || (g_fixUpPalette == FIXUP_PALETTE_SHADER) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) || (g_fixUpPalette == FIXUP_PALETTE_SHADER) ? GL_NEAREST : GL_LINEAR);
+		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, fmt);
+		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _w, _h, 0, fmt, GL_UNSIGNED_BYTE, _rgbData);
+		} else {
+			glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, GL_UNSIGNED_BYTE, _rgbData);
+		}
 	} else {
 		glBindTexture(GL_TEXTURE_2D, _id);
-		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, _alpha);
+		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, fmt);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _w, _h, fmt, GL_UNSIGNED_BYTE, _rgbData);
 	}
 }
@@ -342,11 +373,13 @@ void SystemStub_OGL::init(const char *title) {
 	glDisable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
 	_backgroundTex.init();
+	_backgroundTex._fmt = Texture::FMT_RGB;
 	_fontTex.init();
-	_fontTex._alpha = true;
+	_fontTex._fmt = Texture::FMT_RGBA;
 	_spritesTex.init();
-	_spritesTex._alpha = true;
+	_spritesTex._fmt = Texture::FMT_RGBA;
 	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		_backgroundTex._fmt = Texture::FMT_PAL16;
 		_palTex.init();
 		initPaletteShader();
 	}
@@ -466,6 +499,10 @@ void SystemStub_OGL::destroy() {
 }
 
 void SystemStub_OGL::setFont(const uint8_t *font) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		// TODO:
+		return;
+	}
 	if (memcmp(font, "BM", 2) == 0) {
 		BitmapInfo bi;
 		bi.read(font);
@@ -518,6 +555,10 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 }
 
 void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int xSize, int ySize) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		// TODO:
+		return;
+	}
 	if (memcmp(src, "BM", 2) == 0) {
 		BitmapInfo bi;
 		bi.read(src);
@@ -596,13 +637,11 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 		break;
 	case RENDER_GL:
 		assert(listNum == 0);
-		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
-			// TODO:
-			// "BM" : color key ?
-			// raw  : GL_R8
-			return;
-		}
 		if (memcmp(data, "BM", 2) == 0) {
+			if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+				// TODO:
+				return;
+			}
 			BitmapInfo bi;
 			bi.read(data);
 			if (bi._data) {
@@ -694,6 +733,10 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
+	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+		// TODO:
+		return;
+	}
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawChar(c, pt->x / 8, pt->y, color);
 
