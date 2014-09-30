@@ -8,6 +8,7 @@
 #include "script.h"
 #include "mixer.h"
 #include "resource.h"
+#include "resource_nth.h"
 #include "video.h"
 #include "sfxplayer.h"
 #include "systemstub.h"
@@ -587,9 +588,16 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
 	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION) {
-		warning("Unimplemented snd_playMusic num=%d", resNum);
-		// == 7, "intro2004.mod"
-		// == 138, "end2004.mod"
+		if (resNum == 0) {
+			_mix->stopMusic();
+		} else if (_res->_nth) {
+			const char *name = _res->_nth->getMusicPath(resNum);
+			if (name) {
+				char path[512];
+				snprintf(path, sizeof(path), "%s/%s", _res->_dataDir, name);
+				_mix->playMusic(path);
+			}
+		}
 		return;
 	}
 	if (resNum != 0) {

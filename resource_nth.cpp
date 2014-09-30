@@ -70,6 +70,19 @@ struct Resource15th: ResourceNth {
 		}
 		return 0;
 	}
+
+	virtual const char *getMusicPath(int num) {
+		const char *path = 0;
+		switch (num) {
+		case 7:
+			path = "Intro2004.wav";
+			break;
+		case 138:
+			path = "End2004.wav";
+			break;
+		}
+		return path;
+	}
 };
 
 static uint8_t *inflateGzip(const char *filepath) {
@@ -120,6 +133,7 @@ struct Resource20th: ResourceNth {
 	const char *_dataPath;
 	char *_textBuf;
 	const char *_stringsTable[192];
+	char _musicName[64];
 
 	Resource20th(const char *dataPath)
 		: _dataPath(dataPath), _textBuf(0) {
@@ -242,6 +256,24 @@ struct Resource20th: ResourceNth {
 			return _stringsTable[num];
 		}
 		return 0;
+	}
+
+	virtual const char *getMusicPath(int num) {
+		if (num >= 5000) {
+			snprintf(_musicName, sizeof(_musicName), "game/OGG/amb%d.ogg", num);
+		} else {
+			switch (num) {
+			case 7:
+				strcpy(_musicName, "game/OGG/Intro_20th.ogg");
+				break;
+			case 138:
+				strcpy(_musicName, "game/OGG/Ending_15th.ogg");
+				break;
+			default:
+				return 0;
+			}
+		}
+		return _musicName;
 	}
 };
 

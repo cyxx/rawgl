@@ -14,6 +14,11 @@ struct MixerChunk {
 	uint16_t len;
 	uint16_t loopPos;
 	uint16_t loopLen;
+	enum {
+		FMT_S8,
+		FMT_U8,
+		FMT_S16,
+	} fmt;
 
 	MixerChunk() {
 		memset(this, 0, sizeof(*this));
@@ -23,7 +28,7 @@ struct MixerChunk {
 	void readWav(uint8_t *buf);
 };
 
-struct MixerChannel {
+struct OldMixerChannel {
 	uint8_t active;
 	uint8_t volume;
 	MixerChunk chunk;
@@ -31,6 +36,7 @@ struct MixerChannel {
 	uint32_t chunkInc;
 };
 
+struct MixerChannel;
 struct Serializer;
 struct SystemStub;
 
@@ -40,7 +46,8 @@ struct Mixer {
 	};
 
 	SystemStub *_stub;
-	MixerChannel _channels[NUM_CHANNELS];
+	OldMixerChannel _channels[NUM_CHANNELS];
+	MixerChannel *_music;
 
 	Mixer(SystemStub *stub);
 	void init();
@@ -49,6 +56,8 @@ struct Mixer {
 	void playChannel(uint8_t channel, const MixerChunk *mc, uint16_t freq, uint8_t volume);
 	void stopChannel(uint8_t channel);
 	void setChannelVolume(uint8_t channel, uint8_t volume);
+	void playMusic(const char *path);
+	void stopMusic();
 	void stopAll();
 	void mix(int8_t *buf, int len);
 
