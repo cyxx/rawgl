@@ -105,15 +105,17 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 			if (_hasHeadSprites) {
 				const int id = _pData.pc[1];
 				switch (id) {
-				case 0x4D: { // 0x4A - facing right
-						Point pos(po.x - 3, po.y - 6);
+				case 0x4A: { // facing right
+						Point pos(po.x - 4, po.y - 7);
 						_stub->addSpriteToList(_listPtrs[0], 0, &pos);
 					}
+				case 0x4D:
 					return;
-				case 0x50: { // 0x4F - facing left
-						Point pos(po.x - 6, po.y - 6);
-						_stub->addSpriteToList(_listPtrs[0], 2, &pos);
+				case 0x4F: { // facing left
+						Point pos(po.x - 4, po.y - 7);
+						_stub->addSpriteToList(_listPtrs[0], 1, &pos);
 					}
+				case 0x50:
 					return;
 				}
 			}

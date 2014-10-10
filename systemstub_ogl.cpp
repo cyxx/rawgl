@@ -108,6 +108,7 @@ static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h,
 		}
 		return;
 	}
+	const bool isHeadsBmp = (w == 128 && h == 128 && pal[13].r == 240 && pal[13].g == 96 && pal[13].b == 128);
 	for (int y = 0; y < h; ++y) {
 		int offset = 0;
 		for (int x = 0; x < w; ++x) {
@@ -116,7 +117,11 @@ static void convertTexture(const uint8_t *src, const int srcPitch, int w, int h,
 			dst[offset++] = pal[color].g;
 			dst[offset++] = pal[color].b;
 			if (fmt == GL_RGBA) {
-				dst[offset++] = (color == 0) ? 0 : 255;
+				if (color == 0 || (isHeadsBmp && color == 13)) {
+					dst[offset++] = 0;
+				} else {
+					dst[offset++] = 255;
+				}
 			}
 		}
 		dst += dstPitch;
@@ -249,9 +254,10 @@ struct DrawList {
 
 	int fillColor;
 	Entries entries;
+	int yOffset;
 
 	DrawList()
-		: fillColor(0) {
+		: fillColor(0), yOffset(0) {
 	}
 
 	void clear(uint8_t color) {
@@ -297,6 +303,10 @@ struct SystemStub_OGL : SystemStub {
 	GLuint _fbPage0;
 	GLuint _pageTex[NUM_LISTS];
 	DrawList _drawLists[NUM_LISTS];
+	struct {
+		int num;
+		Point pos;
+	} _sprite;
 
 	virtual ~SystemStub_OGL() {}
 	virtual void init(const char *title);
@@ -380,6 +390,7 @@ void SystemStub_OGL::init(const char *title) {
 	_fontTex._fmt = Texture::FMT_RGBA;
 	_spritesTex.init();
 	_spritesTex._fmt = Texture::FMT_RGBA;
+	_sprite.num = -1;
 	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
 		_backgroundTex._fmt = Texture::FMT_PAL16;
 		_palTex.init();
@@ -557,10 +568,6 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 }
 
 void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int xSize, int ySize) {
-	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		// TODO:
-		return;
-	}
 	if (memcmp(src, "BM", 2) == 0) {
 		BitmapInfo bi;
 		bi.read(src);
@@ -568,12 +575,13 @@ void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int xSize, int ySize) {
 			_spritesTex.uploadData(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
 		}
 	}
-	_spritesSizeX = xSize * 2;
-	_spritesSizeY = ySize * 2;
+	_spritesSizeX = xSize;
+	_spritesSizeY = ySize;
 }
 
-static void drawSprite(const int *pos, const float *uv, GLuint tex) {
+static void drawTexQuad(const int *pos, const float *uv, GLuint tex) {
 	glEnable(GL_TEXTURE_2D);
+	glColor4ub(255, 255, 255, 255);
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glBegin(GL_QUADS);
 		glTexCoord2f(uv[0], uv[1]);
@@ -588,9 +596,12 @@ static void drawSprite(const int *pos, const float *uv, GLuint tex) {
 	glDisable(GL_TEXTURE_2D);
 }
 
+static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId);
+
 void SystemStub_OGL::addSpriteToList(uint8_t listNum, int num, const Point *pt) {
 	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		// TODO: draw on display
+		_sprite.num = num;
+		_sprite.pos = *pt;
 		return;
 	}
 	assert(listNum < NUM_LISTS);
@@ -603,23 +614,26 @@ void SystemStub_OGL::addSpriteToList(uint8_t listNum, int num, const Point *pt) 
 
 	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
 
-	glColor4ub(255, 255, 255, 255);
-	const int xSize = 9;
-	const int ySize = FB_H * xSize / FB_H;
-	const int pos[4] = {
-		pt->x, pt->y,
-		pt->x + xSize, pt->y + ySize
-	};
-	int u = num % _spritesSizeX;
-	int v = num / _spritesSizeY;
-	const float uv[4] = {
-		u * 1. / _spritesSizeX, 1. - v * 1. / _spritesSizeY,
-		(u + 1) * 1. / _spritesSizeX, 1. - (v + 1) * 1. / _spritesSizeY
-	};
-	drawSprite(pos, uv, _spritesTex._id);
+	drawSprite(pt, num, _spritesSizeX, _spritesSizeY, _spritesTex._id);
 
 	glLoadIdentity();
 	glScalef(1., 1., 1.);
+}
+
+static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId) {
+	const int wSize = 18;
+	const int hSize = 18;
+	const int pos[4] = {
+		pt->x, pt->y,
+		pt->x + wSize, pt->y + hSize
+	};
+	int u = num % xSize;
+	int v = num / ySize;
+	const float uv[4] = {
+		u * 1. / xSize, 1. - v * 1. / ySize,
+		(u + 1) * 1. / xSize, 1. - (v + 1) * 1. / ySize
+	};
+	drawTexQuad(pos, uv, texId);
 }
 
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
@@ -893,6 +907,7 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 	drawTextureFb(_pageTex[srcListNum], FB_W, FB_H, yoffset);
 
 	_drawLists[dstListNum] = _drawLists[srcListNum];
+	_drawLists[dstListNum].yOffset = vscroll;
 }
 
 static void drawFontChar(uint8_t ch, int x, int y, GLuint tex) {
@@ -946,9 +961,21 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 		glOrtho(0, _w, _h, 0, 0, 1);
 
 		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
+			const int yoffset = _drawLists[listNum].yOffset * _h / SCREEN_H;
+			glPushMatrix();
+			glTranslatef(0, yoffset, 0);
+
 			if (_backgroundTex._fmt == Texture::FMT_RGB) {
 				_backgroundTex.draw(_w, _h);
 			}
+			if (_sprite.num != -1) {
+				glPushMatrix();
+				glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
+				drawSprite(&_sprite.pos, _sprite.num, _spritesSizeX, _spritesSizeY, _spritesTex._id);
+				glPopMatrix();
+				_sprite.num = -1;
+			}
+			glPopMatrix();
 
 			glUseProgram(_palShader);
 
