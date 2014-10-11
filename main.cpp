@@ -4,6 +4,7 @@
  * Copyright (C) 2004-2005 Gregory Montoir (cyx@users.sourceforge.net)
  */
 
+#include <getopt.h>
 #include "engine.h"
 #include "systemstub.h"
 
@@ -24,26 +25,6 @@ static const struct {
 	{ "us", LANG_US  },
 };
 
-static bool parseOption(const char *arg, const char *longCmd, const char **opt) {
-	bool ret = false;
-	if (arg[0] == '-' && arg[1] == '-') {
-		if (strncmp(arg + 2, longCmd, strlen(longCmd)) == 0) {
-			*opt = arg + 2 + strlen(longCmd);
-			ret = true;
-		}
-	}
-	return ret;
-}
-
-static bool parseOptionInt(const char *arg, const char *name, int *i) {
-	const char *opt;
-	if (parseOption(arg, name, &opt)) {
-		*i = strtol(opt, 0, 0);
-		return true;
-	}
-	return false;
-}
-
 #undef main
 int main(int argc, char *argv[]) {
 	const char *dataPath = ".";
@@ -51,15 +32,33 @@ int main(int argc, char *argv[]) {
 	int part = 16001;
 	Language lang = LANG_FR;
 	const char *render = "gl";
-	for (int i = 1; i < argc; ++i) {
-		bool opt = false;
-		if (strlen(argv[i]) >= 2) {
-			opt |= parseOption(argv[i], "datapath=", &dataPath);
-			opt |= parseOption(argv[i], "language=", &language);
-			opt |= parseOptionInt(argv[i], "part=", &part);
-			opt |= parseOption(argv[i], "render=", &render);
+	while (1) {
+		static struct option options[] = {
+			{ "datapath", required_argument, 0, 'd' },
+			{ "language", required_argument, 0, 'l' },
+			{ "part",     required_argument, 0, 'p' },
+			{ "render",   required_argument, 0, 'r' },
+			{ 0, 0, 0, 0 }
+		};
+		int index;
+		const int c = getopt_long(argc, argv, "", options, &index);
+		if (c == -1) {
+			break;
 		}
-		if (!opt) {
+		switch (c) {
+		case 'd':
+			dataPath = optarg;
+			break;
+		case 'l':
+			language = optarg;
+			break;
+		case 'p':
+			part = atoi(optarg);
+			break;
+		case 'r':
+			render = optarg;
+			break;
+		default:
 			printf("%s\n", USAGE);
 			return 0;
 		}
