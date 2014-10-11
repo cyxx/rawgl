@@ -525,6 +525,8 @@ void SystemStub_OGL::setFont(const uint8_t *font) {
 	}
 }
 
+static void drawBackgroundTexture(int count, const Point *vertices);
+
 void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 	assert(n <= 16);
 	for (int i = 0; i < n; ++i) {
@@ -557,6 +559,9 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 				DrawListEntry e = *it;
 				if (e.color < 16) {
 					glColor4ub(_pal[e.color].r, _pal[e.color].g, _pal[e.color].b, 255);
+					drawVertices(e.numVertices, e.vertices);
+				} else if (e.color == COL_ALPHA) {
+					glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
 					drawVertices(e.numVertices, e.vertices);
 				}
 			}
@@ -689,7 +694,6 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 	_drawLists[listNum].clear(COL_BMP);
 }
 
-static void drawBackgroundTexture(int count, const Point *vertices);
 static void drawFontChar(uint8_t ch, int x, int y, GLuint tex);
 
 void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {

@@ -209,6 +209,13 @@ void Script::op_setPalette() {
 			}
 		}
 		_vid->changePal(num);
+	} else if (g_fixUpPalette == FIXUP_PALETTE_RENDER) {
+		if (_res->_currentPart == 16001) {
+			if (num == 10 || num == 16) {
+				return;
+			}
+		}
+		_vid->_nextPal = num;
 	} else {
 		_vid->_nextPal = num;
 	}
