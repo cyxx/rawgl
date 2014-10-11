@@ -4,14 +4,12 @@
 ## About
 
 rawgl is a re-implementation of the engine used in the game Another World.  
-Please be aware that, currently, this implementation may contains bugs and 
-non-implemented features that make it impossible to finish the game.
 
 ## Supported Versions
 
-Amiga and PC DOS releases (Bank*)
-15th anniversary edition (Pak01.pak)
-20th anniversary edition (game/*)
+- Amiga and PC DOS releases (Bank*)
+- 15th anniversary edition (Pak01.pak)
+- 20th anniversary edition (game/*)
 
 ## Running
 
