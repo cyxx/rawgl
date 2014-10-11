@@ -15,6 +15,8 @@
 Resource::Resource(Video *vid, const char *dataDir) 
 	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0) {
 	_bankPrefix = "bank";
+	memset(_memList, 0, sizeof(_memList));
+	_numMemList = 0;
 }
 
 Resource::~Resource() {
@@ -131,7 +133,6 @@ void Resource::readEntries() {
 
 void Resource::readEntriesAmiga(const AmigaMemEntry *entries, int count) {
 	_numMemList = count;
-	memset(_memList, 0, sizeof(_memList));
 	for (int i = 0; i < count; ++i) {
 		_memList[i].type = entries[i].type;
 		_memList[i].bankNum = entries[i].bank;

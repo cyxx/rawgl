@@ -163,6 +163,9 @@ void Graphics::drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 }
 
 void Graphics::drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
+	if (_workPagePtr == _pagePtrs[0]) {
+		return;
+	}
 	int16_t xmax = MAX(x1, x2);
 	int16_t xmin = MIN(x1, x2);
 	const int w = xmax - xmin + 1;
