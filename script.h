@@ -103,10 +103,6 @@ struct Script {
 	
 	void snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel);
 	void snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos);
-
-	void fixUpPalette_changeScreen(int part, int screen = -1);
-	void fixUpPalette_selectPage(int part, int page, int pal);
-	void fixUpPalette_fillPage(int part, int page, int color, int currentPal);
 };
 
 #endif
