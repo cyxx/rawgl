@@ -188,6 +188,7 @@ void Script::op_condJmp() {
 	if (expr) {
 		op_jmp();
 		if (var == VAR_SCREEN_NUM && _screenNum != _scriptVars[VAR_SCREEN_NUM]) {
+			fixUpPalette_changeScreen(_res->_currentPart, _scriptVars[VAR_SCREEN_NUM]);
 			_screenNum = _scriptVars[VAR_SCREEN_NUM];
 		}
 	} else {
@@ -595,5 +596,25 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		_ply->setEventsDelay(delay);
 	} else {
 		_ply->stop();
+	}
+}
+
+void Script::fixUpPalette_changeScreen(int part, int screen) {
+	int pal = -1;
+	switch (part) {
+	case 16004:
+		if (screen == 0x47) { // bitmap resource #68
+			pal = 8;
+		}
+		break;
+	case 16006:
+		if (screen == 0x4A) { // bitmap resources #144, #145
+			pal = 1;
+		}
+		break;
+	}
+	if (pal != -1) {
+		debug(DBG_SCRIPT, "Setting palette %d for part %d screen %d", pal, part, screen);
+		_vid->changePal(pal);
 	}
 }
