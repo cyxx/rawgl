@@ -41,18 +41,27 @@ struct WavInfo {
 };
 
 void WavInfo::read(const uint8_t *src) {
-	if (memcmp(src, "RIFF", 4) == 0 && memcmp(src + 8, "WAVEfmt ", 8) == 0) {
-		const int format = READ_LE_UINT16(src + 20);
-		_channels = READ_LE_UINT16(src + 22);
-		_rate = READ_LE_UINT16(src + 24);
-		_bits = READ_LE_UINT16(src + 34);
-		if (format == 1 && memcmp(src + 36, "data", 4) == 0) {
-			_dataSize = READ_LE_UINT32(src + 40);
-			_data = src + 44;
-		} else {
-			warning("Unsupported WAV compression %d", format);
-			_dataSize = 0;
-			_data = 0;
+	_data = 0;
+	if (memcmp(src, "RIFF", 4) == 0 && memcmp(src + 8, "WAVE", 4) == 0) {
+		src += 12;
+		while (_data == 0) {
+			const int size = READ_LE_UINT32(src + 4);
+			if (memcmp(src, "fmt ", 4) == 0) {
+				const int format = READ_LE_UINT16(src + 8);
+				if (format != 1) {
+					warning("Unsupported WAV compression %d", format);
+					return;
+				}
+				_channels = READ_LE_UINT16(src + 10);
+				_rate = READ_LE_UINT16(src + 12);
+				_bits = READ_LE_UINT16(src + 22);
+			} else if (memcmp(src, "data", 4) == 0) {
+				_dataSize = size;
+				_data = src + 8;
+			} else {
+				// 'minf' 'elm1' 'bext'
+			}
+			src += size + 8;
 		}
 	}
 }
