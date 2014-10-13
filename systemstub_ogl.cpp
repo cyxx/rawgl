@@ -87,6 +87,7 @@ struct Texture {
 	void draw(int w, int h);
 	void clear();
 	void readRaw16(const uint8_t *src, const Color *pal, int w = 320, int h = 200);
+	void readFont(const uint8_t *src);
 };
 
 void Texture::init() {
@@ -164,6 +165,8 @@ void Texture::uploadData(const uint8_t *data, int srcPitch, int w, int h, const 
 		glBindTexture(GL_TEXTURE_2D, _id);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) || (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) || (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 		convertTexture(data, srcPitch, w, h, _rgbData, _w * depth, pal, fmt);
 		if (fmt == GL_RED) {
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _w, _h, 0, fmt, GL_UNSIGNED_BYTE, _rgbData);
@@ -209,6 +212,27 @@ void Texture::clear() {
 void Texture::readRaw16(const uint8_t *src, const Color *pal, int w, int h) {
 	_raw16Data = src;
 	uploadData(_raw16Data, w, w, h, pal);
+}
+
+void Texture::readFont(const uint8_t *src) {
+	const int W = 768 * 2;
+	const int H = 8;
+	uint8_t *out = (uint8_t *)malloc(W * H);
+	if (out) {
+		for (int i = 0; i < 96; ++i) {
+			for (int y = 0; y < 8; ++y) {
+				uint8_t mask = *src++;
+				for (int x = 0; x < 8; ++x) {
+					out[y * W + i * 16 + x] = (mask >> (7 - x)) & 1;
+				}
+			}
+		}
+		Color pal[2];
+		pal[0].r = pal[0].g = pal[0].b = 0;
+		pal[1].r = pal[1].g = pal[1].b = 255;
+		uploadData(out, W, W, H, pal);
+		free(out);
+	}
 }
 
 struct BitmapInfo {
@@ -388,6 +412,7 @@ void SystemStub_OGL::init(const char *title) {
 	_backgroundTex._fmt = Texture::FMT_RGB;
 	_fontTex.init();
 	_fontTex._fmt = Texture::FMT_RGBA;
+	_fontTex.readFont(Graphics::_font);
 	_spritesTex.init();
 	_spritesTex._fmt = Texture::FMT_RGBA;
 	_sprite.num = -1;
@@ -586,7 +611,6 @@ void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int xSize, int ySize) {
 
 static void drawTexQuad(const int *pos, const float *uv, GLuint tex) {
 	glEnable(GL_TEXTURE_2D);
-	glColor4ub(255, 255, 255, 255);
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glBegin(GL_QUADS);
 		glTexCoord2f(uv[0], uv[1]);
@@ -638,6 +662,7 @@ static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId
 		u * 1. / xSize, 1. - v * 1. / ySize,
 		(u + 1) * 1. / xSize, 1. - (v + 1) * 1. / ySize
 	};
+	glColor4ub(255, 255, 255, 255);
 	drawTexQuad(pos, uv, texId);
 }
 
@@ -783,7 +808,19 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
 
 	glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
-	drawFontChar(c, pt->x, pt->y, _fontTex._id);
+	if (_fontTex._h == 8) {
+		const int pos[4] = {
+			pt->x, pt->y,
+			pt->x + 8, pt->y + 8
+		};
+		const float uv[4] = {
+			(c - 0x20) * 16. / _fontTex._w, 0.,
+			(c - 0x20) * 16. / _fontTex._w + 1 * 8. / _fontTex._w, 1.
+		};
+		drawTexQuad(pos, uv, _fontTex._id);
+	} else {
+		drawFontChar(c, pt->x, pt->y, _fontTex._id);
+	}
 
 	glLoadIdentity();
 	glScalef(1., 1., 1.);
