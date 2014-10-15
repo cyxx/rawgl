@@ -363,7 +363,8 @@ struct SystemStub_OGL : SystemStub {
 
 	bool initFBO();
 	void initPaletteShader();
-	void drawVertices(int count, const Point *vertices);
+	void drawVerticesFlat(int count, const Point *vertices);
+	void drawVerticesTex(int count, const Point *vertices);
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
 	void resize(int w, int h);
 	void switchGfxMode(bool fullscreen);
@@ -584,10 +585,10 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 				DrawListEntry e = *it;
 				if (e.color < 16) {
 					glColor4ub(_pal[e.color].r, _pal[e.color].g, _pal[e.color].b, 255);
-					drawVertices(e.numVertices, e.vertices);
+					drawVerticesFlat(e.numVertices, e.vertices);
 				} else if (e.color == COL_ALPHA) {
 					glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
-					drawVertices(e.numVertices, e.vertices);
+					drawVerticesFlat(e.numVertices, e.vertices);
 				}
 			}
 
@@ -728,7 +729,7 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D,  _pageTex[0]);
 		glColor4f(1., 1., 1., 1.);
-		drawBackgroundTexture(count, vertices);
+		drawVerticesTex(count, vertices);
 		glDisable(GL_TEXTURE_2D);
 	} else {
 		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
@@ -744,7 +745,7 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 				glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
 			}
 		}
-		drawVertices(count, vertices);
+		drawVerticesFlat(count, vertices);
 	}
 
 	glLoadIdentity();
@@ -828,7 +829,7 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 	// TODO: _drawLists
 }
 
-void SystemStub_OGL::drawVertices(int count, const Point *vertices) {
+void SystemStub_OGL::drawVerticesFlat(int count, const Point *vertices) {
 	switch (count) {
 	case 1:
 		glBegin(GL_POINTS);
@@ -863,7 +864,7 @@ void SystemStub_OGL::drawVertices(int count, const Point *vertices) {
 	}
 }
 
-static void drawBackgroundTexture(int count, const Point *vertices) {
+void SystemStub_OGL::drawVerticesTex(int count, const Point *vertices) {
 	if (count < 4) {
 		warning("Invalid vertices count for drawing mode 0x11", count);
 		return;
@@ -871,15 +872,17 @@ static void drawBackgroundTexture(int count, const Point *vertices) {
 	glBegin(GL_QUAD_STRIP);
 		for (int i = 0; i < count / 2; ++i) {
 			const int j = count - 1 - i;
-			int v1 = i;
-			int v2 = j;
-			if (vertices[v2].x < vertices[v1].x) {
-				SWAP(v1, v2);
+			if (vertices[j].x > vertices[i].y) {
+				glTexCoord2f(vertices[i].x / 320., vertices[i].y / 200.);
+				glVertex2i(vertices[i].x, vertices[i].y);
+				glTexCoord2f((vertices[j].x + 1) / 320., vertices[j].y / 200.);
+				glVertex2i((vertices[j].x + 1), vertices[j].y);
+			} else {
+				glTexCoord2f(vertices[j].x / 320., vertices[j].y / 200.);
+				glVertex2i(vertices[j].x, vertices[j].y);
+				glTexCoord2f((vertices[i].x + 1) / 320., vertices[i].y / 200.);
+				glVertex2i((vertices[i].x + 1), vertices[i].y);
 			}
-			glTexCoord2f(vertices[v1].x / 320., vertices[v1].y / 200.);
-			glVertex2i(vertices[v1].x, vertices[v1].y);
-			glTexCoord2f((vertices[v2].x + 1) / 320., vertices[v2].y / 200.);
-			glVertex2i((vertices[v2].x + 1), vertices[v2].y);
 		}
 	glEnd();
 }
@@ -907,20 +910,16 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 }
 
 static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
-	glEnable(GL_TEXTURE_2D);
 	glColor4ub(255, 255, 255, 255);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glBegin(GL_QUADS);
-		glTexCoord2f(0, 0);
-		glVertex2i(0, vscroll);
-		glTexCoord2f(1, 0);
-		glVertex2i(w, vscroll);
-		glTexCoord2f(1, 1);
-		glVertex2i(w, h + vscroll);
-		glTexCoord2f(0, 1);
-		glVertex2i(0, h + vscroll);
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
+	const int pos[] = {
+		0, vscroll,
+		w, h + vscroll
+	};
+	const float uv[] = {
+		0., 0.,
+		1., 1.
+	};
+	drawTexQuad(pos, uv, tex);
 }
 
 void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
