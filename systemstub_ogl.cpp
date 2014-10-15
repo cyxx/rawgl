@@ -825,8 +825,6 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 
 	glLoadIdentity();
 	glScalef(1., 1., 1.);
-
-	// TODO: _drawLists
 }
 
 void SystemStub_OGL::drawVerticesFlat(int count, const Point *vertices) {

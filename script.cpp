@@ -372,6 +372,11 @@ void Script::restartAt(int part, int pos) {
 	if (pos >= 0) {
 		_scriptVars[0] = pos;
 	}
+	if (g_fixUpPalette == FIXUP_PALETTE_RENDER) {
+		if (part == 16009) {
+			_vid->changePal(5);
+		}
+	}
 }
 
 void Script::setupScripts() {
