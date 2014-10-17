@@ -48,6 +48,7 @@ struct Resource {
 		DT_AMIGA,
 		DT_15TH_EDITION,
 		DT_20TH_EDITION,
+		DT_WIN31,
 	};
 
 	enum {

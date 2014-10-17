@@ -8,6 +8,7 @@
 #include "file.h"
 #include "pak.h"
 #include "resource_nth.h"
+#include "resource_win31.h"
 #include "unpack.h"
 #include "video.h"
 
@@ -65,6 +66,9 @@ void Resource::detectVersion() {
 	}  else if (f.open("bank01", _dataDir)) {
 		_dataType = DT_AMIGA;
 		debug(DBG_INFO, "Using Amiga data files");
+	} else if (f.open(ResourceWin31::FILENAME, _dataDir)) {
+		_dataType = DT_WIN31;
+		debug(DBG_INFO, "Using Win31 data files");
 	} else {
 		error("No data files found in '%s'", _dataDir);
 	}
@@ -119,6 +123,10 @@ void Resource::readEntries() {
 				++me;
 			}
 		}
+	} else if (_dataType == DT_WIN31) {
+		ResourceWin31 r(_dataDir);
+		r.readEntries();
+		// error out for now
 	}
 	error("No data files found in '%s'", _dataDir);
 }
