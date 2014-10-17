@@ -61,7 +61,6 @@ struct Resource {
 		STATUS_TOLOAD,
 	};
 
-	static const uint16_t _memListAudio[];
 	static const uint16_t _memListParts[][4];
 	static const AmigaMemEntry _memListAmigaFR[ENTRIES_COUNT];
 	static const AmigaMemEntry _memListAmigaEN[ENTRIES_COUNT];

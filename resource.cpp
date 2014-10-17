@@ -26,15 +26,6 @@ Resource::~Resource() {
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 	uint16_t n = me - _memList;
 	debug(DBG_BANK, "Resource::readBank(%d)", n);
-#ifdef USE_UNPACKED_DATA
-	char bankEntryName[64];
-	sprintf(bankEntryName, "ootw-%02X-%d.dump", n, me->type);
-	File f;
-	if (!f.open(bankEntryName, _dataDir)) {
-		error("Resource::readBank() unable to open '%s' file\n", bankEntryName);
-	}
-	f.read(dstBuf, me->unpackedSize);
-#else
 	char name[10];
 	snprintf(name, sizeof(name), "%s%02x", _bankPrefix, me->bankNum);
 	File f;
@@ -52,7 +43,6 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 	} else {
 		error("Resource::readBank() unable to open '%s'", name);
 	}
-#endif
 }
 
 static bool check20th(File &f, const char *dataDir) {
@@ -82,11 +72,13 @@ void Resource::detectVersion() {
 
 void Resource::readEntries() {
 	if (_dataType == DT_15TH_EDITION) {
+		_numMemList = ENTRIES_COUNT;
 		_nth = ResourceNth::create(15, _dataDir);
 		if (_nth && _nth->init()) {
 			return;
 		}
 	} else if (_dataType == DT_20TH_EDITION) {
+		_numMemList = ENTRIES_COUNT;
 		_nth = ResourceNth::create(20, _dataDir);
 		if (_nth && _nth->init()) {
 			return;
@@ -202,14 +194,13 @@ void Resource::invalidateRes() {
 
 void Resource::invalidateAll() {
 	for (int i = 0; i < _numMemList; ++i) {
-		MemEntry *me = &_memList[i];
-		me->status = STATUS_NULL;
+		_memList[i].status = STATUS_NULL;
 	}
 	_scriptCurPtr = _memPtrStart;
 }
 
-const uint16_t Resource::_memListAudio[] = { 
-	8, 0x10, 0x61, 0x66, 0xFFFF
+static const int _memListAudio[] = {
+	8, 16, 97, 102, -1
 };
 
 static const int _memListBmp[] = {
@@ -235,10 +226,11 @@ void Resource::update(uint16_t num) {
 	if (num > _numMemList) {
 		_nextPart = num;
 	} else {
-		for (const uint16_t *ml = _memListAudio; *ml != 0xFFFF; ++ml) {
-			if (*ml == num)
+		for (int i = 0; _memListAudio[i] != -1; ++i) {
+			if (num == _memListAudio[i]) {
 				return;
-		}		
+			}
+		}
 		MemEntry *me = &_memList[num];
 		if (me->status == STATUS_NULL) {
 			me->status = STATUS_TOLOAD;
@@ -365,9 +357,6 @@ void Resource::setupPart(int ptrId) {
 		_currentPart = ptrId;
 	}
 	_scriptBakPtr = _scriptCurPtr;
-	if (0) {
-		_vid->buildPalette256();
-	}
 }
 
 void Resource::allocMemBlock() {
