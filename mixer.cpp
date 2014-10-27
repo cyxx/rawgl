@@ -6,6 +6,7 @@
 
 #include "file.h"
 #include "mixer.h"
+#include "sfxplayer.h"
 #include "systemstub.h"
 
 
@@ -13,12 +14,6 @@ struct MixerChannel {
 	virtual ~MixerChannel() {}
 	virtual bool load(int rate) = 0;
 	virtual bool readSample(int16_t &sampleL, int16_t &sampleR) = 0;
-};
-
-struct Frac {
-	static const int BITS = 16;
-	uint32_t inc;
-	uint64_t offset;
 };
 
 void MixerChunk::readRaw(uint8_t *buf) {
@@ -83,12 +78,6 @@ void MixerChunk::readWav(uint8_t *buf) {
 			fmt = FMT_U8;
 		}
 	}
-}
-
-static int16_t interpolate(int16_t sample1, int16_t sample2, const Frac &f) {
-	static const int MASK = (1 << Frac::BITS) - 1;
-	const int fp = f.inc & MASK;
-	return (sample1 * (MASK - fp) + sample2 * fp) >> Frac::BITS;
 }
 
 struct MixerChannel_Wav: MixerChannel {
@@ -157,7 +146,7 @@ static int8_t addclamp(int a, int b) {
 }
 
 Mixer::Mixer(SystemStub *stub) 
-	: _stub(stub) {
+	: _sfx(0), _stub(stub) {
 }
 
 void Mixer::init() {
@@ -223,6 +212,21 @@ void Mixer::stopMusic() {
 	_music = 0;
 }
 
+void Mixer::playSfxMusic(int num) {
+	debug(DBG_SND, "Mixer::playSfxMusic(%d)", num);
+	LockAudioStack las(_stub);
+	if (_sfx) {
+		_sfx->play(_stub->getOutputSampleRate());
+	}
+}
+
+void Mixer::stopSfxMusic() {
+	debug(DBG_SND, "Mixer::stopSfxMusic()");
+	if (_sfx) {
+		_sfx->stop();
+	}
+}
+
 void Mixer::stopAll() {
 	debug(DBG_SND, "Mixer::stopAll()");
 	LockAudioStack las(_stub);
@@ -244,6 +248,9 @@ void Mixer::mix(int8_t *buf, int len) {
 			*pBuf++ = sbuf[0] >> 8;
 			*pBuf++ = sbuf[1] >> 8;
 		}
+	}
+	if (_sfx && _sfx->_playing) {
+		_sfx->readSamples(buf, len);
 	}
 	for (uint8_t i = 0; i < NUM_CHANNELS; ++i) {
 		OldMixerChannel *ch = &_channels[i];

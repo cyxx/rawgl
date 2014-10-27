@@ -72,27 +72,6 @@ struct SystemStub {
 	virtual uint32_t getOutputSampleRate() = 0;
 	virtual void lockAudio() = 0;
 	virtual void unlockAudio() = 0;
-
-	virtual void *addTimer(uint32_t delay, TimerCallback callback, void *param) = 0;
-	virtual void removeTimer(void *timerId) = 0;
-
-	virtual void *createMutex() = 0;
-	virtual void destroyMutex(void *mutex) = 0;
-	virtual void lockMutex(void *mutex) = 0;
-	virtual void unlockMutex(void *mutex) = 0;
-};
-
-struct MutexStack {
-	SystemStub *_stub;
-	void *_mutex;
-
-	MutexStack(SystemStub *stub, void *mutex) 
-		: _stub(stub), _mutex(mutex) {
-		_stub->lockMutex(_mutex);
-	}
-	~MutexStack() {
-		_stub->unlockMutex(_mutex);
-	}
 };
 
 struct LockAudioStack {

@@ -35,36 +35,44 @@ struct SfxPattern {
 	uint16_t sampleVolume;
 };
 
-struct Mixer;
+struct SfxChannel {
+	uint8_t *sampleData;
+	uint16_t sampleLen;
+	uint16_t sampleLoopPos;
+	uint16_t sampleLoopLen;
+	uint16_t volume;
+	Frac pos;
+};
+
 struct Resource;
-struct Serializer;
-struct SystemStub;
 
 struct SfxPlayer {
-	Mixer *_mix;
-	Resource *_res;
-	SystemStub *_stub;
+	enum {
+		NUM_CHANNELS = 4
+	};
 
-	void *_mutex;
-	void *_timerId;
+	Resource *_res;
+
 	uint16_t _delay;
 	uint16_t _resNum;
 	SfxModule _sfxMod;
 	int16_t *_markVar;
+	bool _playing;
+	int _rate;
+	int _samplesLeft;
+	SfxChannel _channels[NUM_CHANNELS];
 
-	SfxPlayer(Mixer *mix, Resource *res, SystemStub *stub);
-	void init();
-	void free();
+	SfxPlayer(Resource *res);
 
 	void setEventsDelay(uint16_t delay);
 	void loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos);
 	void prepareInstruments(const uint8_t *p);
+	void play(int rate);
+	void readSamples(int8_t *buf, int len);
 	void start();
 	void stop();
 	void handleEvents();
 	void handlePattern(uint8_t channel, const uint8_t *patternData);
-
-	static uint32_t eventsCallback(uint32_t interval, void *param);
 };
 
 #endif

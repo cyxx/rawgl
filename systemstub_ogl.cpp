@@ -354,12 +354,6 @@ struct SystemStub_OGL : SystemStub {
 	virtual uint32_t getOutputSampleRate();
 	virtual void lockAudio();
 	virtual void unlockAudio();
-	virtual void *addTimer(uint32_t delay, TimerCallback callback, void *param);
-	virtual void removeTimer(void *timerId);
-	virtual void *createMutex();
-	virtual void destroyMutex(void *mutex);
-	virtual void lockMutex(void *mutex);
-	virtual void unlockMutex(void *mutex);
 
 	bool initFBO();
 	void initPaletteShader();
@@ -1157,30 +1151,6 @@ void SystemStub_OGL::lockAudio() {
 
 void SystemStub_OGL::unlockAudio() {
 	SDL_UnlockAudio();
-}
-
-void *SystemStub_OGL::addTimer(uint32_t delay, TimerCallback callback, void *param) {
-	return SDL_AddTimer(delay, (SDL_NewTimerCallback)callback, param);
-}
-
-void SystemStub_OGL::removeTimer(void *timerId) {
-	SDL_RemoveTimer((SDL_TimerID)timerId);
-}
-
-void *SystemStub_OGL::createMutex() {
-	return SDL_CreateMutex();
-}
-
-void SystemStub_OGL::destroyMutex(void *mutex) {
-	SDL_DestroyMutex((SDL_mutex *)mutex);
-}
-
-void SystemStub_OGL::lockMutex(void *mutex) {
-	SDL_mutexP((SDL_mutex *)mutex);
-}
-
-void SystemStub_OGL::unlockMutex(void *mutex) {
-	SDL_mutexV((SDL_mutex *)mutex);
 }
 
 void SystemStub_OGL::resize(int w, int h) {

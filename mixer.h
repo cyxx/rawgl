@@ -37,7 +37,7 @@ struct OldMixerChannel {
 };
 
 struct MixerChannel;
-struct Serializer;
+struct SfxPlayer;
 struct SystemStub;
 
 struct Mixer {
@@ -45,6 +45,7 @@ struct Mixer {
 		NUM_CHANNELS = 4
 	};
 
+	SfxPlayer *_sfx;
 	SystemStub *_stub;
 	OldMixerChannel _channels[NUM_CHANNELS];
 	MixerChannel *_music;
@@ -58,6 +59,8 @@ struct Mixer {
 	void setChannelVolume(uint8_t channel, uint8_t volume);
 	void playMusic(const char *path);
 	void stopMusic();
+	void playSfxMusic(int num);
+	void stopSfxMusic();
 	void stopAll();
 	void mix(int8_t *buf, int len);
 

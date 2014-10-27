@@ -68,4 +68,16 @@ struct Color {
 	uint8_t b;
 };
 
+struct Frac {
+	static const int BITS = 16;
+	uint32_t inc;
+	uint64_t offset;
+
+	int16_t interpolate(int16_t sample1, int16_t sample2) {
+		static const int MASK = (1 << Frac::BITS) - 1;
+		const int fp = inc & MASK;
+		return (sample1 * (MASK - fp) + sample2 * fp) >> Frac::BITS;
+	}
+};
+
 #endif

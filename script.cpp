@@ -587,15 +587,16 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 				_mix->playMusic(p);
 			}
 		}
-		return;
-	}
-	if (resNum != 0) {
-		_ply->loadSfxModule(resNum, delay, pos);
-		_ply->start();
-	} else if (delay != 0) {
-		_ply->setEventsDelay(delay);
-	} else {
-		_ply->stop();
+	} else { // DT_AMIGA, DT_DOS
+		if (resNum != 0) {
+			_ply->loadSfxModule(resNum, delay, pos);
+			_ply->start();
+			_mix->playSfxMusic(resNum);
+		} else if (delay != 0) {
+			_ply->setEventsDelay(delay);
+		} else {
+			_mix->stopSfxMusic();
+		}
 	}
 }
 

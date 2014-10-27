@@ -11,7 +11,7 @@
 
 Engine::Engine(SystemStub *stub, const char *dataDir, int partNum)
 	: _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(_stub), _res(&_vid, dataDir), 
-	_ply(&_mix, &_res, _stub), _vid(&_res, stub), _dataDir(dataDir), _partNum(partNum) {
+	_ply(&_res), _vid(&_res, stub), _dataDir(dataDir), _partNum(partNum) {
 }
 
 static const int _restartPos[36 * 2] = {
@@ -67,11 +67,11 @@ void Engine::setup() {
 	}
 	_log.init();
 	_mix.init();
-	_ply.init();
+	_mix._sfx = &_ply;
 }
 
 void Engine::finish() {
-	_ply.free();
+	_ply.stop();
 	_mix.free();
 	_res.freeMemBlock();
 }
