@@ -129,7 +129,6 @@ void Script::op_condJmp() {
 		if (_scriptVars[VAR_LOCAL_VERSION] == 0x81 && _scriptPtr.pc == _res->_segCode + 0xCB9) { // us
 			// (0x0CB8) condJmp(VAR(0x29) == VAR(0x1E), 0x0CD3)
 			// (0x0CB8) condJmp(VAR(0x29) != VAR(0x1E), 0x0D24)
-			// XXX -> jmp
 			*(_scriptPtr.pc + 0x00) = 0x81;
 			*(_scriptPtr.pc + 0x03) = 0x0D;
 			*(_scriptPtr.pc + 0x04) = 0x24;
@@ -546,9 +545,7 @@ void Script::inp_handleSpecialKeys() {
 			_res->_nextPart = 16009;
 		}
 	}
-	// XXX
 	if (_scriptVars[0xC9] == 1) {
-		warning("Script::inp_handleSpecialKeys() unhandled case (_scriptVars[0xC9] == 1)");
 		// this happens on french/europeans versions when the user does not select
 		// any symbols for the protection, the disassembly shows a simple 'hlt' here.
 	}
@@ -556,12 +553,6 @@ void Script::inp_handleSpecialKeys() {
 
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
-#if 0
-	if (_res->_currentPart != 16000 && _scriptVar_0xBF != _scriptVars[0xBF]) {
-		warning("snd_playSound() unhandled case _scriptVar_0xBF != _scriptVars[0xBF]");
-		return;
-	}
-#endif
 	if (vol == 0) {
 		_mix->stopChannel(channel);
 		return;
