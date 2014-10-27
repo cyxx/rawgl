@@ -554,24 +554,20 @@ void Script::inp_handleSpecialKeys() {
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
 	if (vol == 0) {
-		_mix->stopChannel(channel);
+		_mix->stopSound(channel);
 		return;
 	}
-	MixerChunk mc;
 	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION) {
 		uint8_t *buf = _res->loadWav(resNum);
 		if (buf) {
-			mc.readWav(buf);
+			_mix->playSoundWav(channel & 3, buf, MIN(vol, 63));
 		}
 	} else {
 		MemEntry *me = &_res->_memList[resNum];
 		if (me->status == Resource::STATUS_LOADED) {
-			mc.readRaw(me->bufPtr);
+			assert(freq < 40);
+			_mix->playSoundRaw(channel & 3, me->bufPtr, _freqTable[freq], MIN(vol, 63));
 		}
-	}
-	if (mc.data) {
-		assert(freq < 40);
-		_mix->playChannel(channel & 3, &mc, _freqTable[freq], MIN(vol, 0x3F));
 	}
 }
 

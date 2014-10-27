@@ -16,15 +16,6 @@ struct MixerChannel {
 	virtual bool readSample(int16_t &sampleL, int16_t &sampleR) = 0;
 };
 
-void MixerChunk::readRaw(uint8_t *buf) {
-	data = buf + 8; // skip header
-	len = READ_BE_UINT16(buf) * 2;
-	loopLen = READ_BE_UINT16(buf + 2) * 2;
-	if (loopLen != 0) {
-		loopPos = len;
-	}
-}
-
 struct WavInfo {
 	int _channels;
 	int _rate;
@@ -57,25 +48,6 @@ void WavInfo::read(const uint8_t *src) {
 				// 'minf' 'elm1' 'bext'
 			}
 			src += size + 8;
-		}
-	}
-}
-
-void MixerChunk::readWav(uint8_t *buf) {
-	WavInfo wi;
-	wi.read(buf);
-	if (wi._data) {
-		if (wi._channels != 1 || (wi._bits != 8 && wi._bits != 16)) {
-			warning("Unsupported WAV channels %d bits %d", wi._channels, wi._bits);
-			return;
-		}
-		len = wi._dataSize;
-		data = wi._data;
-		if (wi._bits == 16) {
-			fmt = FMT_S16;
-			len /= 2;
-		} else {
-			fmt = FMT_U8;
 		}
 	}
 }
@@ -134,12 +106,92 @@ struct MixerChannel_Wav: MixerChannel {
 	}
 };
 
+struct MixerChannel_S8Buffer: MixerChannel {
+	const uint8_t *_buf;
+	int _freq;
+	Frac _pos;
+	int _len;
+	int _loopPos;
+	int _loopLen;
+
+	virtual bool load(int rate) {
+		_len = READ_BE_UINT16(_buf) * 2;
+		_loopLen = READ_BE_UINT16(_buf + 2) * 2;
+		if (_loopLen != 0) {
+			_loopPos = _len;
+		}
+		_buf += 8; // skip header
+		_pos.offset = 0;
+		_pos.inc = (_freq << Frac::BITS) / (uint32_t)rate;
+		return true;
+	}
+	virtual bool readSample(int16_t &sampleL, int16_t &sampleR) {
+		int pos = _pos.offset >> Frac::BITS;
+		_pos.offset += _pos.inc;
+		if (_loopLen != 0) {
+			if (pos == _loopPos + _loopLen) {
+				pos = _loopPos;
+				_pos.offset = _loopPos << Frac::BITS;
+			}
+		} else {
+			if (pos == _len) {
+				return false;
+			}
+		}
+		sampleL = sampleR = _buf[pos] << 8; /* S8 to S16 */
+		return true;
+	}
+};
+
+struct MixerChannel_WavBuffer: MixerChannel {
+	const uint8_t *_buf;
+	Frac _pos;
+	WavInfo _wi;
+	int _size;
+
+	virtual bool load(int rate) {
+		memset(&_wi, 0, sizeof(_wi));
+		_wi.read(_buf);
+		_pos.offset = 0;
+		_pos.inc = (_wi._rate << Frac::BITS) / (uint32_t)rate;
+		_size = (_wi._channels == 2) ? 2 : 1;
+		if (_wi._bits == 16) {
+			_size *= 2;
+		}
+		return _wi._dataSize > 0;
+	}
+	virtual bool readSample(int16_t &sampleL, int16_t &sampleR) {
+		const int pos = _pos.offset >> Frac::BITS;
+		if (pos * _size >= _wi._dataSize) {
+			return false;
+		}
+		_pos.offset += _pos.inc;
+		int offset = pos * _size;
+		if (_wi._bits == 8) {
+			sampleL = (_wi._data[offset] ^ 0x80) << 8; /* U8 to S16 */
+			++offset;
+		} else {
+			sampleL = READ_LE_UINT16(_wi._data + offset);
+			offset += 2;
+		}
+		if (_wi._channels == 1) { /* mono */
+			sampleR = sampleL;
+		} else {
+			if (_wi._bits == 8) {
+				sampleR = (_wi._data[offset] ^ 0x80) << 8;
+			} else {
+				sampleR = READ_LE_UINT16(_wi._data + offset);
+			}
+		}
+		return true;
+	}
+};
+
 static int8_t addclamp(int a, int b) {
 	int add = a + b;
 	if (add < -128) {
 		add = -128;
-	}
-	else if (add > 127) {
+	} else if (add > 127) {
 		add = 127;
 	}
 	return (int8_t)add;
@@ -151,6 +203,7 @@ Mixer::Mixer(SystemStub *stub)
 
 void Mixer::init() {
 	memset(_channels, 0, sizeof(_channels));
+	memset(_volumes, 0, sizeof(_volumes));
 	_music = 0;
 	_stub->startAudio(Mixer::mixCallback, this);
 }
@@ -160,30 +213,48 @@ void Mixer::free() {
 	_stub->stopAudio();
 }
 
-void Mixer::playChannel(uint8_t channel, const MixerChunk *mc, uint16_t freq, uint8_t volume) {
+void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
 	debug(DBG_SND, "Mixer::playChannel(%d, %d, %d)", channel, freq, volume);
 	assert(channel < NUM_CHANNELS);
 	LockAudioStack las(_stub);
-	OldMixerChannel *ch = &_channels[channel];
-	ch->active = true;
-	ch->volume = volume;
-	ch->chunk = *mc;
-	ch->chunkPos = 0;
-	ch->chunkInc = (freq << 8) / _stub->getOutputSampleRate();
+	MixerChannel_S8Buffer *ch = new MixerChannel_S8Buffer;
+	ch->_buf = data;
+	ch->_freq = freq;
+	if (!ch->load(_stub->getOutputSampleRate())) {
+		delete ch;
+		return;
+	}
+	_channels[channel] = ch;
+	_volumes[channel] = volume;
 }
 
-void Mixer::stopChannel(uint8_t channel) {
+void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume) {
+	debug(DBG_SND, "Mixer::playSoundWav(%d, %d)", channel, volume);
+	LockAudioStack las(_stub);
+	delete _channels[channel];
+	MixerChannel_WavBuffer *ch = new MixerChannel_WavBuffer;
+	ch->_buf = data;
+	if (!ch->load(_stub->getOutputSampleRate())) {
+		delete ch;
+		return;
+	}
+	_channels[channel] = ch;
+	_volumes[channel] = volume;
+}
+
+void Mixer::stopSound(uint8_t channel) {
 	debug(DBG_SND, "Mixer::stopChannel(%d)", channel);
 	assert(channel < NUM_CHANNELS);
 	LockAudioStack las(_stub);
-	_channels[channel].active = false;
+	delete _channels[channel];
+	_channels[channel] = 0;
 }
 
 void Mixer::setChannelVolume(uint8_t channel, uint8_t volume) {
 	debug(DBG_SND, "Mixer::setChannelVolume(%d, %d)", channel, volume);
 	assert(channel < NUM_CHANNELS);
 	LockAudioStack las(_stub);
-	_channels[channel].volume = volume;
+	_volumes[channel] = volume;
 }
 
 void Mixer::playMusic(const char *path) {
@@ -222,6 +293,7 @@ void Mixer::playSfxMusic(int num) {
 
 void Mixer::stopSfxMusic() {
 	debug(DBG_SND, "Mixer::stopSfxMusic()");
+	LockAudioStack las(_stub);
 	if (_sfx) {
 		_sfx->stop();
 	}
@@ -231,8 +303,9 @@ void Mixer::stopAll() {
 	debug(DBG_SND, "Mixer::stopAll()");
 	LockAudioStack las(_stub);
 	for (uint8_t i = 0; i < NUM_CHANNELS; ++i) {
-		_channels[i].active = false;		
+		delete _channels[i];
 	}
+	memset(_channels, 0, sizeof(_channels));
 }
 
 void Mixer::mix(int8_t *buf, int len) {
@@ -253,47 +326,23 @@ void Mixer::mix(int8_t *buf, int len) {
 		_sfx->readSamples(buf, len);
 	}
 	for (uint8_t i = 0; i < NUM_CHANNELS; ++i) {
-		OldMixerChannel *ch = &_channels[i];
-		if (ch->active) {
+		MixerChannel *ch = _channels[i];
+		if (ch) {
 			int8_t *pBuf = buf;
 			for (int j = 0; j < len; ++j) {
-				uint16_t p1, p2;
-				uint16_t ilc = (ch->chunkPos & 0xFF);
-				p1 = ch->chunkPos >> 8;
-				ch->chunkPos += ch->chunkInc;
-				if (ch->chunk.loopLen != 0) {
-					if (p1 == ch->chunk.loopPos + ch->chunk.loopLen - 1) {
-						debug(DBG_SND, "Looping sample on channel %d", i);
-						ch->chunkPos = p2 = ch->chunk.loopPos;
-					} else {
-						p2 = p1 + 1;
-					}
-				} else {
-					if (p1 == ch->chunk.len - 1) {
-						debug(DBG_SND, "Stopping sample on channel %d", i);
-						ch->active = false;
-						break;
-					} else {
-						p2 = p1 + 1;
-					}
+				int16_t sbuf[2];
+				if (!ch->readSample(sbuf[0], sbuf[1])) {
+					delete ch;
+					_channels[i] = 0;
+					break;
 				}
-				if (ch->chunk.fmt == MixerChunk::FMT_S16) { /* S16 to S8, skip LSB */
-					p1 = (p1 * 2) + 1;
-					p2 = (p2 * 2) + 1;
-				}
-				// interpolate
-				int8_t b1 = *(int8_t *)(ch->chunk.data + p1);
-				int8_t b2 = *(int8_t *)(ch->chunk.data + p2);
-				if (ch->chunk.fmt == MixerChunk::FMT_U8) { /* U8 to S8 */
-					b1 ^= 0x80;
-					b2 ^= 0x80;
-				}
-				int8_t b = (int8_t)((b1 * (0xFF - ilc) + b2 * ilc) >> 8);
-				// set volume and clamp
-				pBuf[0] = addclamp(pBuf[0], (int)b * ch->volume / 0x40);
-				// stereo samples
-				pBuf[1] = pBuf[0];
-				pBuf += 2;
+				int16_t sample;
+				sample = (sbuf[0] >> 8) * _volumes[i] / 64;
+				*pBuf = addclamp(sample, *pBuf);
+				++pBuf;
+				sample = (sbuf[1] >> 8) * _volumes[i] / 64;
+				*pBuf = addclamp(sample, *pBuf);
+				++pBuf;
 			}
 		}
 	}
