@@ -51,15 +51,21 @@ void Script::op_add() {
 }
 
 void Script::op_addConst() {
-	if (_res->_currentPart == 16006 && _scriptPtr.pc == _res->_segCode + 0x6D48) {
-		warning("Script::op_addConst() hack for non-stop looping gun sound bug");
-		// the script 0x27 slot 0x17 doesn't stop the gun sound from looping, I 
-		// don't really know why ; for now, let's play the 'stopping sound' like 
-		// the other scripts do
-		//  (0x6D43) jmp(0x6CE5)
-		//  (0x6D46) break
-		//  (0x6D47) VAR(0x06) += -50
-		snd_playSound(0x5B, 1, 64, 1);
+	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
+		if (_res->_currentPart == 16006 && _scriptPtr.pc == _res->_segCode + 0x6D48) {
+			warning("Script::op_addConst() hack for non-stop looping gun sound bug");
+			// The script 0x27 slot 0x17 doesn't stop the gun sound from looping.
+			// This is a bug in the original game code, confirmed by Eric Chahi and
+			// addressed with the anniversary editions.
+			// For older releases (DOS, Amiga), we play the 'stop' sound like it is
+			// done in other part of the game code.
+			//
+			//  (0x6D43) jmp(0x6CE5)
+			//  (0x6D46) break
+			//  (0x6D47) VAR(0x06) += -50
+			//
+			snd_playSound(0x5B, 1, 64, 1);
+		}
 	}
 	uint8_t i = _scriptPtr.fetchByte();
 	int16_t n = _scriptPtr.fetchWord();
