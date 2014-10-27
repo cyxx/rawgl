@@ -9,7 +9,6 @@
 #include <vector>
 #include "file.h"
 #include "graphics.h"
-#include "scaler.h"
 #include "systemstub.h"
 
 static int _render = RENDER_GL;
