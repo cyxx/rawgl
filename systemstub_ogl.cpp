@@ -335,6 +335,7 @@ struct SystemStub_OGL : SystemStub {
 	virtual ~SystemStub_OGL() {}
 	virtual void init(const char *title);
 	virtual void destroy();
+	virtual int getRenderMode() const { return _render; }
 	virtual void setFont(const uint8_t *font);
 	virtual void setPalette(const Color *colors, uint8_t n);
 	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize);

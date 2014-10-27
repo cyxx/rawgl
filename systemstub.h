@@ -48,6 +48,8 @@ struct SystemStub {
 	virtual void init(const char *title) = 0;
 	virtual void destroy() = 0;
 
+	virtual int getRenderMode() const = 0;
+
 	virtual void setFont(const uint8_t *font) = 0;
 	virtual void setPalette(const Color *colors, uint8_t n) = 0;
 	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize) = 0;
