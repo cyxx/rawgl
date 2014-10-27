@@ -77,12 +77,6 @@ void Engine::finish() {
 }
 
 void Engine::processInput() {
-	if (_stub->_pi.load) {
-		_stub->_pi.load = false;
-	}
-	if (_stub->_pi.save) {
-		_stub->_pi.save = false;
-	}
 	if (_stub->_pi.fastMode) {
 		_log._fastMode = !_log._fastMode;
 		_stub->_pi.fastMode = false;
