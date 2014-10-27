@@ -552,8 +552,6 @@ void SystemStub_OGL::setFont(const uint8_t *font) {
 	}
 }
 
-static void drawBackgroundTexture(int count, const Point *vertices);
-
 void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 	assert(n <= 16);
 	for (int i = 0; i < n; ++i) {
@@ -721,8 +719,6 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data) {
 	_drawLists[listNum].clear(COL_BMP);
 }
 
-static void drawFontChar(uint8_t ch, int x, int y, GLuint tex);
-
 void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {
 	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
 
@@ -821,7 +817,16 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 		};
 		drawTexQuad(pos, uv, _fontTex._id);
 	} else {
-		drawFontChar(c, pt->x, pt->y, _fontTex._id);
+		const int pos[4] = {
+			pt->x - 8, pt->y,
+			pt->x, pt->y + 8
+		};
+		float uv[4];
+		uv[0] = (c % 16) * 16 / 256.;
+		uv[2] = uv[0] + 16 / 256.;
+		uv[1] = (16 - c / 16) * 16 / 256.;
+		uv[3] = uv[1] - 16 / 256.;
+		drawTexQuad(pos, uv, _fontTex._id);
 	}
 
 	glLoadIdentity();
@@ -947,30 +952,6 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 
 	_drawLists[dstListNum] = _drawLists[srcListNum];
 	_drawLists[dstListNum].yOffset = vscroll;
-}
-
-static void drawFontChar(uint8_t ch, int x, int y, GLuint tex) {
-	const int x1 = x;
-	const int x2 = x1 + 8;
-	const int y1 = y;
-	const int y2 = y1 + 8;
-	const float u1 = (ch % 16) * 16 / 256.;
-	const float u2 = u1 + 16 / 256.;
-	const float v1 = (16 - ch / 16) * 16 / 256.;
-	const float v2 = v1 - 16 / 256.;
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glBegin(GL_QUADS);
-		glTexCoord2f(u1, v1);
-		glVertex2i(x1, y1);
-		glTexCoord2f(u2, v1);
-		glVertex2i(x2, y1);
-		glTexCoord2f(u2, v2);
-		glVertex2i(x2, y2);
-		glTexCoord2f(u1, v2);
-		glVertex2i(x1, y2);
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
 }
 
 void SystemStub_OGL::blitList(uint8_t listNum) {
