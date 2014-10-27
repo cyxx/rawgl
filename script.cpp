@@ -8,7 +8,6 @@
 #include "script.h"
 #include "mixer.h"
 #include "resource.h"
-#include "resource_nth.h"
 #include "video.h"
 #include "sfxplayer.h"
 #include "systemstub.h"
@@ -584,12 +583,11 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION) {
 		if (resNum == 0) {
 			_mix->stopMusic();
-		} else if (_res->_nth) {
-			const char *name = _res->_nth->getMusicPath(resNum);
-			if (name) {
-				char path[512];
-				snprintf(path, sizeof(path), "%s/%s", _res->_dataDir, name);
-				_mix->playMusic(path);
+		} else {
+			char path[512];
+			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
+			if (p) {
+				_mix->playMusic(p);
 			}
 		}
 		return;

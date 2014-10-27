@@ -318,6 +318,17 @@ const char *Resource::getString(int num) {
 	return 0;
 }
 
+const char *Resource::getMusicPath(int num, char *buf, int bufSize) {
+	if (_nth) {
+		const char *name = _nth->getMusicPath(num);
+		if (name) {
+			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
+			return buf;
+		}
+	}
+	return 0;
+}
+
 void Resource::setupPart(int ptrId) {
 	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
