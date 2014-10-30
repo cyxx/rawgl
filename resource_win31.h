@@ -22,6 +22,7 @@ struct ResourceWin31 {
 	int _entriesCount;
 
 	ResourceWin31(const char *dataPath);
+	~ResourceWin31();
 
 	void readEntries();
 };

@@ -41,6 +41,10 @@ ResourceWin31::ResourceWin31(const char *dataPath)
 	_f.open(FILENAME, dataPath);
 }
 
+ResourceWin31::~ResourceWin31() {
+	free(_entries);
+}
+
 void ResourceWin31::readEntries() {
 	uint8_t buf[32];
 	const int count = _f.read(buf, sizeof(buf));
@@ -55,11 +59,13 @@ void ResourceWin31::readEntries() {
 				key = decode(buf, sizeof(buf), key);
 				Win31BankEntry *e = &_entries[i];
 				memcpy(e->name, buf, 16);
+				const uint16_t flags = READ_LE_UINT16(buf + 16);
 				e->type = buf[19];
 				e->size = READ_LE_UINT32(buf + 20);
 				e->offset = READ_LE_UINT32(buf + 24);
 				e->packedSize = READ_LE_UINT32(buf + 28);
 				debug(DBG_INFO, "Res #%03d '%s' type %d size %d (%d) offset 0x%x", i, e->name, e->type, e->size, e->packedSize, e->offset);
+				assert(e->size == 0 || flags == 0x80);
 			}
 		}
 	}
