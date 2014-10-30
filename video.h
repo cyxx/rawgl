@@ -28,6 +28,7 @@ struct Video {
 	Resource *_res;
 	SystemStub *_stub;
 	bool _hasHeadSprites;
+	bool _displayHead;
 
 	uint8_t _nextPal, _currentPal;
 	uint8_t _listPtrs[3];

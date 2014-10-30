@@ -10,7 +10,7 @@
 
 
 Video::Video(Resource *res, SystemStub *stub) 
-	: _res(res), _stub(stub), _hasHeadSprites(false) {
+	: _res(res), _stub(stub), _hasHeadSprites(false), _displayHead(true) {
 }
 
 void Video::init() {
@@ -102,7 +102,7 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 		uint16_t color = 0xFF;
 		if (off & 0x8000) {
 			color = *_pData.pc & 0x7F;
-			if (_hasHeadSprites && _stub->getRenderMode() != RENDER_ORIGINAL) {
+			if (_hasHeadSprites && _stub->getRenderMode() != RENDER_ORIGINAL && _displayHead) {
 				const int id = _pData.pc[1];
 				switch (id) {
 				case 0x4A: { // facing right
