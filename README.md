@@ -21,9 +21,9 @@ To start the game, you can either :
 
 In game hotkeys :
 
-    Arrow Keys      allow you to move Lester 
-    Enter/Space     allow you run/shoot with your gun 
-    C               allow to enter a code to jump at a specific level 
+    Arrow Keys      move Lester
+    Enter/Space     run/shoot
+    C               enter a code to jump at a specific level
     P               pause the game 
     Alt X           exit the game 
     Ctrl F          toggle fast mode 
