@@ -533,9 +533,9 @@ void Script::inp_handleSpecialKeys() {
 	if (_stub->_pi.pause) {
 		if (_res->_currentPart != 16000 && _res->_currentPart != 16001) {
 			_stub->_pi.pause = false;
-			while (!_stub->_pi.pause) {
+			while (!_stub->_pi.pause && !_stub->_pi.quit) {
 				_stub->processEvents();
-				_stub->sleep(200);
+				_stub->sleep(50);
 			}
 		}
 		_stub->_pi.pause = false;
