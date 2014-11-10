@@ -368,6 +368,10 @@ void Script::op_playMusic() {
 void Script::restartAt(int part, int pos) {
 	_ply->stop();
 	_mix->stopAll();
+	if (_res->getDataType() == Resource::DT_20TH_EDITION && part != 16001) {
+		// based on the scripts disassembly, this enables playback of sounds resnum >= 146
+		_scriptVars[0xDE] = 1;
+	}
 	_scriptVars[0xE4] = 0x14;
 	_res->setupPart(part);
 	memset(_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
