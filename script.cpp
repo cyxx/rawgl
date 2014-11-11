@@ -369,7 +369,11 @@ void Script::restartAt(int part, int pos) {
 	_ply->stop();
 	_mix->stopAll();
 	if (_res->getDataType() == Resource::DT_20TH_EDITION && part != 16001) {
-		// based on the scripts disassembly, this enables playback of sounds resnum >= 146
+		// difficulty (0 to 2)
+		_scriptVars[0xBF] = 1;
+		// mute sounds and enable resnum >= 2000
+//		_scriptVars[0xDB] = 1;
+		// playback sounds resnum >= 146
 		_scriptVars[0xDE] = 1;
 	}
 	_scriptVars[0xE4] = 0x14;
