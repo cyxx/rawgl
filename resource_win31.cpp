@@ -37,20 +37,23 @@ static uint16_t decode(uint8_t *p, int size, uint16_t key) {
 const char *ResourceWin31::FILENAME = "BANK";
 
 ResourceWin31::ResourceWin31(const char *dataPath)
-	:  _entries(0), _entriesCount(0) {
+	:  _dataPath(dataPath), _entries(0), _entriesCount(0) {
 	_f.open(FILENAME, dataPath);
+	_textBuf = 0;
+	memset(_stringsTable, 0, sizeof(_stringsTable));
 }
 
 ResourceWin31::~ResourceWin31() {
 	free(_entries);
+	free(_textBuf);
 }
 
-void ResourceWin31::readEntries() {
+bool ResourceWin31::readEntries() {
 	uint8_t buf[32];
 	const int count = _f.read(buf, sizeof(buf));
 	if (count == 32 && memcmp(buf, "NL\00\00", 4) == 0) {
 		_entriesCount = READ_LE_UINT16(buf + 4);
-		debug(DBG_INFO, "Read %d entries in win31 '%s'", _entriesCount, FILENAME);
+		debug(DBG_RESOURCE, "Read %d entries in win31 '%s'", _entriesCount, FILENAME);
 		_entries = (Win31BankEntry *)calloc(_entriesCount, sizeof(Win31BankEntry));
 		if (_entries) {
 			uint16_t key = READ_LE_UINT16(buf + 0x14);
@@ -64,9 +67,61 @@ void ResourceWin31::readEntries() {
 				e->size = READ_LE_UINT32(buf + 20);
 				e->offset = READ_LE_UINT32(buf + 24);
 				e->packedSize = READ_LE_UINT32(buf + 28);
-				debug(DBG_INFO, "Res #%03d '%s' type %d size %d (%d) offset 0x%x", i, e->name, e->type, e->size, e->packedSize, e->offset);
+				debug(DBG_RESOURCE, "Res #%03d '%s' type %d size %d (%d) offset 0x%x", i, e->name, e->type, e->size, e->packedSize, e->offset);
 				assert(e->size == 0 || flags == 0x80);
 			}
+			readStrings();
 		}
 	}
+	return _entries != 0;
+}
+
+uint8_t *ResourceWin31::loadEntry(int num, uint8_t *dst, uint32_t *size) {
+	if (num > 0 && num < _entriesCount) {
+		Win31BankEntry *e = &_entries[num];
+		*size = e->size;
+		if (!dst) {
+			dst = (uint8_t *)malloc(e->size);
+			if (!dst) {
+				warning("Unable to allocate %d bytes", e->size);
+				return 0;
+			}
+		}
+		// check for unpacked data
+		char name[32];
+		snprintf(name, sizeof(name), "%03d_%s", num, e->name);
+		File f;
+		if (f.open(name, _dataPath) && f.size() == e->size) {
+			f.read(dst, e->size);
+			return dst;
+		}
+		// TODO: add decoder code
+	}
+	warning("Unable to load resource #%d", num);
+	return 0;
+}
+
+void ResourceWin31::readStrings() {
+	int count = 0;
+	uint32_t len, offset = 0;
+	_textBuf = loadEntry(148, 0, &len);
+	while (1) {
+		const uint32_t sep = READ_LE_UINT32(_textBuf + offset); offset += 4;
+		const uint16_t num = sep >> 16;
+		if (num == 0xFFFF) {
+			break;
+		}
+		if (num < ARRAYSIZE(_stringsTable)) {
+			_stringsTable[num] = (const char *)_textBuf + offset;
+		}
+		while (offset < len && _textBuf[offset++] != 0);
+		// strings are not always '\0' terminated
+		if (_textBuf[offset + 1] != 0) {
+			--offset;
+		}
+	}
+}
+
+const char *ResourceWin31::getString(int num) const {
+	return _stringsTable[num];
 }

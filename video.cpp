@@ -1,4 +1,3 @@
-
 /*
  * Another World engine rewrite
  * Copyright (C) 2004-2005 Gregory Montoir (cyx@users.sourceforge.net)
@@ -166,6 +165,8 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 	} else if (_res->getDataType() == Resource::DT_20TH_EDITION) {
 		str = findString20th(_res, strId);
 		escapedChars = true;
+	} else if (_res->getDataType() == Resource::DT_WIN31) {
+		str = _res->getString(strId);
 	} else {
 		str = findString(_stringsTable, strId);
 	}
@@ -273,18 +274,37 @@ void Video::copyBitmapPtr(const uint8_t *src) {
 	_stub->addBitmapToList(0, src);
 }
 
+static void readPaletteWin31(const uint8_t *buf, int num, Color pal[16]) {
+	const uint8_t *p = buf + num * 16 * sizeof(uint16_t);
+	for (int i = 0; i < 16; ++i) {
+		const uint16_t index = READ_LE_UINT16(p); p += 2;
+		const uint32_t color = READ_LE_UINT32(buf + 0xC04 + index * sizeof(uint32_t));
+		pal[i].r =  color        & 255;
+		pal[i].g = (color >>  8) & 255;
+		pal[i].b = (color >> 16) & 255;
+	}
+}
+
+static void readPaletteAmiga(const uint8_t *buf, int num, Color pal[16]) {
+	const uint8_t *p = buf + num * 16 * sizeof(uint16_t);
+	for (int i = 0; i < 16; ++i) {
+		const uint16_t color = READ_BE_UINT16(p); p += 2;
+		const uint8_t r = (color >> 8) & 0xF;
+		const uint8_t g = (color >> 4) & 0xF;
+		const uint8_t b =  color       & 0xF;
+		pal[i].r = (r << 4) | r;
+		pal[i].g = (g << 4) | g;
+		pal[i].b = (b << 4) | b;
+	}
+}
+
 void Video::changePal(uint8_t palNum) {
 	if (palNum < 32 && palNum != _currentPal) {
-		uint8_t *p = _res->_segVideoPal + palNum * 32;
 		Color pal[16];
-		for (int i = 0; i < 16; ++i) {
-			const uint16_t color = READ_BE_UINT16(p); p += 2;
-			const uint8_t r = (color >> 8) & 0xF;
-			const uint8_t g = (color >> 4) & 0xF;
-			const uint8_t b =  color       & 0xF;
-			pal[i].r = (r << 4) | r;
-			pal[i].g = (g << 4) | g;
-			pal[i].b = (b << 4) | b;
+		if (_res->getDataType() == Resource::DT_WIN31) {
+			readPaletteWin31(_res->_segVideoPal, palNum, pal);
+		} else {
+			readPaletteAmiga(_res->_segVideoPal, palNum, pal);
 		}
 		_stub->setPalette(pal, 16);
 		_currentPal = palNum;

@@ -29,6 +29,7 @@ struct AmigaMemEntry {
 };
 
 struct ResourceNth;
+struct ResourceWin31;
 struct Serializer;
 struct Video;
 
@@ -80,6 +81,7 @@ struct Resource {
 	const char *_bankPrefix;
 	DataType _dataType;
 	ResourceNth *_nth;
+	ResourceWin31 *_win31;
 
 	Resource(Video *vid, const char *dataDir);
 	~Resource();

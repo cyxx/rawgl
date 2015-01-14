@@ -17,6 +17,7 @@ enum {
 	DBG_SER   = 1 << 4,
 	DBG_INFO  = 1 << 5,
 	DBG_PAK   = 1 << 6,
+	DBG_RESOURCE = 1 << 7,
 };
 
 enum Language {

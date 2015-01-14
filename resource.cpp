@@ -14,7 +14,7 @@
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0) {
+	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0) {
 	_bankPrefix = "bank";
 	memset(_memList, 0, sizeof(_memList));
 	_numMemList = 0;
@@ -22,6 +22,7 @@ Resource::Resource(Video *vid, const char *dataDir)
 
 Resource::~Resource() {
 	delete _nth;
+	delete _win31;
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -124,9 +125,11 @@ void Resource::readEntries() {
 			}
 		}
 	} else if (_dataType == DT_WIN31) {
-		ResourceWin31 r(_dataDir);
-		r.readEntries();
-		// error out for now
+		_numMemList = ENTRIES_COUNT;
+		_win31 = new ResourceWin31(_dataDir);
+		if (_win31->readEntries()) {
+			return;
+		}
 	}
 	error("No data files found in '%s'", _dataDir);
 }
@@ -216,7 +219,7 @@ static const int _memListBmp[] = {
 };
 
 void Resource::update(uint16_t num) {
-	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION) {
+	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31) {
 		if (num > 16000) {
 			_nextPart = num;
 		} else if (num >= 3000) {
@@ -255,6 +258,16 @@ void Resource::loadBmp(int num) {
 			free(p);
 		}
 	}
+	if (_win31) {
+		uint32_t size;
+		uint8_t *p = _win31->loadEntry(num, 0, &size);
+		if (p) {
+			if (size == 64000) {
+				_vid->copyBitmapPtr(p);
+			}
+			free(p);
+		}
+	}
 }
 
 uint8_t *Resource::loadDat(int num) {
@@ -262,14 +275,17 @@ uint8_t *Resource::loadDat(int num) {
 		return _memList[num].bufPtr;
 	}
 	uint8_t *p = 0;
+	uint32_t size;
 	if (_nth) {
-		uint32_t size;
 		p = _nth->loadDat(num, _scriptCurPtr, &size);
-		if (p) {
-			_scriptCurPtr += size;
-			_memList[num].bufPtr = p;
-			_memList[num].status = STATUS_LOADED;
-		}
+	}
+	if (_win31) {
+		p = _win31->loadEntry(num, _scriptCurPtr, &size);
+	}
+	if (p) {
+		_scriptCurPtr += size;
+		_memList[num].bufPtr = p;
+		_memList[num].status = STATUS_LOADED;
 	}
 	return p;
 }
@@ -299,14 +315,17 @@ uint8_t *Resource::loadWav(int num) {
 		return _memList[num].bufPtr;
 	}
 	uint8_t *p = 0;
+	uint32_t size;
 	if (_nth) {
-		uint32_t size;
 		p = _nth->loadWav(num, _scriptCurPtr, &size);
-		if (p) {
-			_scriptCurPtr += size;
-			_memList[num].bufPtr = p;
-			_memList[num].status = STATUS_LOADED;
-		}
+	}
+	if (_win31) {
+		p = _win31->loadEntry(num, _scriptCurPtr, &size);
+	}
+	if (p) {
+		_scriptCurPtr += size;
+		_memList[num].bufPtr = p;
+		_memList[num].status = STATUS_LOADED;
 	}
 	return p;
 }
@@ -314,6 +333,9 @@ uint8_t *Resource::loadWav(int num) {
 const char *Resource::getString(int num) {
 	if (_nth) {
 		return _nth->getString(LANG_US, num);
+	}
+	if (_win31) {
+		return _win31->getString(num);
 	}
 	return 0;
 }
@@ -330,7 +352,7 @@ const char *Resource::getMusicPath(int num, char *buf, int bufSize) {
 }
 
 void Resource::setupPart(int ptrId) {
-	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION) {
+	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
 			invalidateAll();
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };
