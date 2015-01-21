@@ -34,6 +34,266 @@ static uint16_t decode(uint8_t *p, int size, uint16_t key) {
 	return key;
 }
 
+struct Bitstream {
+	File *_f;
+	int _size;
+	uint16_t _bits;
+	int _len;
+	uint16_t _value;
+
+	bool eos() const {
+		return _size <= 0;
+	}
+
+	bool refill() {
+		while (_len <= 8) {
+			if (eos()) {
+				return false;
+			}
+			const uint8_t b = _f->readByte();
+			--_size;
+			_value |= b << (8 - _len);
+			_len += 8;
+		}
+		return true;
+	}
+	uint8_t readByte() {
+		assert(_len >= 8);
+		const uint8_t b = _value >> 8;
+		_value <<= 8;
+		_len -= 8;
+		return b;
+	}
+	bool readBit() {
+		assert(_len > 0);
+		const bool carry = (_value & 0x8000) != 0;
+		_value <<= 1;
+		--_len;
+		return carry;
+	}
+};
+
+struct Buffer {
+	uint16_t _buf[0x894];
+
+	Buffer() {
+		memset(_buf, 0, sizeof(_buf));
+	}
+
+	int fixAddr(int addr) {
+		const uint32_t in = addr;
+		assert((addr & 1) == 0);
+		addr /= 2;
+		assert(addr >= 0x4A30 && addr < 0x52C4);
+		return addr - 0x4A30;
+	}
+	int getWord(uint16_t addr) {
+		return _buf[fixAddr(addr)];
+	}
+	void setWord(uint16_t addr, int value) {
+		_buf[fixAddr(addr)] = value;
+	}
+};
+
+struct OotwmmDll {
+
+	Bitstream _bs;
+	Buffer _mem;
+	uint8_t _window[0x1000];
+	uint8_t _windowCodeOffsets[0x100];
+
+	void buildDecodeTable1();
+	void buildDecodeTable2();
+	int readWindowOffset();
+	void updateCode0x8000();
+	void updateCodesTable(int num);
+	bool decompressEntry(File &f, const Win31BankEntry *e, uint8_t *dst);
+};
+
+static const uint8_t _windowCodeLengths[0x10] = { 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6 };
+
+void OotwmmDll::buildDecodeTable1() {
+	static const uint8_t byte_9E2[] = { 1, 3, 8, 0xC, 0x18, 0x10 };
+	int count = 0;
+	int val = 0;
+	int mask = 0x20;
+	uint8_t *p = _windowCodeOffsets;
+	do {
+		assert(count < 6);
+		for (int i = 0; i < byte_9E2[count]; ++i) {
+			memset(p, val, mask);
+			p += mask;
+			++val;
+		}
+		++count;
+		mask >>= 1;
+	} while (mask != 0);
+}
+
+void OotwmmDll::buildDecodeTable2() {
+	for (int i = 0; i < 314; ++i) {
+		_mem.setWord(i * 2 - 0x6BA0, 1);
+		_mem.setWord(i * 2 - 0x61D2, i);
+		_mem.setWord(i * 2 - 0x5F5E, 627 + i);
+	}
+	int _di = 0;
+	for (int i = 628; i < 1254; i += 2) {
+		_mem.setWord(i - 0x6BA0, _mem.getWord(_di - 0x6BA0) + _mem.getWord(_di - 0x6B9E));
+		_mem.setWord(i - 0x5F5E, _di >> 1);
+		_mem.setWord(_di - 0x66B8, i >> 1);
+		_mem.setWord(_di - 0x66B6, i >> 1);
+		_di += 4;
+	}
+	_mem.setWord(0x9946, 0xFFFF);
+	_mem.setWord(0x9E2C, 0);
+}
+
+int OotwmmDll::readWindowOffset() {
+	_bs.refill();
+	int val = _bs.readByte();
+	const int offset = _windowCodeOffsets[val] << 6;
+	const int count = _windowCodeLengths[val >> 4];
+	assert(count <= 6);
+	for (int i = 0; i < count; ++i) {
+		_bs.refill();
+		val <<= 1;
+		if (_bs.readBit()) {
+			val |= 1;
+		}
+	}
+	return offset | (val & 0x3F);
+}
+
+void OotwmmDll::updateCode0x8000() {
+	int _si = 0xA0A2;
+	int ndx = 0;
+	for (int i = 0; i < 627; ++i) {
+		int code = _mem.getWord(_si); _si += 2;
+		if (code >= 627) {
+			int code2 = _mem.getWord(_si - 0xC44);
+			_mem.setWord(ndx - 0x6BA0, (code2 + 1) >> 1);
+			_mem.setWord(ndx - 0x5F5E, code);
+			ndx += 2;
+		}
+	}
+	for (int i = 0; i < 313; ++i) {
+		int _di = i * 4;
+		int ndx = 628 + i * 2;
+		int _si = ndx;
+		int code = _mem.getWord(_di - 0x6B9E) + _mem.getWord(_di - 0x6BA0);
+		_mem.setWord(ndx - 0x6BA0, code);
+		do {
+			ndx -= 2;
+		} while (code < _mem.getWord(ndx - 0x6BA0));
+		ndx += 2;
+		_si -= ndx;
+		if (_si > 0) {
+			do {
+				_mem.setWord(ndx + _si - 0x6BA0, _mem.getWord(ndx + _si - 0x6BA2));
+				_mem.setWord(ndx + _si - 0x5F5E, _mem.getWord(ndx + _si - 0x5F60));
+				_si -= 2;
+			} while (_si != 0);
+		}
+		_mem.setWord(ndx - 0x6BA0, code);
+		_mem.setWord(ndx - 0x5F5E, _di >> 1);
+	}
+	for (int i = 0; i < 627; ++i) {
+		int _di = _mem.getWord(i * 2 - 0x5F5E);
+		_di = 0x9948 + _di * 2;
+		assert(_di >= 0x9948);
+		_mem.setWord(_di, i);
+		_di += 2;
+		if (_di < 0x9E30) {
+			_mem.setWord(_di, i);
+		}
+	}
+}
+
+void OotwmmDll::updateCodesTable(int num) {
+	const int val = _mem.getWord(0x9944);
+	if (val == 0x8000) {
+		updateCode0x8000();
+	}
+	int ndx = _mem.getWord(num * 2 - 0x61D2);
+	do {
+		ndx *= 2;
+		_mem.setWord(ndx - 0x6BA0, _mem.getWord(ndx - 0x6BA0) + 1);
+		int code = _mem.getWord(ndx - 0x6BA0);
+		int _si = ndx + 2;
+		if (code > _mem.getWord(_si - 0x6BA0)) {
+			do {
+				_si += 2;
+			} while (code > _mem.getWord(_si - 0x6BA0));
+			_si -= 2;
+			_mem.setWord(ndx - 0x6BA0, _mem.getWord(_si - 0x6BA0));
+			_mem.setWord(_si - 0x6BA0, code);
+			int _di = _mem.getWord(ndx - 0x5F5E) * 2;
+			_mem.setWord(_di - 0x66B8, _si >> 1);
+			if (_di < 1254) {
+				_mem.setWord(_di - 0x66B6, _si >> 1);
+			}
+			const int code2 = _di >> 1;
+			_di = _mem.getWord(_si - 0x5F5E) * 2;
+			_mem.setWord(_si - 0x5F5E, code2);
+			_mem.setWord(_di - 0x66B8, ndx >> 1);
+			if (_di < 1254) {
+				_mem.setWord(_di - 0x66B6, ndx >> 1);
+			}
+			_mem.setWord(ndx - 0x5F5E, _di >> 1);
+			ndx = _si;
+		}
+		ndx = _mem.getWord(ndx - 0x66B8);
+	} while (ndx != 0);
+}
+
+bool OotwmmDll::decompressEntry(File &f, const Win31BankEntry *e, uint8_t *out) {
+	f.seek(e->offset);
+	memset(&_bs, 0, sizeof(_bs));
+	_bs._f = &f;
+	_bs._size = e->packedSize;
+
+	memset(_window, 0x20, sizeof(_window));
+	int windowSize = 4078;
+	int decompressedSize = e->size;
+
+	buildDecodeTable1();
+	buildDecodeTable2();
+
+	int size = 0;
+	while (size < decompressedSize) {
+		int code = _mem.getWord(0xA586);
+		while (code < 627) {
+			_bs.refill();
+			if (_bs.readBit()) {
+				++code;
+			}
+			code <<= 1;
+			code = _mem.getWord(code - 0x5F5E);
+		}
+		code -= 627;
+		updateCodesTable(code);
+		int code2 = code;
+		if ((code2 >> 8) == 0) {
+			const uint8_t val = code2 & 255;
+			_window[windowSize] = val;
+			windowSize = (windowSize + 1) & 0xFFF;
+			out[size++] = val;
+		} else {
+			int count = code2 - 253;
+			const int offset = readWindowOffset();
+			code = (windowSize - offset - 1) & 0xFFF;
+			do {
+				const uint8_t val = _window[code];
+				code = (code + 1) & 0xFFF;
+				_window[windowSize] = val;
+				windowSize = (windowSize + 1) & 0xFFF;
+				out[size++] = val;
+			} while (--count != 0 && size < decompressedSize);
+                }
+	}
+	return size == decompressedSize;
+}
+
 const char *ResourceWin31::FILENAME = "BANK";
 
 ResourceWin31::ResourceWin31(const char *dataPath)
@@ -41,11 +301,13 @@ ResourceWin31::ResourceWin31(const char *dataPath)
 	_f.open(FILENAME, dataPath);
 	_textBuf = 0;
 	memset(_stringsTable, 0, sizeof(_stringsTable));
+	_dll = new OotwmmDll;
 }
 
 ResourceWin31::~ResourceWin31() {
 	free(_entries);
 	free(_textBuf);
+	delete _dll;
 }
 
 bool ResourceWin31::readEntries() {
@@ -95,7 +357,9 @@ uint8_t *ResourceWin31::loadEntry(int num, uint8_t *dst, uint32_t *size) {
 			f.read(dst, e->size);
 			return dst;
 		}
-		// TODO: add decoder code
+		if (_dll->decompressEntry(_f, e, dst)) {
+			return dst;
+		}
 	}
 	warning("Unable to load resource #%d", num);
 	return 0;

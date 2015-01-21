@@ -13,6 +13,8 @@ struct Win31BankEntry {
 	uint32_t packedSize;
 };
 
+struct OotwmmDll;
+
 struct ResourceWin31 {
 
 	static const char *FILENAME;
@@ -23,6 +25,7 @@ struct ResourceWin31 {
 	int _entriesCount;
 	uint8_t *_textBuf;
 	const char *_stringsTable[614];
+	OotwmmDll *_dll;
 
 	ResourceWin31(const char *dataPath);
 	~ResourceWin31();
