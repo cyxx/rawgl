@@ -66,23 +66,6 @@ struct SystemStub {
 	virtual void processEvents() = 0;
 	virtual void sleep(uint32_t duration) = 0;
 	virtual uint32_t getTimeStamp() = 0;
-
-	virtual void startAudio(AudioCallback callback, void *param) = 0;
-	virtual void stopAudio() = 0;
-	virtual uint32_t getOutputSampleRate() = 0;
-	virtual void lockAudio() = 0;
-	virtual void unlockAudio() = 0;
-};
-
-struct LockAudioStack {
-	LockAudioStack(SystemStub *stub)
-		: _stub(stub) {
-		_stub->lockAudio();
-	}
-	~LockAudioStack() {
-		_stub->unlockAudio();
-	}
-	SystemStub *_stub;
 };
 
 extern SystemStub *SystemStub_OGL_create(const char *name);

@@ -9,27 +9,16 @@
 
 #include "intern.h"
 
-struct MixerChannel;
 struct SfxPlayer;
-struct SystemStub;
 struct Mixer_impl;
 
 struct Mixer {
-	enum {
-		NUM_CHANNELS = 4
-	};
-
 	SfxPlayer *_sfx;
-	SystemStub *_stub;
-	MixerChannel *_channels[NUM_CHANNELS];
-	int _volumes[NUM_CHANNELS];
-	MixerChannel *_music;
-
 	Mixer_impl *_impl;
 
-	Mixer(SystemStub *stub);
+	Mixer(SfxPlayer *sfx);
 	void init();
-	void free();
+	void quit();
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume);
 	void playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume);
@@ -40,9 +29,6 @@ struct Mixer {
 	void playSfxMusic(int num);
 	void stopSfxMusic();
 	void stopAll();
-	void mix(int8_t *buf, int len);
-
-	static void mixCallback(void *param, uint8_t *buf, int len);
 };
 
 #endif

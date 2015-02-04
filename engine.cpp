@@ -10,7 +10,7 @@
 
 
 Engine::Engine(SystemStub *stub, const char *dataDir, int partNum)
-	: _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(_stub), _res(&_vid, dataDir), 
+	: _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(&_ply), _res(&_vid, dataDir),
 	_ply(&_res), _vid(&_res, stub), _dataDir(dataDir), _partNum(partNum) {
 }
 
@@ -67,12 +67,11 @@ void Engine::setup() {
 	}
 	_log.init();
 	_mix.init();
-	_mix._sfx = &_ply;
 }
 
 void Engine::finish() {
 	_ply.stop();
-	_mix.free();
+	_mix.quit();
 	_res.freeMemBlock();
 }
 

@@ -309,7 +309,6 @@ struct SystemStub_OGL : SystemStub {
 	enum {
 		DEF_SCREEN_W = 800,
 		DEF_SCREEN_H = 600,
-		SOUND_SAMPLE_RATE = 22050,
 		NUM_LISTS = 4,
 	};
 
@@ -349,11 +348,6 @@ struct SystemStub_OGL : SystemStub {
 	virtual void processEvents();
 	virtual void sleep(uint32_t duration);
 	virtual uint32_t getTimeStamp();
-	virtual void startAudio(AudioCallback callback, void *param);
-	virtual void stopAudio();
-	virtual uint32_t getOutputSampleRate();
-	virtual void lockAudio();
-	virtual void unlockAudio();
 
 	bool initFBO();
 	void initPaletteShader();
@@ -1119,38 +1113,6 @@ void SystemStub_OGL::sleep(uint32_t duration) {
 
 uint32_t SystemStub_OGL::getTimeStamp() {
 	return SDL_GetTicks();
-}
-
-void SystemStub_OGL::startAudio(AudioCallback callback, void *param) {
-	SDL_AudioSpec desired;
-	memset(&desired, 0, sizeof(desired));
-	desired.freq = SOUND_SAMPLE_RATE;
-	desired.format = AUDIO_S8;
-	desired.channels = 2;
-	desired.samples = 2048;
-	desired.callback = callback;
-	desired.userdata = param;
-	if (SDL_OpenAudio(&desired, NULL) == 0) {
-		SDL_PauseAudio(0);
-	} else {
-		error("SystemStub_OGL::startAudio() unable to open sound device");
-	}
-}
-
-void SystemStub_OGL::stopAudio() {
-	SDL_CloseAudio();
-}
-
-uint32_t SystemStub_OGL::getOutputSampleRate() {
-	return SOUND_SAMPLE_RATE;
-}
-
-void SystemStub_OGL::lockAudio() {
-	SDL_LockAudio();
-}
-
-void SystemStub_OGL::unlockAudio() {
-	SDL_UnlockAudio();
 }
 
 void SystemStub_OGL::resize(int w, int h) {
