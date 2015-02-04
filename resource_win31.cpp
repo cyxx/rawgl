@@ -389,3 +389,13 @@ void ResourceWin31::readStrings() {
 const char *ResourceWin31::getString(int num) const {
 	return _stringsTable[num];
 }
+
+const char *ResourceWin31::getMusicPath(int num) const {
+	switch (num) {
+	case 7:
+		return "y.mid";
+	case 138:
+		return "X.mid";
+	}
+	return 0;
+}

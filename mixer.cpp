@@ -25,7 +25,7 @@ struct Mixer_impl {
 		memset(_samples, 0, sizeof(_samples));
 		_music = 0;
 
-		Mix_Init(MIX_INIT_OGG);
+		Mix_Init(MIX_INIT_OGG | MIX_INIT_FLUIDSYNTH);
 		if (Mix_OpenAudio(kMixFreq, AUDIO_S16SYS, 2, kMixBufSize) < 0) {
 			warning("Mix_OpenAudio failed: %s", Mix_GetError());
 		}

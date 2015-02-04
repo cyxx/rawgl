@@ -348,6 +348,13 @@ const char *Resource::getMusicPath(int num, char *buf, int bufSize) {
 			return buf;
 		}
 	}
+	if (_win31) {
+		const char *name = _win31->getMusicPath(num);
+		if (name) {
+			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
+			return buf;
+		}
+	}
 	return 0;
 }
 

@@ -34,6 +34,7 @@ struct ResourceWin31 {
 	uint8_t *loadEntry(int num, uint8_t *dst, uint32_t *size);
 	void readStrings();
 	const char *getString(int num) const;
+	const char *getMusicPath(int num) const;
 };
 
 #endif

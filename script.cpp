@@ -582,7 +582,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
-	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION) {
+	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION || _res->getDataType() == Resource::DT_WIN31) {
 		if (resNum == 0) {
 			_mix->stopMusic();
 		} else {
@@ -592,8 +592,6 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 				_mix->playMusic(p);
 			}
 		}
-	} else if (_res->getDataType() == Resource::DT_WIN31) {
-		// TODO:
 	} else { // DT_AMIGA, DT_DOS
 		if (resNum != 0) {
 			_ply->loadSfxModule(resNum, delay, pos);
