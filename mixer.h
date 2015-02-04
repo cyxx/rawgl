@@ -12,6 +12,7 @@
 struct MixerChannel;
 struct SfxPlayer;
 struct SystemStub;
+struct Mixer_impl;
 
 struct Mixer {
 	enum {
@@ -23,6 +24,8 @@ struct Mixer {
 	MixerChannel *_channels[NUM_CHANNELS];
 	int _volumes[NUM_CHANNELS];
 	MixerChannel *_music;
+
+	Mixer_impl *_impl;
 
 	Mixer(SystemStub *stub);
 	void init();

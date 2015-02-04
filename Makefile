@@ -1,6 +1,6 @@
 
 SDL_CFLAGS = `sdl-config --cflags`
-SDL_LIBS = `sdl-config --libs` -lGL -lGLEW
+SDL_LIBS = `sdl-config --libs` -lSDL_mixer -lGL -lGLEW
 
 DEFINES = -DBYPASS_PROTECTION
 
