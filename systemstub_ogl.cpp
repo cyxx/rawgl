@@ -6,6 +6,7 @@
 
 #include <SDL.h>
 #include <GL/glew.h>
+#include <math.h>
 #include <vector>
 #include "file.h"
 #include "graphics.h"
@@ -917,7 +918,7 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 	if (vscroll == 0) {
 		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
 	} else if (vscroll >= -199 && vscroll <= 199) {
-		const int dy = vscroll * _gfx._h / Graphics::GFX_H;
+		const int dy = (int)round(vscroll * _gfx._h / float(Graphics::GFX_H));
 		if (dy < 0) {
 			memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum) - dy * _gfx._w, (_gfx._h + dy) * _gfx._w);
 		} else {
@@ -934,7 +935,7 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
-	const int yoffset = vscroll * FB_H / SCREEN_H;
+	const int yoffset = (int)round(vscroll * FB_H / float(SCREEN_H));
 	drawTextureFb(_pageTex[srcListNum], FB_W, FB_H, yoffset);
 
 	_drawLists[dstListNum] = _drawLists[srcListNum];
