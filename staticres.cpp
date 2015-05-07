@@ -19,21 +19,21 @@ const Script::OpcodeStub Script::_opTable[] = {
 	/* 0x04 */
 	&Script::op_call,
 	&Script::op_ret,
-	&Script::op_break,
+	&Script::op_yieldTask,
 	&Script::op_jmp,
 	/* 0x08 */
-	&Script::op_setScriptSlot,
+	&Script::op_installTask,
 	&Script::op_jmpIfVar,
 	&Script::op_condJmp,
 	&Script::op_setPalette,
 	/* 0x0C */
-	&Script::op_resetScript,
+	&Script::op_changeTasksState,
 	&Script::op_selectPage,
 	&Script::op_fillPage,
 	&Script::op_copyPage,
 	/* 0x10 */
 	&Script::op_updateDisplay,
-	&Script::op_halt,
+	&Script::op_removeTask,
 	&Script::op_drawString,
 	&Script::op_sub,
 	/* 0x14 */

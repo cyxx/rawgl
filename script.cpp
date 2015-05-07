@@ -100,8 +100,8 @@ void Script::op_ret() {
 	_scriptPtr.pc = _res->_segCode + _scriptStackCalls[_stackPtr];
 }
 
-void Script::op_break() {
-	debug(DBG_SCRIPT, "Script::op_break()");
+void Script::op_yieldTask() {
+	debug(DBG_SCRIPT, "Script::op_yieldTask()");
 	_scriptHalted = true;
 }
 
@@ -111,12 +111,12 @@ void Script::op_jmp() {
 	_scriptPtr.pc = _res->_segCode + off;	
 }
 
-void Script::op_setScriptSlot() {
+void Script::op_installTask() {
 	uint8_t i = _scriptPtr.fetchByte();
 	uint16_t n = _scriptPtr.fetchWord();
-	debug(DBG_SCRIPT, "Script::op_setScriptSlot(0x%X, 0x%X)", i, n);
+	debug(DBG_SCRIPT, "Script::op_installTask(0x%X, 0x%X)", i, n);
 	assert(i < 0x40);
-	_scriptSlotsPos[1][i] = n;
+	_scriptTasks[1][i] = n;
 }
 
 void Script::op_jmpIfVar() {
@@ -227,21 +227,21 @@ void Script::op_setPalette() {
 	}
 }
 
-void Script::op_resetScript() {
+void Script::op_changeTasksState() {
 	uint8_t j = _scriptPtr.fetchByte();
 	uint8_t i = _scriptPtr.fetchByte();
 	int8_t n = (i & 0x3F) - j;
 	if (n < 0) {
-		warning("Script::op_resetScript() ec=0x%X (n < 0)", 0x880);
+		warning("Script::op_changeTasksState() ec=0x%X (n < 0)", 0x880);
 		return;
 	}
 	++n;
 	uint8_t a = _scriptPtr.fetchByte();
 
-	debug(DBG_SCRIPT, "Script::op_resetScript(%d, %d, %d)", j, i, a);
+	debug(DBG_SCRIPT, "Script::op_changeTasksState(%d, %d, %d)", j, i, a);
 
 	if (a == 2) {
-		uint16_t *p = &_scriptSlotsPos[1][j];
+		uint16_t *p = &_scriptTasks[1][j];
 		while (n--) {
 			*p++ = 0xFFFE;
 		}
@@ -300,8 +300,8 @@ void Script::op_updateDisplay() {
 	_vid->updateDisplay(page);
 }
 
-void Script::op_halt() {
-	debug(DBG_SCRIPT, "Script::op_halt()");
+void Script::op_removeTask() {
+	debug(DBG_SCRIPT, "Script::op_removeTask()");
 	_scriptPtr.pc = _res->_segCode + 0xFFFF;
 	_scriptHalted = true;
 }
@@ -394,9 +394,9 @@ void Script::restartAt(int part, int pos) {
 		_scriptVars[0xE4] = 0x14;
 	}
 	_res->setupPart(part);
-	memset(_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
+	memset(_scriptTasks, 0xFF, sizeof(_scriptTasks));
 	memset(_scriptPaused, 0, sizeof(_scriptPaused));
-	_scriptSlotsPos[0][0] = 0;
+	_scriptTasks[0][0] = 0;
 	_screenNum = -1;
 	if (pos >= 0) {
 		_scriptVars[0] = pos;
@@ -416,10 +416,10 @@ void Script::setupScripts() {
 	}
 	for (int i = 0; i < 0x40; ++i) {
 		_scriptPaused[0][i] = _scriptPaused[1][i];
-		uint16_t n = _scriptSlotsPos[1][i];
+		uint16_t n = _scriptTasks[1][i];
 		if (n != 0xFFFF) {
-			_scriptSlotsPos[0][i] = (n == 0xFFFE) ? 0xFFFF : n;
-			_scriptSlotsPos[1][i] = 0xFFFF;
+			_scriptTasks[0][i] = (n == 0xFFFE) ? 0xFFFF : n;
+			_scriptTasks[1][i] = 0xFFFF;
 		}
 	}
 }
@@ -427,15 +427,15 @@ void Script::setupScripts() {
 void Script::runScripts() {
 	for (int i = 0; i < 0x40 && !_stub->_pi.quit; ++i) {
 		if (_scriptPaused[0][i] == 0) {
-			uint16_t n = _scriptSlotsPos[0][i];
+			uint16_t n = _scriptTasks[0][i];
 			if (n != 0xFFFF) {
 				_scriptPtr.pc = _res->_segCode + n;
 				_stackPtr = 0;
 				_scriptHalted = false;
 				debug(DBG_SCRIPT, "Script::runScripts() i=0x%02X n=0x%02X", i, n);
 				executeScript();
-				_scriptSlotsPos[0][i] = _scriptPtr.pc - _res->_segCode;
-				debug(DBG_SCRIPT, "Script::runScripts() i=0x%02X pos=0x%X", i, _scriptSlotsPos[0][i]);
+				_scriptTasks[0][i] = _scriptPtr.pc - _res->_segCode;
+				debug(DBG_SCRIPT, "Script::runScripts() i=0x%02X pos=0x%X", i, _scriptTasks[0][i]);
 			}
 		}
 	}
