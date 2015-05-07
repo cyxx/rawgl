@@ -83,10 +83,10 @@ void Script::op_addConst() {
 void Script::op_call() {
 	uint16_t off = _scriptPtr.fetchWord();
 	debug(DBG_SCRIPT, "Script::op_call(0x%X)", off);
-	_scriptStackCalls[_stackPtr] = _scriptPtr.pc - _res->_segCode;
-	if (_stackPtr == 0xFF) {
+	if (_stackPtr == 0x40) {
 		error("Script::op_call() ec=0x%X stack overflow", 0x8F);
 	}
+	_scriptStackCalls[_stackPtr] = _scriptPtr.pc - _res->_segCode;
 	++_stackPtr;
 	_scriptPtr.pc = _res->_segCode + off;
 }
