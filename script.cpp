@@ -282,14 +282,13 @@ void Script::op_updateDisplay() {
 		_scriptVars[0xDC] = 0x21;
 	}
 
-	static uint32_t tstamp = 0;
 	if (!_fastMode) {
-		int32_t delay = _stub->getTimeStamp() - tstamp;
+		int32_t delay = _stub->getTimeStamp() - _timeStamp;
 		int32_t pause = _scriptVars[VAR_PAUSE_SLICES] * 20 - delay;
 		if (pause > 0) {
 			_stub->sleep(pause);
 		}
-		tstamp = _stub->getTimeStamp();
+		_timeStamp = _stub->getTimeStamp();
 	}
 	if (_is3DO) {
 		_scriptVars[0xF7] += 200;
@@ -407,6 +406,7 @@ void Script::restartAt(int part, int pos) {
 			_vid->changePal(5);
 		}
 	}
+	_timeStamp = _stub->getTimeStamp();
 }
 
 void Script::setupScripts() {
