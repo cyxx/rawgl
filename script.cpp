@@ -162,18 +162,13 @@ void Script::op_condJmp() {
 	uint8_t op = _scriptPtr.fetchByte();
 	const uint8_t var = _scriptPtr.fetchByte();
 	int16_t b = _scriptVars[var];
-	uint8_t c = _scriptPtr.fetchByte();	
 	int16_t a;
 	if (op & 0x80) {
-		a = _scriptVars[c];
+		a = _scriptVars[_scriptPtr.fetchByte()];
 	} else if (op & 0x40) {
-		if (_is3DO) {
-			a = _scriptPtr.fetchByte() * 256 + c;
-		} else {
-			a = c * 256 + _scriptPtr.fetchByte();
-		}
+		a = _scriptPtr.fetchWord();
 	} else {
-		a = c;
+		a = _scriptPtr.fetchByte();
 	}
 	debug(DBG_SCRIPT, "Script::op_condJmp(%d, 0x%02X, 0x%02X) var=0x%02X", op, b, a, var);
 	bool expr = false;
