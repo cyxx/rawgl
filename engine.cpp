@@ -57,8 +57,8 @@ void Engine::run(Language lang) {
 }
 
 void Engine::setup() {
-	_vid.init();
 	_res.detectVersion();
+	_vid.init();
 	_res.allocMemBlock();
 	_res.readEntries();
 	if (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION) {

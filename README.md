@@ -11,6 +11,7 @@ rawgl is a re-implementation of the engine used in the game Another World.
 - 15th anniversary edition (Pak01.pak)
 - 20th anniversary edition (game/*)
 - Windows 3.1 release (Bank)
+- 3DO release (GameData/*)
 
 ## Running
 

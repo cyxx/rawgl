@@ -44,6 +44,7 @@ struct Video {
 	void setHeads(const uint8_t *src);
 	void setDataBuffer(uint8_t *dataBuf, uint16_t offset);
 	void drawShape(uint8_t color, uint16_t zoom, const Point *pt);
+	void drawShape3DO(int color, int zoom, const Point *pt);
 	void fillPolygon(uint16_t color, uint16_t zoom, const Point *pt);
 	void drawShapeParts(uint16_t zoom, const Point *pt);
 	void drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId);
@@ -52,7 +53,7 @@ struct Video {
 	void fillPage(uint8_t page, uint8_t color);
 	void copyPage(uint8_t src, uint8_t dst, int16_t vscroll);
 	void copyPagePtr(const uint8_t *src);
-	void copyBitmapPtr(const uint8_t *src);
+	void copyBitmapPtr(const uint8_t *src, uint32_t size = 0);
 	void changePal(uint8_t pal);
 	void updateDisplay(uint8_t page);
 	void buildPalette256();

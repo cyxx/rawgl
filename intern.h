@@ -28,13 +28,14 @@ inline void SWAP(T &a, T &b) {
 
 struct Ptr {
 	uint8_t *pc;
+	bool byteSwap;
 	
 	uint8_t fetchByte() {
 		return *pc++;
 	}
 	
 	uint16_t fetchWord() {
-		uint16_t i = READ_BE_UINT16(pc);
+		const uint16_t i = byteSwap ? READ_LE_UINT16(pc) : READ_BE_UINT16(pc);
 		pc += 2;
 		return i;
 	}

@@ -9,6 +9,10 @@
 
 #include <stdint.h>
 
+inline uint16_t SWAP_UINT16(uint16_t n) {
+	return ((n >> 8) & 255) | ((n & 255) << 8);
+}
+
 inline uint16_t READ_BE_UINT16(const void *ptr) {
 	const uint8_t *b = (const uint8_t *)ptr;
 	return (b[0] << 8) | b[1];

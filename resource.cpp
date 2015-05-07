@@ -9,12 +9,13 @@
 #include "pak.h"
 #include "resource_nth.h"
 #include "resource_win31.h"
+#include "resource_3do.h"
 #include "unpack.h"
 #include "video.h"
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0) {
+	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0) {
 	_bankPrefix = "bank";
 	memset(_memList, 0, sizeof(_memList));
 	_numMemList = 0;
@@ -23,6 +24,7 @@ Resource::Resource(Video *vid, const char *dataDir)
 Resource::~Resource() {
 	delete _nth;
 	delete _win31;
+	delete _3do;
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -53,6 +55,12 @@ static bool check20th(File &f, const char *dataDir) {
 	return f.open("FILE017.DAT", path);
 }
 
+static bool check3DO(File &f, const char *dataDir) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/GameData", dataDir);
+	return f.open("File340", path);
+}
+
 void Resource::detectVersion() {
 	File f;
 	if (f.open(Pak::FILENAME, _dataDir)) {
@@ -70,6 +78,9 @@ void Resource::detectVersion() {
 	} else if (f.open(ResourceWin31::FILENAME, _dataDir)) {
 		_dataType = DT_WIN31;
 		debug(DBG_INFO, "Using Win31 data files");
+	} else if (check3DO(f, _dataDir)) {
+		_dataType = DT_3DO;
+		debug(DBG_INFO, "Using 3DO data files");
 	} else {
 		error("No data files found in '%s'", _dataDir);
 	}
@@ -130,6 +141,10 @@ void Resource::readEntries() {
 		if (_win31->readEntries()) {
 			return;
 		}
+	} else if (_dataType == DT_3DO) {
+		_numMemList = ENTRIES_COUNT;
+		_3do = new Resource3do(_dataDir);
+		return;
 	}
 	error("No data files found in '%s'", _dataDir);
 }
@@ -234,6 +249,16 @@ void Resource::update(uint16_t num) {
 		}
 		return;
 	}
+	if (_dataType == DT_3DO) {
+		if (num > 16000) {
+			_nextPart = num;
+		} else if (num >= 2000) { // sounds list
+			;
+		} else if (num >= 200) {
+			loadBmp(num);
+		}
+		return;
+	}
 	if (num > _numMemList) {
 		_nextPart = num;
 	} else {
@@ -268,9 +293,20 @@ void Resource::loadBmp(int num) {
 			free(p);
 		}
 	}
+	if (_3do) {
+		uint32_t size;
+		uint8_t *p = _3do->loadFile(num, 0, &size);
+		if (p) {
+			if (size == 64000 * 2) {
+				_vid->copyBitmapPtr(p, size);
+			}
+			free(p);
+		}
+	}
 }
 
 uint8_t *Resource::loadDat(int num) {
+	assert(num < _numMemList);
 	if (_memList[num].status == STATUS_LOADED) {
 		return _memList[num].bufPtr;
 	}
@@ -281,6 +317,9 @@ uint8_t *Resource::loadDat(int num) {
 	}
 	if (_win31) {
 		p = _win31->loadEntry(num, _scriptCurPtr, &size);
+	}
+	if (_3do) {
+		p = _3do->loadFile(num, _scriptCurPtr, &size);
 	}
 	if (p) {
 		_scriptCurPtr += size;
@@ -391,7 +430,7 @@ static const uint8_t _memListParts[][4] = {
 };
 
 void Resource::setupPart(int ptrId) {
-	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31) {
+	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31 || _dataType == DT_3DO) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
 			invalidateAll();
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };
@@ -449,4 +488,5 @@ void Resource::allocMemBlock() {
 
 void Resource::freeMemBlock() {
 	free(_memPtrStart);
+	_memPtrStart = 0;
 }

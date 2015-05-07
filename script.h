@@ -60,6 +60,7 @@ struct Script {
 	bool _scriptHalted;
 	bool _fastMode;
 	int _screenNum;
+	bool _is3DO;
 
 	Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub);
 	void init();

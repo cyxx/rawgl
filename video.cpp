@@ -17,6 +17,7 @@ void Video::init() {
 	_listPtrs[2] = getPagePtr(1);
 	_listPtrs[1] = getPagePtr(2);
 	setWorkPagePtr(0xFE);
+	_pData.byteSwap = (_res->getDataType() == Resource::DT_3DO);
 }
 
 void Video::setFont(const uint8_t *font) {
@@ -49,6 +50,86 @@ void Video::drawShape(uint8_t color, uint16_t zoom, const Point *pt) {
 		} else {
 			warning("Video::drawShape() ec=0x%X (i != 2)", 0xFBB);
 		}
+	}
+}
+
+void Video::drawShape3DO(int color, int zoom, const Point *pt) {
+	const int code = _pData.fetchByte();
+	debug(DBG_VIDEO, "Video::drawShape3DO() code=0x%x pt=%d,%d", code, pt->x, pt->y);
+	switch (code & 0xE0) {
+	case 0x00: {
+			const int x0 = pt->x - _pData.fetchByte() * zoom / 64;
+			const int y0 = pt->y - _pData.fetchByte() * zoom / 64;
+			int count = _pData.fetchByte() + 1;
+			do {
+				uint16_t offset = _pData.fetchWord();
+				Point po;
+				po.x = x0 + _pData.fetchByte() * zoom / 64;
+				po.y = y0 + _pData.fetchByte() * zoom / 64;
+				int color = 0xFF;
+				if (offset & 0x8000) {
+					color = _pData.fetchByte();
+					_pData.fetchByte();
+					if (color & 0x80) { // mask
+						color &= 0x7F;
+					}
+					offset &= 0x7FFF;
+				}
+				uint8_t *bak = _pData.pc;
+				_pData.pc = _dataBuf + offset * 2;
+				drawShape3DO(color, zoom, &po);
+				_pData.pc = bak;
+			} while (--count != 0);
+		}
+		break;
+	case 0x20: { // rect
+			const int w = _pData.fetchByte() * zoom / 64;
+			const int h = _pData.fetchByte() * zoom / 64;
+			const int x1 = pt->x - w / 2;
+			const int y1 = pt->y - h / 2;
+			const int x2 = x1 + w;
+			const int y2 = y1 + w;
+			QuadStrip qs;
+			qs.numVertices = 4;
+			qs.vertices[0].x = x1;
+			qs.vertices[0].y = y1;
+			qs.vertices[1].x = x1;
+			qs.vertices[1].y = y2;
+			qs.vertices[2].x = x2;
+			qs.vertices[2].y = y2;
+			qs.vertices[3].x = x2;
+			qs.vertices[3].y = y1;
+			_stub->addQuadStripToList(_listPtrs[0], code & 31, &qs);
+		}
+		break;
+	case 0x40: { // pixel
+			_stub->addPointToList(_listPtrs[0], code & 31, pt);
+		}
+		break;
+	case 0xC0: { // polygon
+			const int w = _pData.fetchByte() * zoom / 64;
+			const int h = _pData.fetchByte() * zoom / 64;
+			const int count = _pData.fetchByte();
+			QuadStrip qs;
+			qs.numVertices = count * 2;
+			assert(qs.numVertices < QuadStrip::MAX_VERTICES);
+			const int x0 = pt->x - w / 2;
+			const int y0 = pt->y - h / 2;
+			for (int i = 0, j = count * 2 - 1; i < count; ++i, --j) {
+				const int x1 = _pData.fetchByte() * zoom / 64;
+				const int x2 = _pData.fetchByte() * zoom / 64;
+				const int y  = _pData.fetchByte() * zoom / 64;
+				qs.vertices[i].x = x0 + x2;
+				qs.vertices[(i + 1) % count].y = y0 + y;
+				qs.vertices[j].x = x0 + x1;
+				qs.vertices[count *  2 - 1 - (i + 1) % count].y = y0 + y;
+			}
+			_stub->addQuadStripToList(_listPtrs[0], code & 31, &qs);
+		}
+		break;
+	default:
+		warning("Video::drawShape3DO() unhandled code 0x%X", code);
+		break;
 	}
 }
 
@@ -167,6 +248,8 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 		escapedChars = true;
 	} else if (_res->getDataType() == Resource::DT_WIN31) {
 		str = _res->getString(strId);
+	} else if (_res->getDataType() == Resource::DT_3DO) {
+		return;
 	} else {
 		str = findString(_stringsTable, strId);
 	}
@@ -227,6 +310,10 @@ void Video::setWorkPagePtr(uint8_t page) {
 
 void Video::fillPage(uint8_t page, uint8_t color) {
 	debug(DBG_VIDEO, "Video::fillPage(%d, %d)", page, color);
+	if (color >= 16) {
+		warning("Video::fillPage() high color %d", color);
+		return;
+	}
 	_stub->clearList(getPagePtr(page), color);
 }
 
@@ -267,11 +354,11 @@ void Video::copyPagePtr(const uint8_t *src) {
 			++src;
 		}
 	}	
-	_stub->addBitmapToList(0, _tempBitmap);
+	_stub->addBitmapToList(0, _tempBitmap, sizeof(_tempBitmap));
 }
 
-void Video::copyBitmapPtr(const uint8_t *src) {
-	_stub->addBitmapToList(0, src);
+void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
+	_stub->addBitmapToList(0, src, size);
 }
 
 static void readPaletteWin31(const uint8_t *buf, int num, Color pal[16]) {
@@ -282,6 +369,19 @@ static void readPaletteWin31(const uint8_t *buf, int num, Color pal[16]) {
 		pal[i].r =  color        & 255;
 		pal[i].g = (color >>  8) & 255;
 		pal[i].b = (color >> 16) & 255;
+	}
+}
+
+static void readPalette3DO(const uint8_t *buf, int num, Color pal[16]) {
+	const uint8_t *p = buf + num * 16 * sizeof(uint16_t);
+	for (int i = 0; i < 16; ++i) {
+		const uint16_t color = READ_BE_UINT16(p); p += 2;
+		const uint8_t r = (color >> 10) & 0x1F;
+		const uint8_t g = (color >>  5) & 0x1F;
+		const uint8_t b =  color        & 0x1F;
+		pal[i].r = (r << 3);
+		pal[i].g = (g << 3);
+		pal[i].b = (b << 3);
 	}
 }
 
@@ -303,6 +403,8 @@ void Video::changePal(uint8_t palNum) {
 		Color pal[16];
 		if (_res->getDataType() == Resource::DT_WIN31) {
 			readPaletteWin31(_res->_segVideoPal, palNum, pal);
+		} else if (_res->getDataType() == Resource::DT_3DO) {
+			readPalette3DO(_res->_segVideoPal, palNum, pal);
 		} else {
 			readPaletteAmiga(_res->_segVideoPal, palNum, pal);
 		}

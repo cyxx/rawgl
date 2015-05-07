@@ -19,14 +19,21 @@ Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub
 
 void Script::init() {
 	memset(_scriptVars, 0, sizeof(_scriptVars));
-	_scriptVars[VAR_RANDOM_SEED] = time(0);
 	_fastMode = false;
 	_ply->_markVar = &_scriptVars[VAR_MUS_MARK];
+	_scriptPtr.byteSwap = _is3DO = (_res->getDataType() == Resource::DT_3DO);
 	// bypass the protection
 	_scriptVars[0xBC] = 0x10; // 0x4417
 	_scriptVars[0xC6] = 0x80; // 0x78E0
 	_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA) ? 0x1770 : 0xFA0;
 	_scriptVars[0xDC] = 0x21;
+	if (_is3DO) {
+		_scriptVars[0xDB] = 1;
+		_scriptVars[0xE2] = 1;
+		_scriptVars[0xF2] = 0x1770;
+	} else {
+		_scriptVars[VAR_RANDOM_SEED] = time(0);
+	}
 }
 
 void Script::op_movConst() {
@@ -160,7 +167,11 @@ void Script::op_condJmp() {
 	if (op & 0x80) {
 		a = _scriptVars[c];
 	} else if (op & 0x40) {
-		a = c * 256 + _scriptPtr.fetchByte();
+		if (_is3DO) {
+			a = _scriptPtr.fetchByte() * 256 + c;
+		} else {
+			a = c * 256 + _scriptPtr.fetchByte();
+		}
 	} else {
 		a = c;
 	}
@@ -191,7 +202,7 @@ void Script::op_condJmp() {
 	}
 	if (expr) {
 		op_jmp();
-		if (var == VAR_SCREEN_NUM && _screenNum != _scriptVars[VAR_SCREEN_NUM]) {
+		if (!_is3DO && var == VAR_SCREEN_NUM && _screenNum != _scriptVars[VAR_SCREEN_NUM]) {
 			fixUpPalette_changeScreen(_res->_currentPart, _scriptVars[VAR_SCREEN_NUM]);
 			_screenNum = _scriptVars[VAR_SCREEN_NUM];
 		}
@@ -280,7 +291,11 @@ void Script::op_updateDisplay() {
 		}
 		tstamp = _stub->getTimeStamp();
 	}
-	_scriptVars[0xF7] = 0;
+	if (_is3DO) {
+		_scriptVars[0xF7] += 200;
+	} else {
+		_scriptVars[0xF7] = 0;
+	}
 
 	_vid->_displayHead = !(_res->_currentPart == 16006 && _screenNum == 202);
 	_vid->updateDisplay(page);
@@ -376,7 +391,9 @@ void Script::restartAt(int part, int pos) {
 		// playback sounds resnum >= 146
 		_scriptVars[0xDE] = 1;
 	}
-	_scriptVars[0xE4] = 0x14;
+	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
+		_scriptVars[0xE4] = 0x14;
+	}
 	_res->setupPart(part);
 	memset(_scriptSlotsPos, 0xFF, sizeof(_scriptSlotsPos));
 	memset(_scriptPaused, 0, sizeof(_scriptPaused));
@@ -440,10 +457,14 @@ void Script::executeScript() {
 			}
 			debug(DBG_VIDEO, "vid_opcd_0x80 : opcode=0x%X off=0x%X x=%d y=%d", opcode, off, pt.x, pt.y);
 			_vid->setDataBuffer(_res->_segVideo1, off);
-			_vid->drawShape(0xFF, 0x40, &pt);
+			if (_is3DO) {
+				_vid->drawShape3DO(0xFF, 64, &pt);
+			} else {
+				_vid->drawShape(0xFF, 0x40, &pt);
+			}
 		} else if (opcode & 0x40) {
 			Point pt;
-			uint16_t off = _scriptPtr.fetchWord() * 2;
+			uint16_t off = ((_scriptPtr.pc[0] << 8) | _scriptPtr.pc[1]) * 2; _scriptPtr.pc += 2;
 			pt.x = _scriptPtr.fetchByte();
 			_res->_useSegVideo2 = false;
 			if (!(opcode & 0x20)) {
@@ -482,8 +503,75 @@ void Script::executeScript() {
 			}
 			debug(DBG_VIDEO, "vid_opcd_0x40 : off=0x%X x=%d y=%d", off, pt.x, pt.y);
 			_vid->setDataBuffer(_res->_useSegVideo2 ? _res->_segVideo2 : _res->_segVideo1, off);
-			_vid->drawShape(0xFF, zoom, &pt);
+			if (_is3DO) {
+				_vid->drawShape3DO(0xFF, zoom, &pt);
+			} else {
+				_vid->drawShape(0xFF, zoom, &pt);
+			}
 		} else {
+			if (_is3DO) {
+				switch (opcode) {
+				case 11: {
+						const int num = _scriptPtr.fetchByte();
+						debug(DBG_SCRIPT, "Script::op11() setPalette %d", num);
+						_vid->_nextPal = num;
+					}
+					continue;
+				case 22: {
+						const int var = _scriptPtr.fetchByte();
+						const int shift = _scriptPtr.fetchByte();
+						debug(DBG_SCRIPT, "Script::op22() VAR(0x%02X) <<= %d", var, shift);
+						_scriptVars[var] = (uint16_t)_scriptVars[var] << shift;
+					}
+					continue;
+				case 23: {
+						const int var = _scriptPtr.fetchByte();
+						const int shift  = _scriptPtr.fetchByte();
+						debug(DBG_SCRIPT, "Script::op23() VAR(0x%02X) >>= %d", var, shift);
+						_scriptVars[var] = (uint16_t)_scriptVars[var] >> shift;
+					}
+					continue;
+				case 26: {
+						const int num = _scriptPtr.fetchByte();
+						debug(DBG_SCRIPT, "Script::op26() playMusic %d", num);
+//						warning("Script::playMusic() num=%d unimplemented", num);
+					}
+					continue;
+				case 27: {
+						const int num = _scriptPtr.fetchWord();
+						const int x = _scriptVars[_scriptPtr.fetchByte()];
+						const int y = _scriptVars[_scriptPtr.fetchByte()];
+						const int color = _scriptPtr.fetchByte();
+						_vid->drawString(color, x, y, num);
+					}
+					continue;
+				case 28: {
+						const uint8_t var = _scriptPtr.fetchByte();
+						debug(DBG_SCRIPT, "Script::op28() jmpIf(VAR(0x%02X) == 0)");
+						if (_scriptVars[var] == 0) {
+							op_jmp();
+						} else {
+							_scriptPtr.fetchWord();
+						}
+					}
+					continue;
+				case 29: {
+						const uint8_t var = _scriptPtr.fetchByte();
+						debug(DBG_SCRIPT, "Script::op29() jmpIf(VAR(0x%02X) != 0)");
+						if (_scriptVars[var] != 0) {
+							op_jmp();
+						} else {
+							_scriptPtr.fetchWord();
+						}
+					}
+					continue;
+				case 30: {
+						// _scriptVars[0xF7]
+						warning("Script::op30() unimplemented");
+					}
+					continue;
+				}
+			}
 			if (opcode > 0x1A) {
 				error("Script::executeScript() ec=0x%X invalid opcode=0x%X", 0xFFF, opcode);
 			} else {
@@ -571,7 +659,9 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		if (buf) {
 			_mix->playSoundWav(channel & 3, buf, MIN(vol, 63));
 		}
-	} else {
+	} else if (_res->getDataType() == Resource::DT_3DO) {
+		;
+	} else { // DT_AMIGA, DT_DOS
 		MemEntry *me = &_res->_memList[resNum];
 		if (me->status == Resource::STATUS_LOADED) {
 			assert(freq < 40);
