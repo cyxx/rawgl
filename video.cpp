@@ -88,7 +88,10 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 			const int x1 = pt->x - w / 2;
 			const int y1 = pt->y - h / 2;
 			const int x2 = x1 + w;
-			const int y2 = y1 + w;
+			const int y2 = y1 + h;
+			if (x1 > 319 || x2 < 0 || y1 > 199 || y2 < 0) {
+				break;
+			}
 			QuadStrip qs;
 			qs.numVertices = 4;
 			qs.vertices[0].x = x1;
@@ -103,6 +106,9 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 		}
 		break;
 	case 0x40: { // pixel
+			if (pt->x > 319 || pt->x < 0 || pt->y > 199 || pt->y < 0) {
+				break;
+			}
 			_stub->addPointToList(_listPtrs[0], code & 31, pt);
 		}
 		break;
@@ -115,6 +121,9 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 			assert(qs.numVertices < QuadStrip::MAX_VERTICES);
 			const int x0 = pt->x - w / 2;
 			const int y0 = pt->y - h / 2;
+			if (x0 > 319 || pt->x + w / 2 < 0 || y0 > 199 || pt->y + h / 2 < 0) {
+				break;
+			}
 			for (int i = 0, j = count * 2 - 1; i < count; ++i, --j) {
 				const int x1 = _pData.fetchByte() * zoom / 64;
 				const int x2 = _pData.fetchByte() * zoom / 64;
