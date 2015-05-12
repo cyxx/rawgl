@@ -655,7 +655,10 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 			_mix->playSoundWav(channel & 3, buf, MIN(vol, 63));
 		}
 	} else if (_res->getDataType() == Resource::DT_3DO) {
-		;
+		MemEntry *me = &_res->_memList[resNum];
+		if (me->status == Resource::STATUS_LOADED) {
+			_mix->playSoundAiff(channel & 3, me->bufPtr, MIN(vol, 63));
+		}
 	} else { // DT_AMIGA, DT_DOS
 		MemEntry *me = &_res->_memList[resNum];
 		if (me->status == Resource::STATUS_LOADED) {

@@ -192,6 +192,10 @@ void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume) {
 	}
 }
 
+void Mixer::playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
+	debug(DBG_SND, "Mixer::playSoundAiff(%d, %d)", channel, volume);
+}
+
 void Mixer::stopSound(uint8_t channel) {
 	debug(DBG_SND, "Mixer::stopChannel(%d)", channel);
 	if (_impl) {
