@@ -354,9 +354,9 @@ void Script::op_playSound() {
 	snd_playSound(resNum, freq, vol, channel);
 }
 
-void Script::op_updateMemList() {
+void Script::op_updateResources() {
 	uint16_t num = _scriptPtr.fetchWord();
-	debug(DBG_SCRIPT, "Script::op_updateMemList(%d)", num);
+	debug(DBG_SCRIPT, "Script::op_updateResources(%d)", num);
 	if (num == 0) {
 		_ply->stop();
 		_mix->stopAll();

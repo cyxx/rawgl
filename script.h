@@ -91,7 +91,7 @@ struct Script {
 	void op_shl();
 	void op_shr();
 	void op_playSound();
-	void op_updateMemList();
+	void op_updateResources();
 	void op_playMusic();
 
 	void restartAt(int part, int pos = -1);

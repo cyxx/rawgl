@@ -105,7 +105,7 @@ enum {
 	op_shr,
 	// 0x18
 	op_playSound,
-	op_updateMemList,
+	op_updateResources,
 	op_playMusic,
 	op_drawString2, // 3DO
 	// 0x1C
@@ -257,7 +257,7 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 	case op_playSound:
 		fprintf(_out, "playSound(res=%d, freq=%d, vol=%d, channel=%d)", args[0], args[1], args[2], args[3]);
 		break;
-	case op_updateMemList:
+	case op_updateResources:
 		fprintf(_out, "updateResources(res=%d)", args[0]);
 		break;
 	case op_playMusic:
@@ -443,7 +443,7 @@ static int parse(const uint8_t *buf, uint32_t size) {
 			c = *p++;
 			d = *p++;
 			break;
-		case 25: // op_updateMemList
+		case 25: // op_updateResources
 			a = readWord(p); p += 2;
 			break;
 		case 26: // op_playMusic

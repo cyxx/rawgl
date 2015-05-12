@@ -43,7 +43,7 @@ const Script::OpcodeStub Script::_opTable[] = {
 	&Script::op_shr,
 	/* 0x18 */
 	&Script::op_playSound,
-	&Script::op_updateMemList,
+	&Script::op_updateResources,
 	&Script::op_playMusic
 };
 
