@@ -567,6 +567,221 @@ const char *Video::_stringsTable15th[] = {
 	"KFCA",
 };
 
+const StrEntry Video::_stringsTable3DO[] = {
+	{ 1, "Copyright } 1997 Cortland Computer, Inc.\nAll rights reserved.\n\nGS/OS Version 7.03\nII Infinitum!" },
+	{ 2, "Copyright } 1997 Peanut Computer, Inc.\nAll rights reserved.\n\nOS/BH Version 7.03" },
+	{ 3, "2" },
+	{ 4, "3" },
+	{ 5, "." },
+	{ 6, "A" },
+	{ 7, "@" },
+	{ 10, "R" },
+	{ 11, "U" },
+	{ 12, "N" },
+	{ 13, "P" },
+	{ 14, "R" },
+	{ 15, "O" },
+	{ 16, "J" },
+	{ 17, "E" },
+	{ 18, "C" },
+	{ 19, "T" },
+	{ 20, "Shield 9A.5f Ok" },
+	{ 21, "Flux % 5.0177 Ok" },
+	{ 22, "CDI Vector ok" },
+	{ 23, " %%%ddd ok" },
+	{ 24, "Race-Track ok" },
+	{ 25, "SYNCHROTRON" },
+	{ 26, "E: 23%\ng: .005\n\nRK: 77.2L\n\nopt: g+\n\n Shield:\n1: OFF\n2: ON\n3: ON\n\nP~: 1\n" },
+	{ 27, "ON" },
+	{ 28, "-" },
+	{ 33, "|" },
+	{ 34, "--- Theoretical study ---" },
+	{ 35, " THE EXPERIMENT WILL BEGIN IN    SECONDS" },
+	{ 36, "  20" },
+	{ 37, "  19" },
+	{ 38, "  18" },
+	{ 39, "  4" },
+	{ 40, "  3" },
+	{ 41, "  2" },
+	{ 42, "  1" },
+	{ 43, "  0" },
+	{ 49, "- Phase 1:\nINJECTION of particles\ninto synchrotron" },
+	{ 50, "- Phase 2:\nParticle ACCELERATION." },
+	{ 51, "- Phase 3:\nEJECTION of particles\non the shield." },
+	{ 52, "   A N A L Y S I S" },
+	{ 53, "- RESULT:\nProbability of creating:\n ANTIMATTER  : 91.20 %\n NEUTRINO 27 :  0.04 %\n NEUTRINO 424: 18.02 %\n" },
+	{ 54, "   Practical verification Y/N ?" },
+	{ 55, "SURE ?" },
+	{ 56, "MODIFICATION OF PARAMETERS\nRELATING TO PARTICLE\nACCELERATOR (SYNCHROTRON)." },
+	{ 57, "       RUN EXPERIMENT ?" },
+	{ 60, "t---t" },
+	{ 61, "000 ~" },
+	{ 62, ".20x14dd" },
+	{ 63, "gj5r5r" },
+	{ 64, "tilgor 25%" },
+	{ 65, "12% 33% checked" },
+	{ 66, "D=4.2158005584" },
+	{ 67, "d=10.00001" },
+	{ 68, "+" },
+	{ 69, "*" },
+	{ 70, "% 304" },
+	{ 71, "gurgle 21" },
+	{ 72, "{{{{" },
+	{ 75, "  5" },
+	{ 76, "  17" },
+	{ 300, "   B C D F G H" },
+	{ 301, "   J K L R T X" },
+	{ 302, "B" },
+	{ 303, "C" },
+	{ 304, "D" },
+	{ 305, "F" },
+	{ 306, "G" },
+	{ 307, "H" },
+	{ 308, "J" },
+	{ 309, "K" },
+	{ 310, "L" },
+	{ 311, "R" },
+	{ 312, "X" },
+	{ 313, "T" },
+	{ 316, "        ACCESS CODE:" },
+	{ 317, "  PRESS BUTTON TO CONTINUE" },
+	{ 318, "    PRESS BUTTON TO CONTINUE" },
+	{ 319, "   PASSWORD INVALID!" },
+	{ 320, "INVALID" },
+	{ 350, "LDKD" },
+	{ 351, "HTDC" },
+	{ 352, "CLLD" },
+	{ 353, "FXLC" },
+	{ 354, "KRFK" },
+	{ 355, "XDDJ" },
+	{ 356, "LBKG" },
+	{ 357, "KLFB" },
+	{ 358, "TTCT" },
+	{ 359, "DDRX" },
+	{ 360, "TBHK" },
+	{ 361, "BRTD" },
+	{ 362, "CKJL" },
+	{ 363, "LFCK" },
+	{ 364, "BFLX" },
+	{ 365, "XJRT" },
+	{ 366, "HRTB" },
+	{ 367, "HBHK" },
+	{ 368, "JCGB" },
+	{ 369, "HHFL" },
+	{ 370, "TFBB" },
+	{ 371, "TXHF" },
+	{ 372, "JHJL" },
+	{ 400, "Good evening professor." },
+	{ 401, "I see you have driven here in your\nFerrari." },
+	{ 402, "IDENTIFICATION" },
+	{ 404, "Y" },
+	{ 0xFFFF, 0 }
+};
+
+const char *Video::_noteText3DO = {
+	"From the diary of Lester Knight\n"
+	"Chaykin.\n"
+	"\n"
+	" I am taking advantage of this\n"
+	"short period of rest to record\n"
+	"some useful information in my\n"
+	"notebook which has survived my\n"
+	"recent adventures.  I am now\n"
+	"separated from my companion whom\n"
+	"without his help I would still\n"
+	"be trapped. I hope I manage to\n"
+	"find him. I owe him my life.\n"
+	"\n"
+	" Right now I am lost in a maze\n"
+	"of underground corridors.  I\n"
+	"cannot tell how long I have been\n"
+	"wandering. And I constantly\n"
+	"encounter streams that threaten\n"
+	"to flood these corridors at any\n"
+	"time.\n"
+	"\n"
+	" Luckily I have found a weapon\n"
+	"that can blast a hole in almost\n"
+	"anything that I find.  It has\n"
+	"saved my life countless times.\n"
+	"\n"
+	" There are many guards roaming\n"
+	"these corridors.  I must be\n"
+	"moving along before I...\n"
+};
+
+const char *Video::_endText3DO = {
+	"Original Programming, Artwork, &\n"
+	"Design\n"
+	"Eric Chahi\n"
+	"\n"
+	"Executive Producer\n"
+	"Brian Fargo\n"
+	"\n"
+	"Producer\n"
+	"Michael Conti\n"
+	"\n"
+	"Programming / Scriptor\n"
+	"Burger Bill Heineman\n"
+	"\n"
+	"Music Composition\n"
+	"Andrew Dimitroff\n"
+	"\n"
+	"Music Engineers\n"
+	"Nick Carr and Sheridan Eldridge\n"
+	"\n"
+	"Background Graphics\n"
+	"Lil' Gangsters Entertainment\n"
+	"\n"
+	"Background Editing\n"
+	"Lars Brubaker\n"
+	"\n"
+	"Additional Artwork\n"
+	"George Almond, Eddie Rainwater\n"
+	"Larry Fukuoka, Lars Brubaker,\n"
+	"Kevin Beardslee\n"
+	"\n"
+	"Sound Design\n"
+	"Paradise Post Production\n"
+	"\n"
+	"Sound Effects\n"
+	"Clive Mizumoto & Ron Salaises\n"
+	"\n"
+	"Music Mastering and Editing\n"
+	"Charles Deenen\n"
+	"\n"
+	"Sound Effects Editing\n"
+	"Brian Luzietti\n"
+	"\n"
+	"Line Producer\n"
+	"Lars Brubaker\n"
+	"\n"
+	"Opening Title Sequence\n"
+	"Ed Trillo\n"
+	"\n"
+	"Interplay Logo Rendering\n"
+	"Tony Bowren\n"
+	"\n"
+	"Director of Quality Assurance\n"
+	"Kirk Tome\n"
+	"\n"
+	"Testing\n"
+	"Jason Taylor, Bill Church,\n"
+	"Todd Loenhorst\n"
+	"\n"
+	"Manual Editor\n"
+	"Scott Bennie\n"
+	"\n"
+	"Layout Design\n"
+	"Larry Fukuoka\n"
+	"\n"
+	"Project Leader\n"
+	"Burger Bill Heineman\n"
+	"\n"
+	"Special thanks to\n"
+	"Bill \"Angus\" Guschwan at 3DO\n"
+};
+
 const AmigaMemEntry Resource::_memListAmigaFR[146] = {
 	{ 0, 0x1, 0x000000, 0x0000, 0x0000 },
 	{ 0, 0x1, 0x000000, 0x1A3C, 0x1A3C },

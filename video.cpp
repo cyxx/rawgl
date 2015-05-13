@@ -258,7 +258,7 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 	} else if (_res->getDataType() == Resource::DT_WIN31) {
 		str = _res->getString(strId);
 	} else if (_res->getDataType() == Resource::DT_3DO) {
-		return;
+		str = findString(_stringsTable3DO, strId);
 	} else {
 		str = findString(_stringsTable, strId);
 	}

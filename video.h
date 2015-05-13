@@ -24,6 +24,9 @@ struct Video {
 	static const StrEntry _stringsTableEng[];
 	static const uint16_t _stringsId15th[];
 	static const char *_stringsTable15th[];
+	static const StrEntry _stringsTable3DO[];
+	static const char *_noteText3DO;
+	static const char *_endText3DO;
 
 	Resource *_res;
 	SystemStub *_stub;
