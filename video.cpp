@@ -319,10 +319,6 @@ void Video::setWorkPagePtr(uint8_t page) {
 
 void Video::fillPage(uint8_t page, uint8_t color) {
 	debug(DBG_VIDEO, "Video::fillPage(%d, %d)", page, color);
-	if (color >= 16) {
-		warning("Video::fillPage() high color %d", color);
-		return;
-	}
 	_stub->clearList(getPagePtr(page), color);
 }
 

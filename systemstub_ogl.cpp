@@ -750,6 +750,10 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, const
 }
 
 void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {
+	if (color >= 18) {
+		warning("drawVerticesToFb() - unhandled color %d (bits %x)", color, color >> 4);
+		return;
+	}
 	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
 
 	if (color == COL_PAGE) {
@@ -768,12 +772,8 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 			if (color == COL_ALPHA) {
 				glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
 			} else {
-				if (color >= 16) {
-					glColor4ub(255, 255, 255, 255);
-				} else {
-					assert(color < 16);
-					glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
-				}
+				assert(color < 16);
+				glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
 			}
 		}
 		drawVerticesFlat(count, vertices);
@@ -926,6 +926,10 @@ void SystemStub_OGL::drawVerticesTex(int count, const Point *vertices) {
 }
 
 void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
+	if (color >= 16) {
+		warning("clearList() - unhandled color %d (bits %x)", color, color >> 4);
+		return;
+	}
 	memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
 
 	assert(listNum < NUM_LISTS);
