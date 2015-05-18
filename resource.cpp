@@ -144,6 +144,7 @@ void Resource::readEntries() {
 	} else if (_dataType == DT_3DO) {
 		_numMemList = ENTRIES_COUNT;
 		_3do = new Resource3do(_dataDir);
+		_3do->readEntries();
 		return;
 	}
 	error("No data files found in '%s'", _dataDir);
