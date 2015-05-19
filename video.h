@@ -59,7 +59,6 @@ struct Video {
 	void copyBitmapPtr(const uint8_t *src, uint32_t size = 0);
 	void changePal(uint8_t pal);
 	void updateDisplay(uint8_t page);
-	void buildPalette256();
 };
 
 #endif
