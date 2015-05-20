@@ -1,4 +1,5 @@
 
+#include <assert.h>
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -6,9 +7,45 @@
 #include <string.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "cinepak.h"
 extern "C" {
 #include "tga.h"
+}
+#include "util.h"
+
+static const char *OUT = "out";
+
+static uint8_t clipU8(int a) {
+	if (a < 0) {
+		return 0;
+	} else if (a > 255) {
+		return 255;
+	} else {
+		return a;
+	}
+}
+
+static uint16_t yuv_to_rgb555(int y, int u, int v) {
+	int r = int(y + (1.370705 * (v - 128)));
+	r = clipU8(r) >> 3;
+	int g = int(y - (0.698001 * (v - 128)) - (0.337633 * (u - 128)));
+	g = clipU8(g) >> 3;
+	int b = int(y + (1.732446 * (u - 128)));
+	b = clipU8(b) >> 3;
+	return (r << 10) | (g << 5) | b;
+}
+
+static void uyvy_to_rgb555(const uint8_t *in, int len, uint16_t *out) {
+	assert((len & 3) == 0);
+	for (int i = 0; i < len; i += 4, in += 4) {
+		const int y0 = in[0];
+		const int u  = in[1];
+		const int y1 = in[2];
+		const int v  = in[3];
+		*out++ = yuv_to_rgb555(y0, u, v);
+		*out++ = yuv_to_rgb555(y1, u, v);
+	}
 }
 
 struct OutputBuffer {
@@ -20,15 +57,15 @@ struct OutputBuffer {
 		decoder->_yuvH = h;
 		decoder->_yuvPitch = w * 2;
 	}
-	void dump(int num) {
-		char name[16];
-		snprintf(name, sizeof(name), "out/%04d.uyvy", num);
+	void dump(const char *path, int num) {
+		char name[MAXPATHLEN];
+		snprintf(name, sizeof(name), "%s/%04d.uyvy", path, num);
 		FILE *fp = fopen(name, "wb");
 		if (fp) {
 			fwrite(_buf, _bufSize, 1, fp);
 			fclose(fp);
 			char cmd[256];
-			snprintf(cmd, sizeof(cmd), "convert -size 320x100 -depth 8 out/%04d.uyvy out/%04d.png", num, num);
+			snprintf(cmd, sizeof(cmd), "convert -size 320x100 -depth 8 %s/%04d.uyvy %s/%04d.png", path, num, path, num);
 			system(cmd);
 		}
 	}
@@ -50,18 +87,21 @@ static uint32_t readTag(FILE *fp, char *type) {
 	return htonl(size);
 }
 
-static void decodeCine(FILE *fp) {
+static void decodeCine(FILE *fp, const char *name) {
+	char path[MAXPATHLEN];
+	snprintf(path, sizeof(path), "%s/%s", OUT, name);
+	stringLower(path + strlen(OUT) + 1);
+	mkdir(path, 0777);
 	CinepakDecoder decoder;
 	OutputBuffer out;
 	int frmeCounter = 0;
 	while (1) {
-		uint32_t pos = ftell(fp);
+		const uint32_t pos = ftell(fp);
 		char tag[4];
-		uint32_t size = readTag(fp, tag);
+		const uint32_t size = readTag(fp, tag);
 		if (feof(fp)) {
 			break;
 		}
-		fprintf(stdout, "Tag '%c%c%c%c' size %d\n", tag[0], tag[1], tag[2], tag[3], size);
 		if (memcmp(tag, "FILM", 4) == 0) {
 			fseek(fp, 8, SEEK_CUR);
 			char type[4];
@@ -82,10 +122,14 @@ static void decodeCine(FILE *fp) {
 					fprintf(stdout, "FRME duration %d frame %d size %d\n", duration, frameSize, size);
 					decoder.decode(frameBuf, frameSize);
 					free(frameBuf);
-					out.dump(frmeCounter);
+					out.dump(path, frmeCounter);
 				}
 				++frmeCounter;
+			} else {
+				fprintf(stdout, "Ignoring FILM chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
 			}
+		} else {
+			fprintf(stdout, "Ignoring tag '%c%c%c%c' size %d\n", tag[0], tag[1], tag[2], tag[3], size);
 		}
 		fseek(fp, pos + size, SEEK_SET);
 	}
@@ -174,7 +218,7 @@ static void decodeBitmap(FILE *fp, int num) {
 			decodedSize = decodeLzss(data + 4, dataSize - 4, _bitmap555);
 			if (decodedSize == sizeof(_bitmap555)) {
 				char name[64];
-				snprintf(name, sizeof(name), "out/File%03d.tga", num);
+				snprintf(name, sizeof(name), "%s/File%03d.tga", OUT, num);
 				deinterlace555(_bitmap555, 320, 200, _bitmapDei555);
 				writeTga555(name, 320, 200, _bitmapDei555);
 			} else {
@@ -202,13 +246,13 @@ int main(int argc, char *argv[]) {
 					fprintf(stderr, "Failed to open '%s'\n", path);
 				}
 			}
-			if (0) {
+			if (1) {
 				static const char *cines[] = { "Logo.Cine", "ootw2.cine", "Spintitle.Cine", 0 };
 				for (int i = 0; cines[i]; ++i) {
 					snprintf(path, sizeof(path), "%s/%s", argv[1], cines[i]);
 					FILE *fp = fopen(path, "rb");
 					if (fp) {
-						decodeCine(fp);
+						decodeCine(fp, cines[i]);
 						fclose(fp);
 					} else {
 						fprintf(stderr, "Failed to open '%s'\n", path);
