@@ -39,14 +39,16 @@ static uint16_t yuv_to_rgb555(int y, int u, int v) {
 static void uyvy_to_rgb555(const uint8_t *in, int len, uint16_t *out) {
 	assert((len & 3) == 0);
 	for (int i = 0; i < len; i += 4, in += 4) {
-		const int y0 = in[0];
-		const int u  = in[1];
-		const int y1 = in[2];
-		const int v  = in[3];
+		const int u  = in[0];
+		const int y0 = in[1];
+		const int v  = in[2];
+		const int y1 = in[3];
 		*out++ = yuv_to_rgb555(y0, u, v);
 		*out++ = yuv_to_rgb555(y1, u, v);
 	}
 }
+
+static uint16_t _cineBitmap555[320 * 100];
 
 struct OutputBuffer {
 	void setup(int w, int h, CinepakDecoder *decoder) {
@@ -59,6 +61,19 @@ struct OutputBuffer {
 	}
 	void dump(const char *path, int num) {
 		char name[MAXPATHLEN];
+		if (1) {
+			static const int W = 320;
+			static const int H = 100;
+			snprintf(name, sizeof(name), "%s/%04d.tga", path, num);
+			struct TgaFile *f = tgaOpen(name, W, H, 16);
+			if (f) {
+				const int size = W * H * sizeof(uint16_t);
+				uyvy_to_rgb555(_buf, size, _cineBitmap555);
+				tgaWritePixelsData(f, _cineBitmap555, size);
+				tgaClose(f);
+			}
+			return;
+		}
 		snprintf(name, sizeof(name), "%s/%04d.uyvy", path, num);
 		FILE *fp = fopen(name, "wb");
 		if (fp) {
