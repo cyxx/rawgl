@@ -223,11 +223,18 @@ struct Resource20th: ResourceNth {
 				return 0;
 			}
 			char path[512];
-			snprintf(path, sizeof(path), "%s/game/TXT/%s.txt", _dataPath, name);
+			static const char *fmt[] = {
+				"%s/game/TXT/%s.txt",
+				"%s/game/TXT/Linux/%s.txt",
+				0
+			};
+			bool isOpen = false;
 			File f;
-			if (!f.open(path)) {
-				warning("Unable to open '%s'", path);
-			} else {
+			for (int i = 0; fmt[i] && !isOpen; ++i) {
+				snprintf(path, sizeof(path), fmt[i], _dataPath, name);
+				isOpen = f.open(path);
+			}
+			if (isOpen) {
 				const int size = f.size();
 				_textBuf = (char *)malloc(size + 1);
 				if (_textBuf) {
