@@ -335,9 +335,8 @@ void Video::copyPage(uint8_t src, uint8_t dst, int16_t vscroll) {
 	}
 }
 
-void Video::copyPagePtr(const uint8_t *src) {
+static void decode_amiga(const uint8_t *src, uint8_t *dst) {
 	for (int y = 0; y < 200; ++y) {
-		uint8_t *dst = _tempBitmap + (199 - y) * 320;
 		int w = 40;
 		while (w--) {
 			uint8_t p[] = {
@@ -359,11 +358,37 @@ void Video::copyPagePtr(const uint8_t *src) {
 			++src;
 		}
 	}	
-	_stub->addBitmapToList(0, _tempBitmap, sizeof(_tempBitmap));
 }
 
+static uint16_t rgb555_to_565(const uint16_t color) {
+	const int r = (color >> 10) & 31;
+	const int g = (color >>  5) & 31;
+	const int b = (color >>  0) & 31;
+	return (r << 11) | (g << 6) | b;
+}
+
+static void deinterlace555(const uint8_t *src, int w, int h, uint16_t *dst) {
+	for (int y = 0; y < h / 2; ++y) {
+		for (int x = 0; x < w; ++x) {
+			dst[x]     = rgb555_to_565(READ_BE_UINT16(&src[0]));
+			dst[w + x] = rgb555_to_565(READ_BE_UINT16(&src[2]));
+			src += 4;
+		}
+		dst += w * 2;
+	}
+}
+
+
 void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
-	_stub->addBitmapToList(0, src, size);
+	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
+		decode_amiga(src, _tempBitmap);
+		_stub->addBitmapToList(0, _tempBitmap, sizeof(_tempBitmap), FMT_CLUT);
+	} else if (_res->getDataType() == Resource::DT_3DO) {
+		deinterlace555(src, 320, 200, _bitmap565);
+		_stub->addBitmapToList(0, (uint8_t *)_bitmap565, sizeof(_bitmap565), FMT_RGB565);
+	} else {
+		_stub->addBitmapToList(0, src, size, FMT_BMP);
+	}
 }
 
 static void readPaletteWin31(const uint8_t *buf, int num, Color pal[16]) {

@@ -31,6 +31,14 @@ enum {
 	RENDER_GL,
 };
 
+enum {
+	FMT_CLUT,
+	FMT_BMP,
+	FMT_RGB565,
+	FMT_RGB,
+	FMT_RGBA,
+};
+
 struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
 	typedef uint32_t (*TimerCallback)(uint32_t delay, void *param);
@@ -55,7 +63,7 @@ struct SystemStub {
 	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize) = 0;
 
 	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt) = 0;
-	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, const uint32_t size) = 0;
+	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, const uint32_t size, int fmt) = 0;
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt) = 0;
 	virtual void addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) = 0;
 	virtual void addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) = 0;

@@ -197,7 +197,7 @@ void Resource::load() {
 			debug(DBG_BANK, "Resource::load() bufPos=%X size=%X type=%X pos=%X bankNum=%X", memPtr - _memPtrStart, me->packedSize, me->type, me->bankPos, me->bankNum);
 			readBank(me, memPtr);
 			if(me->type == 2) {
-				_vid->copyPagePtr(_vidCurPtr);
+				_vid->copyBitmapPtr(_vidCurPtr);
 				me->status = STATUS_NULL;
 			} else {
 				me->bufPtr = memPtr;

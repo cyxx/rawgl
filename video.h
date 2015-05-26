@@ -39,6 +39,7 @@ struct Video {
 	uint8_t *_dataBuf;
 	const StrEntry *_stringsTable;
 	uint8_t _tempBitmap[320 * 200];
+	uint16_t _bitmap565[320 * 200];
 
 	Video(Resource *res, SystemStub *stub);
 	void init();
@@ -55,7 +56,6 @@ struct Video {
 	void setWorkPagePtr(uint8_t page);
 	void fillPage(uint8_t page, uint8_t color);
 	void copyPage(uint8_t src, uint8_t dst, int16_t vscroll);
-	void copyPagePtr(const uint8_t *src);
 	void copyBitmapPtr(const uint8_t *src, uint32_t size = 0);
 	void changePal(uint8_t pal);
 	void updateDisplay(uint8_t page);
