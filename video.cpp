@@ -56,6 +56,9 @@ void Video::drawShape(uint8_t color, uint16_t zoom, const Point *pt) {
 void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 	const int code = _pData.fetchByte();
 	debug(DBG_VIDEO, "Video::drawShape3DO() code=0x%x pt=%d,%d", code, pt->x, pt->y);
+	if (color == 0xFF) {
+		color = code & 31;
+	}
 	switch (code & 0xE0) {
 	case 0x00: {
 			const int x0 = pt->x - _pData.fetchByte() * zoom / 64;
@@ -66,12 +69,13 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 				Point po;
 				po.x = x0 + _pData.fetchByte() * zoom / 64;
 				po.y = y0 + _pData.fetchByte() * zoom / 64;
-				int color = 0xFF;
+				color = 0xFF;
 				if (offset & 0x8000) {
 					color = _pData.fetchByte();
-					_pData.fetchByte();
-					if (color & 0x80) { // mask
-						color &= 0x7F;
+					int part = _pData.fetchByte();
+					if (color & 0x80) {
+						color &= 0xF;
+						warning("Video::drawShape3DO() unhandled mask %d", part);
 					}
 					offset &= 0x7FFF;
 				}
@@ -102,14 +106,14 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 			qs.vertices[2].y = y2;
 			qs.vertices[3].x = x2;
 			qs.vertices[3].y = y1;
-			_stub->addQuadStripToList(_listPtrs[0], code & 31, &qs);
+			_stub->addQuadStripToList(_listPtrs[0], color, &qs);
 		}
 		break;
 	case 0x40: { // pixel
 			if (pt->x > 319 || pt->x < 0 || pt->y > 199 || pt->y < 0) {
 				break;
 			}
-			_stub->addPointToList(_listPtrs[0], code & 31, pt);
+			_stub->addPointToList(_listPtrs[0], color, pt);
 		}
 		break;
 	case 0xC0: { // polygon
@@ -133,7 +137,7 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 				qs.vertices[j].x = x0 + x1;
 				qs.vertices[count *  2 - 1 - (i + 1) % count].y = y0 + y;
 			}
-			_stub->addQuadStripToList(_listPtrs[0], code & 31, &qs);
+			_stub->addQuadStripToList(_listPtrs[0], color, &qs);
 		}
 		break;
 	default:
@@ -406,12 +410,12 @@ static void readPalette3DO(const uint8_t *buf, int num, Color pal[16]) {
 	const uint8_t *p = buf + num * 16 * sizeof(uint16_t);
 	for (int i = 0; i < 16; ++i) {
 		const uint16_t color = READ_BE_UINT16(p); p += 2;
-		const uint8_t r = (color >> 10) & 0x1F;
-		const uint8_t g = (color >>  5) & 0x1F;
-		const uint8_t b =  color        & 0x1F;
-		pal[i].r = (r << 3);
-		pal[i].g = (g << 3);
-		pal[i].b = (b << 3);
+		const int r = (color >> 10) & 31;
+		const int g = (color >>  5) & 31;
+		const int b =  color        & 31;
+		pal[i].r = (r << 3) | (r >> 2);
+		pal[i].g = (g << 3) | (g >> 2);
+		pal[i].b = (b << 3) | (b >> 2);
 	}
 }
 

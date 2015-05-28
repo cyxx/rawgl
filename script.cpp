@@ -509,7 +509,7 @@ void Script::executeScript() {
 				case 11: {
 						const int num = _scriptPtr.fetchByte();
 						debug(DBG_SCRIPT, "Script::op11() setPalette %d", num);
-						_vid->_nextPal = num;
+						_vid->changePal(num);
 					}
 					continue;
 				case 22: {
