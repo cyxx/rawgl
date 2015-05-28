@@ -346,6 +346,7 @@ struct SystemStub_OGL : SystemStub {
 	uint16_t _w, _h;
 	bool _fullscreen;
 	Color _pal[16];
+	Color *_alphaColor;
 	Graphics _gfx;
 	GLuint _palShader;
 	Palette _palTex;
@@ -417,6 +418,8 @@ void SystemStub_OGL::init(const char *title) {
 	SDL_WM_SetCaption(title, NULL);
 	memset(&_pi, 0, sizeof(_pi));
 	_fullscreen = false;
+	memset(_pal, 0, sizeof(_pal));
+	_alphaColor = &_pal[12]; /* _pal[0x8 | color] */
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
 	resize(DEF_SCREEN_W, DEF_SCREEN_H);
@@ -603,7 +606,7 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 					glColor4ub(_pal[e.color].r, _pal[e.color].g, _pal[e.color].b, 255);
 					drawVerticesFlat(e.numVertices, e.vertices);
 				} else if (e.color == COL_ALPHA) {
-					glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
+					glColor4ub(_alphaColor->r, _alphaColor->g, _alphaColor->b, 192);
 					drawVerticesFlat(e.numVertices, e.vertices);
 				}
 			}
@@ -760,7 +763,7 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 			glColor3f(color / 31., 0, 0);
 		} else {
 			if (color == COL_ALPHA) {
-				glColor4ub(_pal[8].r, _pal[8].g, _pal[8].b, 192);
+				glColor4ub(_alphaColor->r, _alphaColor->g, _alphaColor->b, 192);
 			} else {
 				assert(color < 16);
 				glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
@@ -982,6 +985,22 @@ void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vs
 	_drawLists[dstListNum].yOffset = vscroll;
 }
 
+static void dumpPalette(const Color *pal) {
+	static const int SZ = 32;
+	int x2, x1 = 0;
+	for (int i = 0; i < 16; ++i) {
+		x2 = x1 + SZ;
+		glColor4ub(pal[i].r, pal[i].g, pal[i].b, 255);
+		glBegin(GL_QUADS);
+			glVertex2i(x1, 0);
+			glVertex2i(x2, 0);
+			glVertex2i(x2, SZ);
+			glVertex2i(x1, SZ);
+		glEnd();
+		x1 = x2;
+	}
+}
+
 void SystemStub_OGL::blitList(uint8_t listNum) {
 	assert(listNum < NUM_LISTS);
 
@@ -1040,6 +1059,11 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 
 		if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
 			glUseProgram(0);
+		}
+
+		if (0) {
+			glDisable(GL_TEXTURE_2D);
+			dumpPalette(_pal);
 		}
 
 		glLoadIdentity();
