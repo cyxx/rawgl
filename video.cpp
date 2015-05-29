@@ -53,6 +53,23 @@ void Video::drawShape(uint8_t color, uint16_t zoom, const Point *pt) {
 	}
 }
 
+void Video::drawShapePart3DO(int color, int part, const Point *pt) {
+	const uint8_t *vertices = _vertices3DO[part];
+	int w = *vertices++;
+	int h = *vertices++;
+	int x = pt->x - w / 2;
+	int y = pt->y - h / 2;
+	QuadStrip qs;
+	qs.numVertices = 2;
+	for (; h != 0; --h, ++y) {
+		qs.vertices[0].x = x + *vertices++;
+		qs.vertices[0].y = y;
+		qs.vertices[1].x = x + *vertices++;
+		qs.vertices[1].y = y;
+		_stub->addQuadStripToList(_listPtrs[0], color, &qs);
+	}
+}
+
 void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 	const int code = _pData.fetchByte();
 	debug(DBG_VIDEO, "Video::drawShape3DO() code=0x%x pt=%d,%d", code, pt->x, pt->y);
@@ -75,7 +92,8 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 					int part = _pData.fetchByte();
 					if (color & 0x80) {
 						color &= 0xF;
-						warning("Video::drawShape3DO() unhandled mask %d", part);
+						drawShapePart3DO(color, part, &po);
+						continue;
 					}
 					offset &= 0x7FFF;
 				}

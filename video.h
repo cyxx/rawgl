@@ -27,6 +27,7 @@ struct Video {
 	static const StrEntry _stringsTable3DO[];
 	static const char *_noteText3DO;
 	static const char *_endText3DO;
+	static const uint8_t *_vertices3DO[];
 
 	Resource *_res;
 	SystemStub *_stub;
@@ -48,6 +49,7 @@ struct Video {
 	void setHeads(const uint8_t *src);
 	void setDataBuffer(uint8_t *dataBuf, uint16_t offset);
 	void drawShape(uint8_t color, uint16_t zoom, const Point *pt);
+	void drawShapePart3DO(int color, int part, const Point *pt);
 	void drawShape3DO(int color, int zoom, const Point *pt);
 	void fillPolygon(uint16_t color, uint16_t zoom, const Point *pt);
 	void drawShapeParts(uint16_t zoom, const Point *pt);
