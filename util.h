@@ -31,7 +31,7 @@ enum {
 	FIXUP_PALETTE_SHADER, // use shader to handle paletted display
 };
 
-extern const int g_fixUpPalette;
+extern int g_fixUpPalette;
 
 extern uint16_t g_debugMask;
 
