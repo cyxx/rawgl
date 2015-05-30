@@ -80,7 +80,7 @@ struct Texture {
 
 	void init();
 	void uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, const Color *pal);
-	void uploadDataRGB(const void *data, int srcPitch, int w, int h);
+	void uploadDataRGB565(const void *data, int srcPitch, int w, int h);
 	void draw(int w, int h);
 	void clear();
 	void readRaw16(const uint8_t *src, const Color *pal, int w = 320, int h = 200);
@@ -195,7 +195,7 @@ void Texture::uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, co
 	}
 }
 
-void Texture::uploadDataRGB(const void *data, int srcPitch, int w, int h) {
+void Texture::uploadDataRGB565(const void *data, int srcPitch, int w, int h) {
 	_w = w;
 	_h = h;
 	_u = 1.f;
@@ -370,7 +370,7 @@ struct SystemStub_OGL : SystemStub {
 	virtual void setPalette(const Color *colors, uint8_t n);
 	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize);
 	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt);
-	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, const uint32_t size, int fmt);
+	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt);
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt);
 	virtual void addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs);
 	virtual void addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt);
@@ -686,7 +686,7 @@ static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId
 	drawTexQuad(pos, uv, texId);
 }
 
-void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, const uint32_t size, int fmt) {
+void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt) {
 	switch (_render) {
 	case RENDER_ORIGINAL:
 		if (memcmp(data, "BM", 2) == 0) {
@@ -720,7 +720,7 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, const
 			break;
 		case FMT_RGB565:
 			_backgroundTex.clear();
-			_backgroundTex.uploadDataRGB(data, 320 * 2, 320, 200);
+			_backgroundTex.uploadDataRGB565(data, 320 * 2, 320, 200);
 			break;
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);

@@ -63,7 +63,7 @@ struct SystemStub {
 	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize) = 0;
 
 	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt) = 0;
-	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, const uint32_t size, int fmt) = 0;
+	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt) = 0;
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt) = 0;
 	virtual void addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) = 0;
 	virtual void addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) = 0;

@@ -400,16 +400,19 @@ static void deinterlace555(const uint8_t *src, int w, int h, uint16_t *dst) {
 	}
 }
 
-
 void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
 		decode_amiga(src, _tempBitmap);
-		_stub->addBitmapToList(0, _tempBitmap, sizeof(_tempBitmap), FMT_CLUT);
+		_stub->addBitmapToList(0, _tempBitmap, 320, 200, FMT_CLUT);
 	} else if (_res->getDataType() == Resource::DT_3DO) {
 		deinterlace555(src, 320, 200, _bitmap565);
-		_stub->addBitmapToList(0, (uint8_t *)_bitmap565, sizeof(_bitmap565), FMT_RGB565);
+		_stub->addBitmapToList(0, (uint8_t *)_bitmap565, 320, 200, FMT_RGB565);
 	} else {
-		_stub->addBitmapToList(0, src, size, FMT_BMP);
+		if (memcmp(src, "BM", 2) == 0) {
+			const int w = READ_LE_UINT32(src + 0x12);
+			const int h = READ_LE_UINT32(src + 0x16);
+			_stub->addBitmapToList(0, src, w, h, FMT_BMP);
+		}
 	}
 }
 
