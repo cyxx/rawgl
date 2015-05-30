@@ -277,8 +277,8 @@ void Script::op_updateDisplay() {
 		_scriptVars[0xDC] = 0x21;
 	}
 
+	const int delay = _stub->getTimeStamp() - _timeStamp;
 	if (!_fastMode) {
-		int32_t delay = _stub->getTimeStamp() - _timeStamp;
 		int32_t pause = _scriptVars[VAR_PAUSE_SLICES] * 20 - delay;
 		if (pause > 0) {
 			_stub->sleep(pause);
@@ -286,7 +286,7 @@ void Script::op_updateDisplay() {
 		_timeStamp = _stub->getTimeStamp();
 	}
 	if (_is3DO) {
-		_scriptVars[0xF7] += 200;
+		_scriptVars[0xF7] += 200 - delay;
 	} else {
 		_scriptVars[0xF7] = 0;
 	}
