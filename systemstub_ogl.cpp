@@ -80,7 +80,7 @@ struct Texture {
 
 	void init();
 	void uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, const Color *pal);
-	void uploadDataRGB565(const void *data, int srcPitch, int w, int h);
+	void uploadDataRGB(const void *data, int srcPitch, int w, int h, int fmt, int type);
 	void draw(int w, int h);
 	void clear();
 	void readRaw16(const uint8_t *src, const Color *pal, int w = 320, int h = 200);
@@ -107,12 +107,7 @@ static void convertTexture16(const uint8_t *src, const int srcPitch, int w, int 
 	}
 }
 
-static void convertTextureCLUT(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal, bool alpha, bool flipY) {
-	if (flipY) {
-		dst += dstPitch * (h - 1);
-		dstPitch = -dstPitch;
-	}
-	const bool isHeadsBmp = (w == 128 && h == 128 && pal[13].r == 240 && pal[13].g == 96 && pal[13].b == 128);
+static void convertTextureCLUT(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal, bool alpha) {
 	for (int y = 0; y < h; ++y) {
 		int offset = 0;
 		for (int x = 0; x < w; ++x) {
@@ -121,7 +116,7 @@ static void convertTextureCLUT(const uint8_t *src, const int srcPitch, int w, in
 			dst[offset++] = pal[color].g;
 			dst[offset++] = pal[color].b;
 			if (alpha) {
-				if (color == 0 || (isHeadsBmp && color == 13)) {
+				if (color == 0) {
 					dst[offset++] = 0;
 				} else {
 					dst[offset++] = 255;
@@ -151,7 +146,6 @@ void Texture::uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, co
 			fmt = GL_RGB;
 		}
 		break;
-	case FMT_BMP:
 	case FMT_RGB:
 		depth = 3;
 		fmt = GL_RGB;
@@ -164,7 +158,6 @@ void Texture::uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, co
 		return;
 	}
 	const bool alpha = (_fmt == FMT_RGBA);
-	const bool flipY = (_fmt == FMT_BMP);
 	if (!_rgbData) {
 		_w = _npotTex ? w : roundPow2(w);
 		_h = _npotTex ? h : roundPow2(h);
@@ -185,17 +178,17 @@ void Texture::uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, co
 			convertTexture16(data, srcPitch, w, h, _rgbData, _w);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _w, _h, 0, fmt, type, _rgbData);
 		} else {
-			convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha, flipY);
+			convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha);
 			glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, type, _rgbData);
 		}
 	} else {
 		glBindTexture(GL_TEXTURE_2D, _id);
-		convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha, flipY);
+		convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _w, _h, fmt, type, _rgbData);
 	}
 }
 
-void Texture::uploadDataRGB565(const void *data, int srcPitch, int w, int h) {
+void Texture::uploadDataRGB(const void *data, int srcPitch, int w, int h, int fmt, int type) {
 	_w = w;
 	_h = h;
 	_u = 1.f;
@@ -207,7 +200,7 @@ void Texture::uploadDataRGB565(const void *data, int srcPitch, int w, int h) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _w, _h, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, data);
+	glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, type, data);
 }
 
 void Texture::draw(int w, int h) {
@@ -245,6 +238,7 @@ void Texture::readRaw16(const uint8_t *src, const Color *pal, int w, int h) {
 }
 
 void Texture::readFont(const uint8_t *src) {
+	_fmt = FMT_RGBA;
 	const int W = 768 * 2;
 	const int H = 8;
 	uint8_t *out = (uint8_t *)malloc(W * H);
@@ -262,36 +256,6 @@ void Texture::readFont(const uint8_t *src) {
 		pal[1].r = pal[1].g = pal[1].b = 255;
 		uploadDataCLUT(out, W, W, H, pal);
 		free(out);
-	}
-}
-
-struct BitmapInfo {
-	int _w, _h;
-	Color _palette[256];
-	const uint8_t *_data;
-
-	void read(const uint8_t *src);
-};
-
-void BitmapInfo::read(const uint8_t *src) {
-	const uint32_t imageOffset = READ_LE_UINT32(src + 0xA);
-	_w = READ_LE_UINT32(src + 0x12);
-	_h = READ_LE_UINT32(src + 0x16);
-	const int depth = READ_LE_UINT16(src + 0x1C);
-	const int compression = READ_LE_UINT32(src + 0x1E);
-	const int colorsCount = READ_LE_UINT32(src + 0x2E);
-	if (depth == 8 && compression == 0) {
-		const uint8_t *colorData = src + 0xE /* BITMAPFILEHEADER */ + 40 /* BITMAPINFOHEADER */;
-		for (int i = 0; i < colorsCount; ++i) {
-			_palette[i].b = colorData[0];
-			_palette[i].g = colorData[1];
-			_palette[i].r = colorData[2];
-			colorData += 4;
-		}
-		_data = src + imageOffset;
-	} else {
-		_data = 0;
-		warning("Unsupported BMP depth=%d compression=%d", depth, compression);
 	}
 }
 
@@ -366,9 +330,9 @@ struct SystemStub_OGL : SystemStub {
 	virtual void init(const char *title);
 	virtual void destroy();
 	virtual int getRenderMode() const { return _render; }
-	virtual void setFont(const uint8_t *font);
+	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, uint8_t n);
-	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize);
+	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
 	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt);
 	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt);
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt);
@@ -432,12 +396,8 @@ void SystemStub_OGL::init(const char *title) {
 	glDisable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
 	_backgroundTex.init();
-	_backgroundTex._fmt = FMT_RGB;
 	_fontTex.init();
-	_fontTex._fmt = FMT_RGBA;
-	_fontTex.readFont(Graphics::_font);
 	_spritesTex.init();
-	_spritesTex._fmt = FMT_RGBA;
 	_sprite.num = -1;
 	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
 		_palTex.init();
@@ -558,17 +518,15 @@ void SystemStub_OGL::destroy() {
 	SDL_Quit();
 }
 
-void SystemStub_OGL::setFont(const uint8_t *font) {
+void SystemStub_OGL::setFont(const uint8_t *src, int w, int h) {
 	if (g_fixUpPalette == FIXUP_PALETTE_SHADER) {
 		// TODO:
 		return;
 	}
-	if (memcmp(font, "BM", 2) == 0) {
-		BitmapInfo bi;
-		bi.read(font);
-		if (bi._data) {
-			_fontTex.uploadDataCLUT(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
-		}
+	if (src == 0) {
+		_fontTex.readFont(Graphics::_font);
+	} else {
+		_fontTex.uploadDataRGB(src, w * 4, w, h, GL_RGBA, GL_UNSIGNED_BYTE);
 	}
 }
 
@@ -617,14 +575,8 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 	}
 }
 
-void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int xSize, int ySize) {
-	if (memcmp(src, "BM", 2) == 0) {
-		BitmapInfo bi;
-		bi.read(src);
-		if (bi._data) {
-			_spritesTex.uploadDataCLUT(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
-		}
-	}
+void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) {
+	_spritesTex.uploadDataRGB(src, w * 4, w, h, GL_RGBA, GL_UNSIGNED_BYTE);
 	_spritesSizeX = xSize;
 	_spritesSizeY = ySize;
 }
@@ -689,16 +641,7 @@ static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId
 void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt) {
 	switch (_render) {
 	case RENDER_ORIGINAL:
-		if (memcmp(data, "BM", 2) == 0) {
-			assert(fmt == FMT_BMP);
-			BitmapInfo bi;
-			bi.read(data);
-			if (bi._w == 320 && bi._h == 200 && bi._data) {
-				for (int y = 0; y < 200; ++y) {
-					memcpy(_gfx.getPagePtr(listNum) + y * _gfx._w, bi._data + (199 - y) * _gfx._w, 320);
-				}
-			}
-		} else if (fmt == FMT_CLUT) {
+		if (fmt == FMT_CLUT) {
 			memcpy(_gfx.getPagePtr(listNum), data, _gfx.getPageSize());
 		}
 		break;
@@ -709,18 +652,13 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, int w
 		case FMT_CLUT:
 			_backgroundTex.readRaw16(data, _pal);
 			break;
-		case FMT_BMP:
-			if (memcmp(data, "BM", 2) == 0) {
-				BitmapInfo bi;
-				bi.read(data);
-				if (bi._data) {
-					_backgroundTex.uploadDataCLUT(bi._data, (bi._w + 3) & ~3, bi._w, bi._h, bi._palette);
-				}
-			}
+		case FMT_RGB:
+			_backgroundTex.clear();
+			_backgroundTex.uploadDataRGB(data, w * 3, w, h, GL_RGB, GL_UNSIGNED_BYTE);
 			break;
 		case FMT_RGB565:
 			_backgroundTex.clear();
-			_backgroundTex.uploadDataRGB565(data, 320 * 2, 320, 200);
+			_backgroundTex.uploadDataRGB(data, 320 * 2, 320, 200, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
 			break;
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
@@ -817,10 +755,6 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 	}
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawChar(c, pt->x / 8, pt->y, color);
-
-	if (!_fontTex._rgbData) {
-		return;
-	}
 
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);

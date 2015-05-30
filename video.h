@@ -45,6 +45,7 @@ struct Video {
 	Video(Resource *res, SystemStub *stub);
 	void init();
 
+	void setDefaultFont();
 	void setFont(const uint8_t *font);
 	void setHeads(const uint8_t *src);
 	void setDataBuffer(uint8_t *dataBuf, uint16_t offset);

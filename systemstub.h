@@ -33,7 +33,6 @@ enum {
 
 enum {
 	FMT_CLUT,
-	FMT_BMP,
 	FMT_RGB565,
 	FMT_RGB,
 	FMT_RGBA,
@@ -58,9 +57,9 @@ struct SystemStub {
 
 	virtual int getRenderMode() const = 0;
 
-	virtual void setFont(const uint8_t *font) = 0;
+	virtual void setFont(const uint8_t *src, int w, int h) = 0;
 	virtual void setPalette(const Color *colors, uint8_t n) = 0;
-	virtual void setSpriteAtlas(const uint8_t *src, int xSize, int ySize) = 0;
+	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) = 0;
 
 	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt) = 0;
 	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt) = 0;

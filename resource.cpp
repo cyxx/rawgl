@@ -197,7 +197,7 @@ void Resource::load() {
 			debug(DBG_BANK, "Resource::load() bufPos=%X size=%X type=%X pos=%X bankNum=%X", memPtr - _memPtrStart, me->packedSize, me->type, me->bankPos, me->bankNum);
 			readBank(me, memPtr);
 			if(me->type == 2) {
-				_vid->copyBitmapPtr(_vidCurPtr);
+				_vid->copyBitmapPtr(_vidCurPtr, me->unpackedSize);
 				me->status = STATUS_NULL;
 			} else {
 				me->bufPtr = memPtr;
@@ -335,7 +335,7 @@ void Resource::loadBmp(int num) {
 		uint8_t *p = _win31->loadEntry(num, 0, &size);
 		if (p) {
 			if (size == 64000) {
-				_vid->copyBitmapPtr(p);
+				_vid->copyBitmapPtr(p, size);
 			}
 			free(p);
 		}

@@ -4,6 +4,7 @@
  */
 
 #include "video.h"
+#include "bitmap.h"
 #include "resource.h"
 #include "systemstub.h"
 
@@ -20,13 +21,27 @@ void Video::init() {
 	_pData.byteSwap = (_res->getDataType() == Resource::DT_3DO);
 }
 
+void Video::setDefaultFont() {
+	_stub->setFont(0, 0, 0);
+}
+
 void Video::setFont(const uint8_t *font) {
-	_stub->setFont(font);
+	int w, h;
+	uint8_t *buf = decode_bitmap(font, true, false, -1, &w, &h);
+	if (buf) {
+		_stub->setFont(buf, w, h);
+		free(buf);
+	}
 }
 
 void Video::setHeads(const uint8_t *src) {
-	_stub->setSpriteAtlas(src, 2, 2);
-	_hasHeadSprites = true;
+	int w, h;
+	uint8_t *buf = decode_bitmap(src, true, false, 0xF06080, &w, &h);
+	if (buf) {
+		_stub->setSpriteAtlas(buf, w, h, 2, 2);
+		free(buf);
+		_hasHeadSprites = true;
+	}
 }
 
 void Video::setDataBuffer(uint8_t *dataBuf, uint16_t offset) {
@@ -408,10 +423,11 @@ void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 		deinterlace555(src, 320, 200, _bitmap565);
 		_stub->addBitmapToList(0, (uint8_t *)_bitmap565, 320, 200, FMT_RGB565);
 	} else {
-		if (memcmp(src, "BM", 2) == 0) {
-			const int w = READ_LE_UINT32(src + 0x12);
-			const int h = READ_LE_UINT32(src + 0x16);
-			_stub->addBitmapToList(0, src, w, h, FMT_BMP);
+		int w, h;
+		uint8_t *buf = decode_bitmap(src, false, true, -1, &w, &h);
+		if (buf) {
+			_stub->addBitmapToList(0, buf, w, h, FMT_RGB);
+			free(buf);
 		}
 	}
 }

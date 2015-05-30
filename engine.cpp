@@ -64,6 +64,8 @@ void Engine::setup() {
 	if (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION) {
 		_res.loadFont();
 		_res.loadHeads();
+	} else {
+		_vid.setDefaultFont();
 	}
 	_log.init();
 	_mix.init();
