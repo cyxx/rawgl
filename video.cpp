@@ -27,7 +27,7 @@ void Video::setDefaultFont() {
 
 void Video::setFont(const uint8_t *font) {
 	int w, h;
-	uint8_t *buf = decode_bitmap(font, true, false, -1, &w, &h);
+	uint8_t *buf = decode_bitmap(font, true, -1, &w, &h);
 	if (buf) {
 		_stub->setFont(buf, w, h);
 		free(buf);
@@ -36,7 +36,7 @@ void Video::setFont(const uint8_t *font) {
 
 void Video::setHeads(const uint8_t *src) {
 	int w, h;
-	uint8_t *buf = decode_bitmap(src, true, false, 0xF06080, &w, &h);
+	uint8_t *buf = decode_bitmap(src, true, 0xF06080, &w, &h);
 	if (buf) {
 		_stub->setSpriteAtlas(buf, w, h, 2, 2);
 		free(buf);
@@ -424,7 +424,7 @@ void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 		_stub->addBitmapToList(0, (uint8_t *)_bitmap565, 320, 200, FMT_RGB565);
 	} else {
 		int w, h;
-		uint8_t *buf = decode_bitmap(src, false, true, -1, &w, &h);
+		uint8_t *buf = decode_bitmap(src, false, -1, &w, &h);
 		if (buf) {
 			_stub->addBitmapToList(0, buf, w, h, FMT_RGB);
 			free(buf);

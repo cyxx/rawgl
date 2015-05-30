@@ -631,8 +631,8 @@ static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId
 	int u = num % xSize;
 	int v = num / ySize;
 	const float uv[4] = {
-		u * 1. / xSize, 1. - v * 1. / ySize,
-		(u + 1) * 1. / xSize, 1. - (v + 1) * 1. / ySize
+		u * 1. / xSize, v * 1. / ySize,
+		(u + 1) * 1. / xSize, (v + 1) * 1. / ySize
 	};
 	glColor4ub(255, 255, 255, 255);
 	drawTexQuad(pos, uv, texId);
@@ -785,8 +785,8 @@ void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const
 		float uv[4];
 		uv[0] = (c % 16) * 16 / 256.;
 		uv[2] = uv[0] + 16 / 256.;
-		uv[1] = (16 - c / 16) * 16 / 256.;
-		uv[3] = uv[1] - 16 / 256.;
+		uv[1] = (c / 16) * 16 / 256.;
+		uv[3] = uv[1] + 16 / 256.;
 		drawTexQuad(pos, uv, _fontTex._id);
 	}
 

@@ -26,7 +26,7 @@ static void clut(const uint8_t *src, const uint8_t *pal, int pitch, int w, int h
 	}
 }
 
-uint8_t *decode_bitmap(const uint8_t *src, bool alpha, bool flipY, int colorKey, int *w, int *h) {
+uint8_t *decode_bitmap(const uint8_t *src, bool alpha, int colorKey, int *w, int *h) {
 	if (memcmp(src, "BM", 2) != 0) {
 		return 0;
 	}
@@ -47,6 +47,7 @@ uint8_t *decode_bitmap(const uint8_t *src, bool alpha, bool flipY, int colorKey,
 		return 0;
 	}
 	const uint8_t *palette = src + 14 /* BITMAPFILEHEADER */ + 40 /* BITMAPINFOHEADER */;
+	const bool flipY = true;
 	clut(src + imageOffset, palette, (width + 3) & ~3, width, height, bpp, flipY, colorKey, dst);
 	*w = width;
 	*h = height;
