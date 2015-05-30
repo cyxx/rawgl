@@ -11,6 +11,12 @@
 #include "sfxplayer.h"
 #include "systemstub.h"
 
+static uint32_t ieee754_80bits(const uint8_t *p) {
+	uint32_t m = READ_BE_UINT32(p + 2);
+	const int exp = 30 - p[1];
+	return (m >> exp);
+}
+
 struct Mixer_impl {
 
 	static const int kMixFreq = 22050;
@@ -37,18 +43,12 @@ struct Mixer_impl {
 		Mix_Quit();
 	}
 
-	static uint8_t *convertSampleRaw(const uint8_t *data, int freq, uint32_t *size) {
+	static uint8_t *convertSampleRaw(const uint8_t *data, int len, int fmt, int channels, int freq, uint32_t *size) {
 		SDL_AudioCVT cvt;
 		memset(&cvt, 0, sizeof(cvt));
-		if (SDL_BuildAudioCVT(&cvt, AUDIO_S8, 1, freq, AUDIO_S16SYS, 2, kMixFreq) < 0) {
+		if (SDL_BuildAudioCVT(&cvt, fmt, channels, freq, AUDIO_S16SYS, 2, kMixFreq) < 0) {
 			warning("Failed to resample from %d Hz", freq);
 			return 0;
-		}
-		const int len = READ_BE_UINT16(data) * 2;
-		const int loopLen = READ_BE_UINT16(data + 2) * 2;
-		data += 8;
-		if (loopLen != 0) {
-			// loopPos = len;
 		}
 		if (cvt.needed) {
 			cvt.len = len;
@@ -71,8 +71,11 @@ struct Mixer_impl {
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
 		stopSound(channel);
+		const int len = READ_BE_UINT16(data) * 2;
+//		const int loopLen = READ_BE_UINT16(data + 2) * 2;
+		data += 8;
 		uint32_t size;
-		uint8_t *sample = convertSampleRaw(data, freq, &size);
+		uint8_t *sample = convertSampleRaw(data + 8, len, AUDIO_S8, 1, freq, &size);
 		if (sample) {
 			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, size);
 			playSound(channel, volume, chunk);
@@ -102,6 +105,43 @@ struct Mixer_impl {
 			Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
 			playSound(channel, volume, chunk);
 		}
+	}
+	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
+		uint8_t *sample = 0;
+		uint32_t sampleSize;
+		int channels = 0;
+		int fmt = -1;
+		int rate = 0;
+		const uint32_t size = READ_BE_UINT32(data + 4);
+		if (memcmp(data + 8, "AIFF", 4) == 0) {
+			const uint32_t size = READ_BE_UINT32(data + 4);
+			for (int offset = 12; offset < size; ) {
+				const uint32_t sz = READ_BE_UINT32(data + offset + 4);
+				if (memcmp(data + offset, "COMM", 4) == 0) {
+					channels = READ_BE_UINT16(data + offset + 8);
+					const int bits = READ_BE_UINT16(data + offset + 14);
+					rate = ieee754_80bits(data + offset + 16);
+					debug(DBG_SND, "aiff channels %d rate %d bits %d", channels, rate, bits);
+					if (bits == 8) {
+						fmt = AUDIO_S8;
+					} else if (bits == 16) {
+						fmt = AUDIO_S16MSB;
+					} else {
+						break;
+					}
+				} else if (memcmp(data + offset, "SSND", 4) == 0) {
+					sample = convertSampleRaw(data + offset + 8, sz, fmt, channels, rate, &sampleSize);
+					break;
+				}
+				offset += sz + 8;
+			}
+		}
+		if (sample) {
+			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, sampleSize);
+			playSound(channel, volume, chunk);
+			_samples[channel] = sample;
+		}
+
 	}
 	void playSound(uint8_t channel, int volume, Mix_Chunk *chunk) {
 		if (chunk) {
@@ -194,6 +234,9 @@ void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume) {
 
 void Mixer::playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
 	debug(DBG_SND, "Mixer::playSoundAiff(%d, %d)", channel, volume);
+	if (_impl) {
+		return _impl->playSoundAiff(channel, data, volume);
+	}
 }
 
 void Mixer::stopSound(uint8_t channel) {
