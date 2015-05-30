@@ -390,7 +390,7 @@ const char *ResourceWin31::getString(int num) const {
 	return _stringsTable[num];
 }
 
-const char *ResourceWin31::getMusicPath(int num) const {
+const char *ResourceWin31::getMusicName(int num) const {
 	switch (num) {
 	case 7:
 		return "y.mid";

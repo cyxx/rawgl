@@ -71,7 +71,7 @@ struct Resource15th: ResourceNth {
 		return 0;
 	}
 
-	virtual const char *getMusicPath(int num) {
+	virtual const char *getMusicName(int num) {
 		const char *path = 0;
 		switch (num) {
 		case 7:
@@ -265,7 +265,7 @@ struct Resource20th: ResourceNth {
 		return 0;
 	}
 
-	virtual const char *getMusicPath(int num) {
+	virtual const char *getMusicName(int num) {
 		if (num >= 5000) {
 			snprintf(_musicName, sizeof(_musicName), "game/OGG/amb%d.ogg", num);
 		} else {

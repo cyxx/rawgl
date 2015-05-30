@@ -162,7 +162,7 @@ uint8_t *Resource3do::loadFile(int num, uint8_t *dst, uint32_t *size) {
 	return dst;
 }
 
-const char *Resource3do::getMusicPath(int num) {
+const char *Resource3do::getMusicName(int num) {
 	snprintf(_musicPath, sizeof(_musicPath), "GameData/song%d", num);
 	return _musicPath;
 }

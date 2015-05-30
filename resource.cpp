@@ -428,21 +428,21 @@ const char *Resource::getString(int num) {
 
 const char *Resource::getMusicPath(int num, char *buf, int bufSize) {
 	if (_nth) {
-		const char *name = _nth->getMusicPath(num);
+		const char *name = _nth->getMusicName(num);
 		if (name) {
 			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
 			return buf;
 		}
 	}
 	if (_win31) {
-		const char *name = _win31->getMusicPath(num);
+		const char *name = _win31->getMusicName(num);
 		if (name) {
 			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
 			return buf;
 		}
 	}
 	if (_3do) {
-		const char *name = _3do->getMusicPath(num);
+		const char *name = _3do->getMusicName(num);
 		if (name) {
 			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
 			return buf;
