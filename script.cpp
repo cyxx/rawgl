@@ -529,7 +529,7 @@ void Script::executeScript() {
 				case 26: {
 						const int num = _scriptPtr.fetchByte();
 						debug(DBG_SCRIPT, "Script::op26() playMusic %d", num);
-//						warning("Script::playMusic() num=%d unimplemented", num);
+						snd_playMusic(num, 0, 0);
 					}
 					continue;
 				case 27: {
@@ -670,7 +670,11 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
-	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION || _res->getDataType() == Resource::DT_WIN31) {
+	switch (_res->getDataType()) {
+	case Resource::DT_15TH_EDITION:
+	case Resource::DT_20TH_EDITION:
+	case Resource::DT_WIN31:
+	case Resource::DT_3DO:
 		if (resNum == 0) {
 			_mix->stopMusic();
 		} else {
@@ -680,7 +684,8 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 				_mix->playMusic(p);
 			}
 		}
-	} else { // DT_AMIGA, DT_DOS
+		break;
+	default: // DT_AMIGA, DT_DOS
 		if (resNum != 0) {
 			_ply->loadSfxModule(resNum, delay, pos);
 			_ply->start();
@@ -690,6 +695,7 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		} else {
 			_mix->stopSfxMusic();
 		}
+		break;
 	}
 }
 

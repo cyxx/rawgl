@@ -441,6 +441,13 @@ const char *Resource::getMusicPath(int num, char *buf, int bufSize) {
 			return buf;
 		}
 	}
+	if (_3do) {
+		const char *name = _3do->getMusicPath(num);
+		if (name) {
+			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
+			return buf;
+		}
+	}
 	return 0;
 }
 

@@ -167,6 +167,8 @@ struct Mixer_impl {
 		if (_music) {
 			Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
 			Mix_PlayMusic(_music, 0);
+		} else {
+			warning("Failed to load music '%s'", path);
 		}
 	}
 	void stopMusic() {
