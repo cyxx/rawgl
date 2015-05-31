@@ -415,19 +415,39 @@ static void deinterlace555(const uint8_t *src, int w, int h, uint16_t *dst) {
 	}
 }
 
+static void yflip(const uint8_t *src, int w, int h, uint8_t *dst) {
+	for (int y = 0; y < h; ++y) {
+		memcpy(dst + (h - 1 - y) * w, src, w);
+		src += w;
+	}
+}
+
 void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
 		decode_amiga(src, _tempBitmap);
 		_stub->addBitmapToList(0, _tempBitmap, 320, 200, FMT_CLUT);
+	} else if (_res->getDataType() == Resource::DT_WIN31) {
+		yflip(src, 320, 200, _tempBitmap);
+		_stub->addBitmapToList(0, _tempBitmap, 320, 200, FMT_CLUT);
 	} else if (_res->getDataType() == Resource::DT_3DO) {
 		deinterlace555(src, 320, 200, _bitmap565);
 		_stub->addBitmapToList(0, (uint8_t *)_bitmap565, 320, 200, FMT_RGB565);
-	} else {
-		int w, h;
-		uint8_t *buf = decode_bitmap(src, false, -1, &w, &h);
-		if (buf) {
-			_stub->addBitmapToList(0, buf, w, h, FMT_RGB);
-			free(buf);
+	} else { // .BMP
+		if (_stub->getRenderMode() == RENDER_ORIGINAL) {
+			const int w = READ_LE_UINT32(src + 0x12);
+			const int h = READ_LE_UINT32(src + 0x16);
+			if (w == 320 && h == 200) {
+				const uint8_t *data = src + READ_LE_UINT32(src + 0xA);
+				yflip(data, w, h, _tempBitmap);
+				_stub->addBitmapToList(0, _tempBitmap, w, h, FMT_CLUT);
+			}
+		} else {
+			int w, h;
+			uint8_t *buf = decode_bitmap(src, false, -1, &w, &h);
+			if (buf) {
+				_stub->addBitmapToList(0, buf, w, h, FMT_RGB);
+				free(buf);
+			}
 		}
 	}
 }
