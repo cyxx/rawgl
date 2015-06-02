@@ -11,12 +11,6 @@
 #include "sfxplayer.h"
 #include "systemstub.h"
 
-static uint32_t ieee754_80bits(const uint8_t *p) {
-	uint32_t m = READ_BE_UINT32(p + 2);
-	const int exp = 30 - p[1];
-	return (m >> exp);
-}
-
 struct Mixer_impl {
 
 	static const int kMixFreq = 22050;
@@ -107,6 +101,12 @@ struct Mixer_impl {
 		}
 	}
 	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
+#if 1
+		const uint32_t size = READ_BE_UINT32(data + 4) + 8;
+		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
+		Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
+		playSound(channel, volume, chunk);
+#else
 		uint8_t *sample = 0;
 		uint32_t sampleSize;
 		int channels = 0;
@@ -141,7 +141,7 @@ struct Mixer_impl {
 			playSound(channel, volume, chunk);
 			_samples[channel] = sample;
 		}
-
+#endif
 	}
 	void playSound(uint8_t channel, int volume, Mix_Chunk *chunk) {
 		if (chunk) {
@@ -168,7 +168,7 @@ struct Mixer_impl {
 			Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
 			Mix_PlayMusic(_music, 0);
 		} else {
-			warning("Failed to load music '%s'", path);
+			warning("Failed to load music '%s', %s", path, Mix_GetError());
 		}
 	}
 	void stopMusic() {
