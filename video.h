@@ -27,7 +27,7 @@ struct Video {
 	static const StrEntry _stringsTable3DO[];
 	static const char *_noteText3DO;
 	static const char *_endText3DO;
-	static const uint8_t *_vertices3DO[];
+	static const uint8_t *_vertices3DO[201];
 
 	Resource *_res;
 	SystemStub *_stub;

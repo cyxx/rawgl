@@ -69,6 +69,7 @@ void Video::drawShape(uint8_t color, uint16_t zoom, const Point *pt) {
 }
 
 void Video::drawShapePart3DO(int color, int part, const Point *pt) {
+	assert(part < ARRAYSIZE(_vertices3DO));
 	const uint8_t *vertices = _vertices3DO[part];
 	const int w = *vertices++;
 	const int h = *vertices++;
@@ -76,6 +77,7 @@ void Video::drawShapePart3DO(int color, int part, const Point *pt) {
 	const int y = pt->y - h / 2;
 	QuadStrip qs;
 	qs.numVertices = 2 * h;
+	assert(qs.numVertices < QuadStrip::MAX_VERTICES);
 	for (int i = 0; i < h; ++i) {
 		qs.vertices[i].x = x + *vertices++;
 		qs.vertices[i].y = y + i;

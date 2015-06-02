@@ -56,7 +56,7 @@ struct Point {
 
 struct QuadStrip {
 	enum {
-		MAX_VERTICES = 50
+		MAX_VERTICES = 70
 	};
 	
 	uint8_t numVertices;

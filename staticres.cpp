@@ -1178,7 +1178,7 @@ static const uint8_t _verticesData3DO[] = {
 	0x01, 0x02, 0x00, 0x00, 0x06, 0x04, 0x00, 0x03, 0x01, 0x04, 0x03, 0x04, 0x04, 0x05, 0x00, 0x00
 };
 
-const uint8_t *Video::_vertices3DO[] = {
+const uint8_t *Video::_vertices3DO[201] = {
 	&_verticesData3DO[0],
 	&_verticesData3DO[36],
 	&_verticesData3DO[84],
@@ -1380,7 +1380,6 @@ const uint8_t *Video::_vertices3DO[] = {
 	&_verticesData3DO[6240],
 	&_verticesData3DO[6264],
 	&_verticesData3DO[6276],
-	0
 };
 
 const AmigaMemEntry Resource::_memListAmigaFR[146] = {
