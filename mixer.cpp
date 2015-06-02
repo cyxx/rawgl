@@ -66,14 +66,16 @@ struct Mixer_impl {
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
 		stopSound(channel);
-		const int len = READ_BE_UINT16(data) * 2;
-//		const int loopLen = READ_BE_UINT16(data + 2) * 2;
-		data += 8;
+		int len = READ_BE_UINT16(data) * 2;
+		const int loopLen = READ_BE_UINT16(data + 2) * 2;
+		if (loopLen != 0) {
+			len = loopLen;
+		}
 		uint32_t size;
 		uint8_t *sample = convertSampleRaw(data + 8, len, AUDIO_S8, 1, freq, &size);
 		if (sample) {
 			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, size);
-			playSound(channel, volume, chunk);
+			playSound(channel, volume, chunk, (loopLen != 0) ? -1 : 0);
 			_samples[channel] = sample;
 		}
 	}
@@ -144,9 +146,9 @@ struct Mixer_impl {
 		}
 #endif
 	}
-	void playSound(uint8_t channel, int volume, Mix_Chunk *chunk) {
+	void playSound(uint8_t channel, int volume, Mix_Chunk *chunk, int loops = 0) {
 		if (chunk) {
-			Mix_PlayChannel(channel, chunk, 0);
+			Mix_PlayChannel(channel, chunk, loops);
 		}
 		setChannelVolume(channel, volume);
 		_sounds[channel] = chunk;
