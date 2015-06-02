@@ -277,16 +277,17 @@ void Script::op_updateDisplay() {
 		_scriptVars[0xDC] = 0x21;
 	}
 
-	const int delay = _stub->getTimeStamp() - _timeStamp;
-	if (!_fastMode) {
-		int32_t pause = _scriptVars[VAR_PAUSE_SLICES] * 20 - delay;
+	const int frameTime = _is3DO ? 16 : 20;
+	if (!_fastMode && _scriptVars[VAR_PAUSE_SLICES] != 0) {
+		const int delay = _stub->getTimeStamp() - _timeStamp;
+		const int pause = _scriptVars[VAR_PAUSE_SLICES] * frameTime - delay;
 		if (pause > 0) {
 			_stub->sleep(pause);
 		}
-		_timeStamp = _stub->getTimeStamp();
 	}
+	_timeStamp = _stub->getTimeStamp();
 	if (_is3DO) {
-		_scriptVars[0xF7] += 200 - delay;
+		_scriptVars[0xF7] = _timeStamp / frameTime;
 	} else {
 		_scriptVars[0xF7] = 0;
 	}
