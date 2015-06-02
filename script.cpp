@@ -674,7 +674,6 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	case Resource::DT_15TH_EDITION:
 	case Resource::DT_20TH_EDITION:
 	case Resource::DT_WIN31:
-	case Resource::DT_3DO:
 		if (resNum == 0) {
 			_mix->stopMusic();
 		} else {
@@ -682,6 +681,17 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
 			if (p) {
 				_mix->playMusic(p);
+			}
+		}
+		break;
+	case Resource::DT_3DO:
+		if (resNum == 0) {
+			_mix->stopAifcMusic();
+		} else {
+			char path[512];
+			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
+			if (p) {
+				_mix->playAifcMusic(p);
 			}
 		}
 		break;

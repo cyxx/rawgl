@@ -6,6 +6,7 @@
 
 #include <SDL.h>
 #include <SDL_mixer.h>
+#include "aifcplayer.h"
 #include "file.h"
 #include "mixer.h"
 #include "sfxplayer.h"
@@ -13,7 +14,7 @@
 
 struct Mixer_impl {
 
-	static const int kMixFreq = 22050;
+	static const int kMixFreq = 44100;
 	static const int kMixBufSize = 4096;
 
 	Mix_Chunk *_sounds[4];
@@ -177,6 +178,16 @@ struct Mixer_impl {
 		_music = 0;
 	}
 
+	static void mixAifcPlayer(void *data, uint8_t *s16buf, int len) {
+		((AifcPlayer *)data)->readSamples((int16_t *)s16buf, len / 2);
+	}
+	void playAifcMusic(AifcPlayer *aifc) {
+		Mix_HookMusic(mixAifcPlayer, aifc);
+	}
+	void stopAifcMusic() {
+		Mix_HookMusic(0, 0);
+	}
+
 	static void mixSfxPlayer(void *data, uint8_t *s16buf, int len) {
 		len /= 2;
 		int8_t s8buf[len];
@@ -186,7 +197,6 @@ struct Mixer_impl {
 			*(int16_t *)&s16buf[i * 2] = 256 * (int16_t)s8buf[i];
 		}
 	}
-
 	void playSfxMusic(SfxPlayer *sfx) {
 		Mix_HookMusic(mixSfxPlayer, sfx);
 	}
@@ -204,7 +214,7 @@ struct Mixer_impl {
 };
 
 Mixer::Mixer(SfxPlayer *sfx)
-	: _sfx(sfx) {
+	: _aifc(0), _sfx(sfx) {
 }
 
 void Mixer::init() {
@@ -218,6 +228,7 @@ void Mixer::quit() {
 		_impl->quit();
 		delete _impl;
 	}
+	delete _aifc;
 }
 
 void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
@@ -266,6 +277,26 @@ void Mixer::stopMusic() {
 	debug(DBG_SND, "Mixer::stopMusic()");
 	if (_impl) {
 		return _impl->stopMusic();
+	}
+}
+
+void Mixer::playAifcMusic(const char *path) {
+	debug(DBG_SND, "Mixer::playAifcMusic(%s)", path);
+	if (!_aifc) {
+		_aifc = new AifcPlayer();
+	}
+	if (_impl) {
+		if (_aifc->play(Mixer_impl::kMixFreq, path)) {
+			_impl->playAifcMusic(_aifc);
+		}
+	}
+}
+
+void Mixer::stopAifcMusic() {
+	debug(DBG_SND, "Mixer::stopAifcMusic()");
+	if (_impl && _aifc) {
+		_aifc->stop();
+		_impl->stopAifcMusic();
 	}
 }
 

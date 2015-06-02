@@ -9,10 +9,12 @@
 
 #include "intern.h"
 
+struct AifcPlayer;
 struct SfxPlayer;
 struct Mixer_impl;
 
 struct Mixer {
+	AifcPlayer *_aifc;
 	SfxPlayer *_sfx;
 	Mixer_impl *_impl;
 
@@ -27,6 +29,8 @@ struct Mixer {
 	void setChannelVolume(uint8_t channel, uint8_t volume);
 	void playMusic(const char *path);
 	void stopMusic();
+	void playAifcMusic(const char *path);
+	void stopAifcMusic();
 	void playSfxMusic(int num);
 	void stopSfxMusic();
 	void stopAll();
