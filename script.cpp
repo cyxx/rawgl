@@ -277,17 +277,17 @@ void Script::op_updateDisplay() {
 		_scriptVars[0xDC] = 0x21;
 	}
 
-	const int frameTime = _is3DO ? 16 : 20;
+	const int frameHz = _is3DO ? 60 : 50;
 	if (!_fastMode && _scriptVars[VAR_PAUSE_SLICES] != 0) {
 		const int delay = _stub->getTimeStamp() - _timeStamp;
-		const int pause = _scriptVars[VAR_PAUSE_SLICES] * frameTime - delay;
+		const int pause = _scriptVars[VAR_PAUSE_SLICES] * 1000 / frameHz - delay;
 		if (pause > 0) {
 			_stub->sleep(pause);
 		}
 	}
 	_timeStamp = _stub->getTimeStamp();
 	if (_is3DO) {
-		_scriptVars[0xF7] = _timeStamp / frameTime;
+		_scriptVars[0xF7] = (_timeStamp - _startTime) * frameHz / 1000;
 	} else {
 		_scriptVars[0xF7] = 0;
 	}
@@ -402,7 +402,7 @@ void Script::restartAt(int part, int pos) {
 			_vid->changePal(5);
 		}
 	}
-	_timeStamp = _stub->getTimeStamp();
+	_startTime = _timeStamp = _stub->getTimeStamp();
 }
 
 void Script::setupScripts() {
