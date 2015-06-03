@@ -7,6 +7,7 @@
 #include "engine.h"
 #include "file.h"
 #include "systemstub.h"
+#include "util.h"
 
 
 Engine::Engine(SystemStub *stub, const char *dataDir, int partNum)

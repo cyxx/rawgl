@@ -1,5 +1,7 @@
 
 #include "resource_3do.h"
+#include "util.h"
+
 
 static int decodeLzss(const uint8_t *src, int len, uint8_t *dst) {
 	uint32_t rd = 0, wr = 0;

@@ -11,7 +11,6 @@
 
 struct Mixer;
 struct Resource;
-struct Serializer;
 struct SfxPlayer;
 struct SystemStub;
 struct Video;

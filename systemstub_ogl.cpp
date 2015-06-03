@@ -11,6 +11,8 @@
 #include "file.h"
 #include "graphics.h"
 #include "systemstub.h"
+#include "util.h"
+
 
 static int _render = RENDER_GL;
 static int _newRender = _render;

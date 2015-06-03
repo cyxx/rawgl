@@ -11,6 +11,7 @@
 #include "resource_win31.h"
 #include "resource_3do.h"
 #include "unpack.h"
+#include "util.h"
 #include "video.h"
 
 
@@ -323,32 +324,18 @@ void Resource::update(uint16_t num) {
 }
 
 void Resource::loadBmp(int num) {
+	uint32_t size = 0;
+	uint8_t *p = 0;
 	if (_nth) {
-		uint8_t *p = _nth->loadBmp(num);
-		if (p) {
-			_vid->copyBitmapPtr(p);
-			free(p);
-		}
+		p = _nth->loadBmp(num);
+	} else if (_win31) {
+		p = _win31->loadFile(num, 0, &size);
+	} else if (_3do) {
+		p = _3do->loadFile(num, 0, &size);
 	}
-	if (_win31) {
-		uint32_t size;
-		uint8_t *p = _win31->loadEntry(num, 0, &size);
-		if (p) {
-			if (size == 64000) {
-				_vid->copyBitmapPtr(p, size);
-			}
-			free(p);
-		}
-	}
-	if (_3do) {
-		uint32_t size;
-		uint8_t *p = _3do->loadFile(num, 0, &size);
-		if (p) {
-			if (size == 64000 * 2) {
-				_vid->copyBitmapPtr(p, size);
-			}
-			free(p);
-		}
+	if (p) {
+		_vid->copyBitmapPtr(p, size);
+		free(p);
 	}
 }
 
@@ -357,15 +344,13 @@ uint8_t *Resource::loadDat(int num) {
 	if (_memList[num].status == STATUS_LOADED) {
 		return _memList[num].bufPtr;
 	}
+	uint32_t size = 0;
 	uint8_t *p = 0;
-	uint32_t size;
 	if (_nth) {
 		p = _nth->loadDat(num, _scriptCurPtr, &size);
-	}
-	if (_win31) {
-		p = _win31->loadEntry(num, _scriptCurPtr, &size);
-	}
-	if (_3do) {
+	} else if (_win31) {
+		p = _win31->loadFile(num, _scriptCurPtr, &size);
+	} else if (_3do) {
 		p = _3do->loadFile(num, _scriptCurPtr, &size);
 	}
 	if (p) {
@@ -400,13 +385,12 @@ uint8_t *Resource::loadWav(int num) {
 	if (_memList[num].status == STATUS_LOADED) {
 		return _memList[num].bufPtr;
 	}
+	uint32_t size = 0;
 	uint8_t *p = 0;
-	uint32_t size;
 	if (_nth) {
 		p = _nth->loadWav(num, _scriptCurPtr, &size);
-	}
-	if (_win31) {
-		p = _win31->loadEntry(num, _scriptCurPtr, &size);
+	} else if (_win31) {
+		p = _win31->loadFile(num, _scriptCurPtr, &size);
 	}
 	if (p) {
 		_scriptCurPtr += size;
@@ -419,34 +403,24 @@ uint8_t *Resource::loadWav(int num) {
 const char *Resource::getString(int num) {
 	if (_nth) {
 		return _nth->getString(LANG_US, num);
-	}
-	if (_win31) {
+	} else if (_win31) {
 		return _win31->getString(num);
 	}
 	return 0;
 }
 
 const char *Resource::getMusicPath(int num, char *buf, int bufSize) {
+	const char *name = 0;
 	if (_nth) {
-		const char *name = _nth->getMusicName(num);
-		if (name) {
-			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
-			return buf;
-		}
+		name = _nth->getMusicName(num);
+	} else if (_win31) {
+		name = _win31->getMusicName(num);
+	} else if (_3do) {
+		name = _3do->getMusicName(num);
 	}
-	if (_win31) {
-		const char *name = _win31->getMusicName(num);
-		if (name) {
-			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
-			return buf;
-		}
-	}
-	if (_3do) {
-		const char *name = _3do->getMusicName(num);
-		if (name) {
-			snprintf(buf, bufSize, "%s/%s", _dataDir, name);
-			return buf;
-		}
+	if (name) {
+		snprintf(buf, bufSize, "%s/%s", _dataDir, name);
+		return buf;
 	}
 	return 0;
 }

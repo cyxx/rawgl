@@ -1,6 +1,7 @@
 
 #include <string.h>
 #include "resource_win31.h"
+#include "util.h"
 
 static const uint8_t _shuffleTable[256] = {
 	0xB2, 0x91, 0x49, 0xEE, 0x8C, 0xBC, 0x16, 0x0D, 0x07, 0x87, 0xCD, 0xB6, 0x4C, 0x44, 0x22, 0xB3,
@@ -338,7 +339,7 @@ bool ResourceWin31::readEntries() {
 	return _entries != 0;
 }
 
-uint8_t *ResourceWin31::loadEntry(int num, uint8_t *dst, uint32_t *size) {
+uint8_t *ResourceWin31::loadFile(int num, uint8_t *dst, uint32_t *size) {
 	if (num > 0 && num < _entriesCount) {
 		Win31BankEntry *e = &_entries[num];
 		*size = e->size;
@@ -368,7 +369,7 @@ uint8_t *ResourceWin31::loadEntry(int num, uint8_t *dst, uint32_t *size) {
 void ResourceWin31::readStrings() {
 	int count = 0;
 	uint32_t len, offset = 0;
-	_textBuf = loadEntry(148, 0, &len);
+	_textBuf = loadFile(148, 0, &len);
 	while (1) {
 		const uint32_t sep = READ_LE_UINT32(_textBuf + offset); offset += 4;
 		const uint16_t num = sep >> 16;

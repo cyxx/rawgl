@@ -16,7 +16,6 @@ struct Win31BankEntry {
 struct OotwmmDll;
 
 struct ResourceWin31 {
-
 	static const char *FILENAME;
 
 	File _f;
@@ -31,7 +30,7 @@ struct ResourceWin31 {
 	~ResourceWin31();
 
 	bool readEntries();
-	uint8_t *loadEntry(int num, uint8_t *dst, uint32_t *size);
+	uint8_t *loadFile(int num, uint8_t *dst, uint32_t *size);
 	void readStrings();
 	const char *getString(int num) const;
 	const char *getMusicName(int num) const;

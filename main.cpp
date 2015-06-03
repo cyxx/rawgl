@@ -7,6 +7,8 @@
 #include <getopt.h>
 #include "engine.h"
 #include "systemstub.h"
+#include "util.h"
+
 
 static const char *USAGE = 
 	"Raw - Another World Interpreter\n"

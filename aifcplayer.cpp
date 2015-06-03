@@ -1,5 +1,6 @@
 
 #include "aifcplayer.h"
+#include "util.h"
 
 static uint32_t READ_IEEE754(const uint8_t *p) {
 	const uint32_t m = READ_BE_UINT32(p + 2);
@@ -44,8 +45,6 @@ bool AifcPlayer::play(int mixRate, const char *path) {
 					_ssndSize = sz;
 					debug(DBG_SND, "aifc ssnd size %d", _ssndSize);
 					break;
-				} else if (memcmp(buf, "FVER", 4) == 0) {
-					// ignore
 				} else {
 //					warning("Ignoring aifc tag '%c%c%c%c' size %d", buf[0], buf[1], buf[2], buf[3], sz);
 				}

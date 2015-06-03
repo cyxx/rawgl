@@ -5,6 +5,7 @@
  */
 
 #include "graphics.h"
+#include "util.h"
 
 
 Graphics::Graphics() {

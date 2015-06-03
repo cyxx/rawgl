@@ -1,5 +1,7 @@
 
 #include "pak.h"
+#include "util.h"
+
 
 static const uint32_t XOR_KEY2 = 0x22683297;
 

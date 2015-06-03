@@ -7,6 +7,7 @@
 #include "bitmap.h"
 #include "resource.h"
 #include "systemstub.h"
+#include "util.h"
 
 
 Video::Video(Resource *res, SystemStub *stub) 

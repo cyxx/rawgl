@@ -1,5 +1,6 @@
 
 #include "bitmap.h"
+#include "util.h"
 
 static void clut(const uint8_t *src, const uint8_t *pal, int pitch, int w, int h, int bpp, bool flipY, int colorKey, uint8_t *dst) {
 	int dstPitch = bpp * w;

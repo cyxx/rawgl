@@ -8,6 +8,7 @@
 #include "mixer.h"
 #include "resource.h"
 #include "systemstub.h"
+#include "util.h"
 
 
 SfxPlayer::SfxPlayer(Resource *res)

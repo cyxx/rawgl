@@ -3,6 +3,8 @@
 #include <zlib.h>
 #include "pak.h"
 #include "resource_nth.h"
+#include "util.h"
+
 
 struct Resource15th: ResourceNth {
 	Pak _pak;

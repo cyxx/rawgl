@@ -11,6 +11,7 @@
 #include "video.h"
 #include "sfxplayer.h"
 #include "systemstub.h"
+#include "util.h"
 
 
 Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub)

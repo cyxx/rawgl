@@ -20,11 +20,6 @@ enum {
 	DBG_RESOURCE = 1 << 7,
 };
 
-enum Language {
-	LANG_FR,
-	LANG_US,
-};
-
 enum {
 	FIXUP_PALETTE_NONE,
 	FIXUP_PALETTE_RENDER, // redraw all primitives on setPal script call

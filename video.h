@@ -15,7 +15,6 @@ struct StrEntry {
 };
 
 struct Resource;
-struct Serializer;
 struct SystemStub;
 
 struct Video {

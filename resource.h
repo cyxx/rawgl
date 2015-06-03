@@ -31,7 +31,6 @@ struct AmigaMemEntry {
 struct ResourceNth;
 struct ResourceWin31;
 struct Resource3do;
-struct Serializer;
 struct Video;
 
 struct Resource {

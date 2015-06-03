@@ -11,6 +11,8 @@
 #include "mixer.h"
 #include "sfxplayer.h"
 #include "systemstub.h"
+#include "util.h"
+
 
 struct Mixer_impl {
 

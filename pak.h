@@ -12,7 +12,6 @@ struct PakEntry {
 };
 
 struct Pak {
-
 	static const char *FILENAME;
 
 	File _f;
