@@ -7,8 +7,6 @@
 #include <cstdarg>
 #include "util.h"
 
-int g_fixUpPalette = FIXUP_PALETTE_NONE;
-
 uint16_t g_debugMask;
 
 void debug(uint16_t cm, const char *msg, ...) {

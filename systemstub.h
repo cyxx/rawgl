@@ -38,6 +38,12 @@ enum {
 	FMT_RGBA,
 };
 
+enum {
+	FIXUP_PALETTE_NONE,
+	FIXUP_PALETTE_RENDER, // redraw all primitives on setPal script call
+	FIXUP_PALETTE_SHADER, // use shader to handle paletted display
+};
+
 struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
 	typedef uint32_t (*TimerCallback)(uint32_t delay, void *param);
@@ -49,6 +55,7 @@ struct SystemStub {
 	};
 
 	PlayerInput _pi;
+	int _fixUpPalette;
 
 	virtual ~SystemStub() {}
 

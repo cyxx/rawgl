@@ -20,14 +20,6 @@ enum {
 	DBG_RESOURCE = 1 << 7,
 };
 
-enum {
-	FIXUP_PALETTE_NONE,
-	FIXUP_PALETTE_RENDER, // redraw all primitives on setPal script call
-	FIXUP_PALETTE_SHADER, // use shader to handle paletted display
-};
-
-extern int g_fixUpPalette;
-
 extern uint16_t g_debugMask;
 
 extern void debug(uint16_t cm, const char *msg, ...);

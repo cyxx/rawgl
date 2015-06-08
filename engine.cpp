@@ -60,7 +60,7 @@ void Engine::run(Language lang) {
 void Engine::setup() {
 	_res.detectVersion();
 	if (_res.getDataType() != Resource::DT_3DO) {
-		g_fixUpPalette = FIXUP_PALETTE_RENDER;
+		_stub->_fixUpPalette = FIXUP_PALETTE_RENDER;
 	}
 	_vid.init();
 	_res.allocMemBlock();
