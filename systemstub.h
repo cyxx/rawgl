@@ -41,12 +41,10 @@ enum {
 enum {
 	FIXUP_PALETTE_NONE,
 	FIXUP_PALETTE_RENDER, // redraw all primitives on setPal script call
-	FIXUP_PALETTE_SHADER, // use shader to handle paletted display
 };
 
 struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
-	typedef uint32_t (*TimerCallback)(uint32_t delay, void *param);
 	
 	enum {
 		COL_ALPHA = 0x10,
@@ -67,7 +65,6 @@ struct SystemStub {
 	virtual void setFont(const uint8_t *src, int w, int h) = 0;
 	virtual void setPalette(const Color *colors, uint8_t n) = 0;
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) = 0;
-
 	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt) = 0;
 	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt) = 0;
 	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt) = 0;

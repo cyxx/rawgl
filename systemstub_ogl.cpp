@@ -5,7 +5,8 @@
  */
 
 #include <SDL.h>
-#include <GL/glew.h>
+#define GL_GLEXT_PROTOTYPES
+#include <SDL_opengl.h>
 #include <math.h>
 #include <vector>
 #include "file.h"
@@ -20,44 +21,13 @@ static bool _canChangeRender;
 
 static GLuint kNoTextureId = (GLuint)-1;
 
-struct Palette {
-	static const int COLORS_COUNT = 32;
-	uint8_t buf[COLORS_COUNT * 3];
-
-	GLuint _id;
-
-	void init();
-	void uploadData(const Color *colors, int count);
-};
-
-void Palette::init() {
-	_id = kNoTextureId;
-}
-
-void Palette::uploadData(const Color *colors, int count) {
-	if (_id == kNoTextureId) {
-		glGenTextures(1, &_id);
-		glBindTexture(GL_TEXTURE_1D, _id);
-		glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB8, COLORS_COUNT, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	} else {
-		glBindTexture(GL_TEXTURE_1D, _id);
+static bool hasExtension(const char *exts, const char *name) {
+	const char *p = strstr(exts, name);
+	if (p) {
+		p += strlen(name);
+		return *p == ' ' || *p == 0;
 	}
-	if (count != 16) {
-		warning("Palette::uploadData() Unhandled colors count %d", count);
-		return;
-	}
-	uint8_t *p = buf;
-	for (int i = 0; i < COLORS_COUNT; ++i) {
-		p[0] = colors[i].r;
-		p[1] = colors[i].g;
-		p[2] = colors[i].b;
-		p += 3;
-	}
-	glTexSubImage1D(GL_TEXTURE_1D, 0, 0, COLORS_COUNT, GL_RGB, GL_UNSIGNED_BYTE, buf);
+	return false;
 }
 
 static int roundPow2(int sz) {
@@ -91,13 +61,14 @@ struct Texture {
 };
 
 void Texture::init() {
-	_npotTex = GLEW_ARB_texture_non_power_of_two;
+	_npotTex = false;
 	_id = kNoTextureId;
 	_w = _h = 0;
 	_u = _v = 0.f;
 	_rgbData = 0;
 	_raw16Data = 0;
 	_fmt = -1;
+	_fixUpPalette = FIXUP_PALETTE_NONE;
 }
 
 static void convertTexture16(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch) {
@@ -141,13 +112,8 @@ void Texture::uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, co
 	int type = GL_UNSIGNED_BYTE;
 	switch (_fmt) {
 	case FMT_CLUT:
-		if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-			depth = 1;
-			fmt = GL_RED;
-		} else {
-			depth = 3;
-			fmt = GL_RGB;
-		}
+		depth = 3;
+		fmt = GL_RGB;
 		break;
 	case FMT_RGB:
 		depth = 3;
@@ -177,13 +143,8 @@ void Texture::uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, co
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) || (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		if (fmt == GL_RED) {
-			convertTexture16(data, srcPitch, w, h, _rgbData, _w);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, _w, _h, 0, fmt, type, _rgbData);
-		} else {
-			convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha);
-			glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, type, _rgbData);
-		}
+		convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha);
+		glTexImage2D(GL_TEXTURE_2D, 0, fmt, _w, _h, 0, fmt, type, _rgbData);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, _id);
 		convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha);
@@ -316,7 +277,6 @@ struct SystemStub_OGL : SystemStub {
 	Color *_alphaColor;
 	Graphics _gfx;
 	GLuint _palShader;
-	Palette _palTex;
 	Texture _backgroundTex;
 	Texture _fontTex;
 	Texture _spritesTex;
@@ -350,7 +310,6 @@ struct SystemStub_OGL : SystemStub {
 	virtual uint32_t getTimeStamp();
 
 	bool initFBO();
-	void initPaletteShader();
 	void drawVerticesFlat(int count, const Point *vertices);
 	void drawVerticesTex(int count, const Point *vertices);
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
@@ -395,26 +354,24 @@ void SystemStub_OGL::init(const char *title) {
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
 	resize(DEF_SCREEN_W, DEF_SCREEN_H);
-	GLenum ret = glewInit();
-	if (ret != GLEW_OK) {
-		error("glewInit() returned %d", ret);
-	}
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
 	glShadeModel(GL_SMOOTH);
+	const char *exts = (const char *)glGetString(GL_EXTENSIONS);
+	const bool npotTex = hasExtension(exts, "GL_ARB_texture_non_power_of_two");
+	const bool hasFbo = hasExtension(exts, "GL_ARB_framebuffer_object");
 	_backgroundTex.init();
+	_backgroundTex._npotTex = npotTex;
 	_backgroundTex._fixUpPalette = _fixUpPalette;
 	_fontTex.init();
+	_fontTex._npotTex = npotTex;
 	_fontTex._fixUpPalette = _fixUpPalette;
 	_spritesTex.init();
+	_spritesTex._npotTex = npotTex;
 	_spritesTex._fixUpPalette = _fixUpPalette;
 	_sprite.num = -1;
-	if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		_palTex.init();
-		initPaletteShader();
-	}
-	if (GLEW_ARB_framebuffer_object) {
+	if (hasFbo) {
 		const bool err = initFBO();
 		if (err) {
 			_canChangeRender = true;
@@ -441,13 +398,9 @@ bool SystemStub_OGL::initFBO() {
 	glGenTextures(NUM_LISTS, _pageTex);
 	for (int i = 0; i < NUM_LISTS; ++i) {
 		glBindTexture(GL_TEXTURE_2D, _pageTex[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, _fixUpPalette == FIXUP_PALETTE_SHADER ? GL_NEAREST : GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, _fixUpPalette == FIXUP_PALETTE_SHADER ? GL_NEAREST : GL_LINEAR);
-		if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, FB_W, FB_H, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
-		} else {
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-		}
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, _pageTex[i], 0);
 		int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -466,74 +419,11 @@ bool SystemStub_OGL::initFBO() {
 	return true;
 }
 
-static void printShaderLog(GLuint obj) {
-	int len = 0;
-	char buf[1024];
-
-	if (glIsShader(obj)) {
-		glGetShaderInfoLog(obj, sizeof(buf), &len, buf);
-	} else {
-		glGetProgramInfoLog(obj, sizeof(buf), &len, buf);
-	}
-	if (len > 0) {
-		warning("shader log : %s", buf);
-	}
-}
-
-static char *loadFile(const char *path) {
-	char *buf = 0;
-	File f;
-	if (f.open(path)) {
-		const int sz = f.size();
-		buf = (char *)malloc(sz + 1);
-		if (buf) {
-			const int count = f.read(buf, sz);
-			if (count != sz) {
-				warning("Failed to read %d bytes (ret %d)", sz, count);
-				free(buf);
-				buf = 0;
-			} else {
-				buf[count] = 0;
-			}
-		}
-	}
-	return buf;
-}
-
-void SystemStub_OGL::initPaletteShader() {
-	char *ptr;
-	const char *buf[1];
-
-	buf[0] = ptr = loadFile("palette.vert");
-	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vs, 1, buf, NULL);
-	glCompileShader(vs);
-	free(ptr);
-	printShaderLog(vs);
-
-	buf[0] = ptr = loadFile("palette.frag");
-	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fs, 1, buf, NULL);
-	glCompileShader(fs);
-	free(ptr);
-	printShaderLog(fs);
-
-	_palShader = glCreateProgram();
-	glAttachShader(_palShader, vs);
-	glAttachShader(_palShader, fs);
-	glLinkProgram(_palShader);
-	printShaderLog(_palShader);
-}
-
 void SystemStub_OGL::destroy() {
 	SDL_Quit();
 }
 
 void SystemStub_OGL::setFont(const uint8_t *src, int w, int h) {
-	if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		// TODO:
-		return;
-	}
 	if (src == 0) {
 		_fontTex.readFont(Graphics::_font);
 	} else {
@@ -546,10 +436,6 @@ void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
 	for (int i = 0; i < n; ++i) {
 		_pal[i] = colors[i];
 	}
-	if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		_palTex.uploadData(colors, n);
-	}
-
 	if (_fixUpPalette == FIXUP_PALETTE_RENDER && _render == RENDER_GL) {
 		for (int i = 0; i < NUM_LISTS; ++i) {
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
@@ -611,11 +497,6 @@ static void drawTexQuad(const int *pos, const float *uv, GLuint tex) {
 static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId);
 
 void SystemStub_OGL::addSpriteToList(uint8_t listNum, int num, const Point *pt) {
-	if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		_sprite.num = num;
-		_sprite.pos = *pt;
-		return;
-	}
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -669,7 +550,7 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, int w
 			break;
 		case FMT_RGB565:
 			_backgroundTex.clear();
-			_backgroundTex.uploadDataRGB(data, 320 * 2, 320, 200, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
+			_backgroundTex.uploadDataRGB(data, w * 2, w, h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
 			break;
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
@@ -679,12 +560,7 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, int w
 		glLoadIdentity();
 		glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
-		if (_fixUpPalette == FIXUP_PALETTE_SHADER && _backgroundTex._fmt == FMT_RGB) {
-			glClearColor(1., 0., 0., 1.);
-			glClear(GL_COLOR_BUFFER_BIT);
-		} else {
-			_backgroundTex.draw(FB_W, FB_H);
-		}
+		_backgroundTex.draw(FB_W, FB_H);
 		break;
 	}
 
@@ -692,10 +568,6 @@ void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, int w
 }
 
 void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {
-	if (color >= 18) {
-		warning("drawVerticesToFb() - unhandled color %d (bits %x)", color, color >> 4);
-		return;
-	}
 	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
 
 	if (color == COL_PAGE) {
@@ -705,18 +577,11 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 		drawVerticesTex(count, vertices);
 		glDisable(GL_TEXTURE_2D);
 	} else {
-		if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-			if (color == COL_ALPHA) {
-				color = 16;
-			}
-			glColor3f(color / 31., 0, 0);
+		if (color == COL_ALPHA) {
+			glColor4ub(_alphaColor->r, _alphaColor->g, _alphaColor->b, 192);
 		} else {
-			if (color == COL_ALPHA) {
-				glColor4ub(_alphaColor->r, _alphaColor->g, _alphaColor->b, 192);
-			} else {
-				assert(color < 16);
-				glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
-			}
+			assert(color < 16);
+			glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
 		}
 		drawVerticesFlat(count, vertices);
 	}
@@ -760,10 +625,6 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 }
 
 void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
-	if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		// TODO:
-		return;
-	}
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawChar(c, pt->x / 8, pt->y, color);
 
@@ -864,10 +725,6 @@ void SystemStub_OGL::drawVerticesTex(int count, const Point *vertices) {
 }
 
 void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
-	if (color >= 16) {
-		warning("clearList() - unhandled color %d (bits %x)", color, color >> 4);
-		return;
-	}
 	memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
 
 	assert(listNum < NUM_LISTS);
@@ -879,11 +736,7 @@ void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
 	assert(color < 16);
-	if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-		glClearColor(color / 31., 0, 0, 1.);
-	} else {
-		glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
-	}
+	glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	_drawLists[listNum].clear(color);
@@ -973,39 +826,7 @@ void SystemStub_OGL::blitList(uint8_t listNum) {
 		glLoadIdentity();
 		glOrtho(0, _w, _h, 0, 0, 1);
 
-		if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-			const int yoffset = _drawLists[listNum].yOffset * _h / SCREEN_H;
-			glPushMatrix();
-			glTranslatef(0, yoffset, 0);
-
-			if (_backgroundTex._fmt == FMT_RGB) {
-				_backgroundTex.draw(_w, _h);
-			}
-			if (_sprite.num != -1) {
-				glPushMatrix();
-				glScalef((float)_w / SCREEN_W, (float)_h / SCREEN_H, 1);
-				drawSprite(&_sprite.pos, _sprite.num, _spritesSizeX, _spritesSizeY, _spritesTex._id);
-				glPopMatrix();
-				_sprite.num = -1;
-			}
-			glPopMatrix();
-
-			glUseProgram(_palShader);
-
-			glActiveTexture(GL_TEXTURE1);
-			glUniform1i(glGetUniformLocation(_palShader, "Palette"), 1);
-			glBindTexture(GL_TEXTURE_1D, _palTex._id);
-
-			glActiveTexture(GL_TEXTURE0);
-			glUniform1i(glGetUniformLocation(_palShader, "IndexedColorTexture"), 0);
-		}
-
 		drawTextureFb(_pageTex[listNum], _w, _h, 0);
-
-		if (_fixUpPalette == FIXUP_PALETTE_SHADER) {
-			glUseProgram(0);
-		}
-
 		if (0) {
 			glDisable(GL_TEXTURE_2D);
 			dumpPalette(_pal);
@@ -1135,6 +956,6 @@ void SystemStub_OGL::resize(int w, int h) {
 
 void SystemStub_OGL::switchGfxMode(bool fullscreen) {
 	_fullscreen = fullscreen;
-	uint32_t flags = _fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE;
+	const int flags = _fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE;
 	SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | flags);
 }
