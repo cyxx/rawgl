@@ -14,8 +14,8 @@ struct StrEntry {
 	const char *str;
 };
 
+struct Graphics;
 struct Resource;
-struct SystemStub;
 
 struct Video {
 
@@ -29,19 +29,19 @@ struct Video {
 	static const uint8_t *_vertices3DO[201];
 
 	Resource *_res;
-	SystemStub *_stub;
+	Graphics *_graphics;
 	bool _hasHeadSprites;
 	bool _displayHead;
 
 	uint8_t _nextPal, _currentPal;
-	uint8_t _listPtrs[3];
+	uint8_t _buffers[3];
 	Ptr _pData;
 	uint8_t *_dataBuf;
 	const StrEntry *_stringsTable;
 	uint8_t _tempBitmap[320 * 200];
 	uint16_t _bitmap565[320 * 200];
 
-	Video(Resource *res, SystemStub *stub);
+	Video(Resource *res, Graphics *graphics);
 	void init();
 
 	void setDefaultFont();

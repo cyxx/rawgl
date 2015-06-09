@@ -8,19 +8,19 @@
 #include "util.h"
 
 
-Graphics::Graphics() {
+GraphicsSoft::GraphicsSoft() {
 	memset(_pagePtrs, 0, sizeof(_pagePtrs));
 	setSize(GFX_W, GFX_H);
 }
 
-Graphics::~Graphics() {
+GraphicsSoft::~GraphicsSoft() {
 	for (int i = 0; i < 4; ++i) {
 		free(_pagePtrs[i]);
 		_pagePtrs[i] = 0;
 	}
 }
 
-void Graphics::setSize(int w, int h) {
+void GraphicsSoft::setSize(int w, int h) {
 	_u = (w << 16) / GFX_W;
 	_v = (h << 16) / GFX_H;
 	_w = w;
@@ -41,7 +41,7 @@ static uint32_t calcStep(const Point &p1, const Point &p2, uint16_t &dy) {
 	return ((p2.x - p1.x) << 16) / delta;
 }
 
-void Graphics::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
+void GraphicsSoft::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
 	QuadStrip qs = quadStrip;
 	if (_w != GFX_W || _h != GFX_H) {	
 		for (int i = 0; i < qs.numVertices; ++i) {
@@ -62,13 +62,13 @@ void Graphics::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
 	drawLine pdl;
 	switch (color) {
 	default:
-		pdl = &Graphics::drawLineN;
+		pdl = &GraphicsSoft::drawLineN;
 		break;
 	case 0x11:
-		pdl = &Graphics::drawLineP;
+		pdl = &GraphicsSoft::drawLineP;
 		break;
 	case 0x10:
-		pdl = &Graphics::drawLineT;
+		pdl = &GraphicsSoft::drawLineT;
 		break;
 	}
 
@@ -114,7 +114,7 @@ void Graphics::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
 	}
 }
 
-void Graphics::drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color) {
+void GraphicsSoft::drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color) {
 	if (x <= 39 && y <= 192) {
 		const uint8_t *ft = _font + (c - 0x20) * 8;
 		uint8_t *p = _workPagePtr + x * 8 + y * _w;
@@ -130,7 +130,7 @@ void Graphics::drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color) {
 	}
 }
 
-void Graphics::drawPoint(int16_t x, int16_t y, uint8_t color) {
+void GraphicsSoft::drawPoint(int16_t x, int16_t y, uint8_t color) {
 	const int off = y * _w + x;
 	switch (color) {
 	case 0x10:
@@ -145,7 +145,7 @@ void Graphics::drawPoint(int16_t x, int16_t y, uint8_t color) {
 	}
 }
 
-void Graphics::drawLineT(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
+void GraphicsSoft::drawLineT(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	int16_t xmax = MAX(x1, x2);
 	int16_t xmin = MIN(x1, x2);
 	int w = xmax - xmin + 1;
@@ -155,7 +155,7 @@ void Graphics::drawLineT(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	}
 }
 
-void Graphics::drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
+void GraphicsSoft::drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	int16_t xmax = MAX(x1, x2);
 	int16_t xmin = MIN(x1, x2);
 	const int w = xmax - xmin + 1;
@@ -163,7 +163,7 @@ void Graphics::drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	memset(_workPagePtr + off, color, w);
 }
 
-void Graphics::drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
+void GraphicsSoft::drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	if (_workPagePtr == _pagePtrs[0]) {
 		return;
 	}
@@ -174,11 +174,11 @@ void Graphics::drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	memcpy(_workPagePtr + off, _pagePtrs[0] + off, w);
 }
 
-uint8_t *Graphics::getPagePtr(uint8_t page) {
+uint8_t *GraphicsSoft::getPagePtr(uint8_t page) {
 	assert(page >= 0 && page < 4);
 	return _pagePtrs[page];
 }
 
-void Graphics::setWorkPagePtr(uint8_t page) {
+void GraphicsSoft::setWorkPagePtr(uint8_t page) {
 	_workPagePtr = getPagePtr(page);
 }

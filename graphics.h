@@ -9,8 +9,8 @@
 
 #include "intern.h"
 
-struct Graphics {
-	typedef void (Graphics::*drawLine)(int16_t x1, int16_t x2, int16_t y, uint8_t col);
+struct GraphicsSoft {
+	typedef void (GraphicsSoft::*drawLine)(int16_t x1, int16_t x2, int16_t y, uint8_t col);
 
 	enum {
 		GFX_W = 320,
@@ -24,8 +24,8 @@ struct Graphics {
 	int _u, _v;
 	int _w, _h;
 
-	Graphics();
-	~Graphics();
+	GraphicsSoft();
+	~GraphicsSoft();
 
 	void setSize(int w, int h);
 	void drawPolygon(uint8_t color, const QuadStrip &qs);

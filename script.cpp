@@ -295,6 +295,7 @@ void Script::op_updateDisplay() {
 
 	_vid->_displayHead = !(_res->_currentPart == 16006 && _screenNum == 202);
 	_vid->updateDisplay(page);
+	_stub->updateScreen();
 }
 
 void Script::op_removeTask() {

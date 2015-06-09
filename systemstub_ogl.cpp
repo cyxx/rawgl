@@ -275,7 +275,7 @@ struct SystemStub_OGL : SystemStub {
 	bool _fullscreen;
 	Color _pal[16];
 	Color *_alphaColor;
-	Graphics _gfx;
+	GraphicsSoft _gfx;
 	GLuint _palShader;
 	Texture _backgroundTex;
 	Texture _fontTex;
@@ -293,18 +293,18 @@ struct SystemStub_OGL : SystemStub {
 	virtual ~SystemStub_OGL() {}
 	virtual void init(const char *title);
 	virtual void destroy();
-	virtual int getRenderMode() const { return _render; }
+	virtual int getGraphicsMode() const { return _render; }
 	virtual void setFont(const uint8_t *src, int w, int h);
-	virtual void setPalette(const Color *colors, uint8_t n);
+	virtual void setPalette(const Color *colors, int count);
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
-	virtual void addSpriteToList(uint8_t listNum, int num, const Point *pt);
-	virtual void addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt);
-	virtual void addPointToList(uint8_t listNum, uint8_t color, const Point *pt);
-	virtual void addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs);
-	virtual void addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt);
-	virtual void clearList(uint8_t listNum, uint8_t color);
-	virtual void copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll = 0);
-	virtual void blitList(uint8_t listNum);
+	virtual void drawSprite(int listNum, int num, const Point *pt);
+	virtual void drawBitmap(int listNum, const uint8_t *data, int w, int h, int fmt);
+	virtual void drawPoint(int listNum, uint8_t color, const Point *pt);
+	virtual void drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs);
+	virtual void drawStringChar(int listNum, uint8_t color, char c, const Point *pt);
+	virtual void clearBuffer(int listNum, uint8_t color);
+	virtual void copyBuffer(int dstListNum, int srcListNum, int vscroll = 0);
+	virtual void drawBuffer(int listNum);
 	virtual void processEvents();
 	virtual void sleep(uint32_t duration);
 	virtual uint32_t getTimeStamp();
@@ -425,13 +425,13 @@ void SystemStub_OGL::destroy() {
 
 void SystemStub_OGL::setFont(const uint8_t *src, int w, int h) {
 	if (src == 0) {
-		_fontTex.readFont(Graphics::_font);
+		_fontTex.readFont(GraphicsSoft::_font);
 	} else {
 		_fontTex.uploadDataRGB(src, w * 4, w, h, GL_RGBA, GL_UNSIGNED_BYTE);
 	}
 }
 
-void SystemStub_OGL::setPalette(const Color *colors, uint8_t n) {
+void SystemStub_OGL::setPalette(const Color *colors, int n) {
 	assert(n <= 16);
 	for (int i = 0; i < n; ++i) {
 		_pal[i] = colors[i];
@@ -494,26 +494,7 @@ static void drawTexQuad(const int *pos, const float *uv, GLuint tex) {
 	glDisable(GL_TEXTURE_2D);
 }
 
-static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId);
-
-void SystemStub_OGL::addSpriteToList(uint8_t listNum, int num, const Point *pt) {
-	assert(listNum < NUM_LISTS);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
-
-	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
-
-	drawSprite(pt, num, _spritesSizeX, _spritesSizeY, _spritesTex._id);
-
-	glLoadIdentity();
-	glScalef(1., 1., 1.);
-}
-
-static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId) {
+static void drawSpriteHelper(const Point *pt, int num, int xSize, int ySize, int texId) {
 	const int wSize = 18;
 	const int hSize = 18;
 	const int pos[4] = {
@@ -530,7 +511,24 @@ static void drawSprite(const Point *pt, int num, int xSize, int ySize, int texId
 	drawTexQuad(pos, uv, texId);
 }
 
-void SystemStub_OGL::addBitmapToList(uint8_t listNum, const uint8_t *data, int w, int h, int fmt) {
+void SystemStub_OGL::drawSprite(int listNum, int num, const Point *pt) {
+	assert(listNum < NUM_LISTS);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+
+	drawSpriteHelper(pt, num, _spritesSizeX, _spritesSizeY, _spritesTex._id);
+
+	glLoadIdentity();
+	glScalef(1., 1., 1.);
+}
+
+void SystemStub_OGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int fmt) {
 	switch (_render) {
 	case RENDER_ORIGINAL:
 		if (fmt == FMT_CLUT) {
@@ -590,7 +588,7 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 	glScalef(1., 1., 1.);
 }
 
-void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point *pt) {
+void SystemStub_OGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawPoint(pt->x, pt->y, color);
 
@@ -607,7 +605,7 @@ void SystemStub_OGL::addPointToList(uint8_t listNum, uint8_t color, const Point 
 	_drawLists[listNum].append(color, 1, pt);
 }
 
-void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const QuadStrip *qs) {
+void SystemStub_OGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) {
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawPolygon(color, *qs);
 
@@ -624,7 +622,7 @@ void SystemStub_OGL::addQuadStripToList(uint8_t listNum, uint8_t color, const Qu
 	_drawLists[listNum].append(color, qs->numVertices, qs->vertices);
 }
 
-void SystemStub_OGL::addCharToList(uint8_t listNum, uint8_t color, char c, const Point *pt) {
+void SystemStub_OGL::drawStringChar(int listNum, uint8_t color, char c, const Point *pt) {
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawChar(c, pt->x / 8, pt->y, color);
 
@@ -724,7 +722,7 @@ void SystemStub_OGL::drawVerticesTex(int count, const Point *vertices) {
 	glEnd();
 }
 
-void SystemStub_OGL::clearList(uint8_t listNum, uint8_t color) {
+void SystemStub_OGL::clearBuffer(int listNum, uint8_t color) {
 	memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
 
 	assert(listNum < NUM_LISTS);
@@ -755,11 +753,11 @@ static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
 	drawTexQuad(pos, uv, tex);
 }
 
-void SystemStub_OGL::copyList(uint8_t dstListNum, uint8_t srcListNum, int16_t vscroll) {
+void SystemStub_OGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
 	if (vscroll == 0) {
 		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
 	} else if (vscroll >= -199 && vscroll <= 199) {
-		const int dy = (int)round(vscroll * _gfx._h / float(Graphics::GFX_H));
+		const int dy = (int)round(vscroll * _gfx._h / float(GraphicsSoft::GFX_H));
 		if (dy < 0) {
 			memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum) - dy * _gfx._w, (_gfx._h + dy) * _gfx._w);
 		} else {
@@ -799,7 +797,7 @@ static void dumpPalette(const Color *pal) {
 	}
 }
 
-void SystemStub_OGL::blitList(uint8_t listNum) {
+void SystemStub_OGL::drawBuffer(int listNum) {
 	assert(listNum < NUM_LISTS);
 
 	switch (_render){
