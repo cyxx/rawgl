@@ -50,10 +50,12 @@ enum {
 };
 
 struct Graphics {
+	int _fixUpPalette;
+
 	virtual ~Graphics() {};
 
 	virtual int getGraphicsMode() const = 0;
-
+	virtual void setSize(int w, int h) = 0;
 	virtual void setFont(const uint8_t *src, int w, int h) = 0;
 	virtual void setPalette(const Color *colors, int count) = 0;
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) = 0;
@@ -67,18 +69,18 @@ struct Graphics {
 	virtual void drawBuffer(int num) = 0;
 };
 
-struct SystemStub: Graphics  {
+struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
-	
+
+	Graphics *_g;
 	PlayerInput _pi;
-	int _fixUpPalette;
 
 	virtual ~SystemStub() {}
 
 	virtual void init(const char *title) = 0;
-	virtual void destroy() = 0;
+	virtual void fini() = 0;
 
-	virtual void updateScreen() {}
+	virtual void updateScreen() = 0;
 
 	virtual void processEvents() = 0;
 	virtual void sleep(uint32_t duration) = 0;

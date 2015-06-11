@@ -16,8 +16,6 @@
 
 
 static int _render = RENDER_GL;
-static int _newRender = _render;
-static bool _canChangeRender;
 
 static GLuint kNoTextureId = (GLuint)-1;
 
@@ -139,8 +137,8 @@ void Texture::uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, co
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glGenTextures(1, &_id);
 		glBindTexture(GL_TEXTURE_2D, _id);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (_render == RENDER_ORIGINAL) || (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (_render == RENDER_ORIGINAL) || (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (fmt == GL_RED) ? GL_NEAREST : GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 		convertTextureCLUT(data, srcPitch, w, h, _rgbData, _w * depth, pal, alpha);
@@ -264,19 +262,16 @@ static const int SCREEN_H = 200;
 static const int FB_W = 1280;
 static const int FB_H = 800;
 
-struct SystemStub_OGL : SystemStub {
-	enum {
-		DEF_SCREEN_W = 800,
-		DEF_SCREEN_H = 600,
-		NUM_LISTS = 4,
-	};
+static const int DEF_SCREEN_W = 800;
+static const int DEF_SCREEN_H = 600;
 
-	uint16_t _w, _h;
-	bool _fullscreen;
+static const int NUM_LISTS = 4;
+
+struct GraphicsGL : Graphics {
+	int _w, _h;
 	Color _pal[16];
 	Color *_alphaColor;
 	GraphicsSoft _gfx;
-	GLuint _palShader;
 	Texture _backgroundTex;
 	Texture _fontTex;
 	Texture _spritesTex;
@@ -288,12 +283,13 @@ struct SystemStub_OGL : SystemStub {
 		int num;
 		Point pos;
 	} _sprite;
+	int _fixUpPalette;
 
-	SystemStub_OGL();
-	virtual ~SystemStub_OGL() {}
-	virtual void init(const char *title);
-	virtual void destroy();
+	GraphicsGL();
+	virtual ~GraphicsGL() {}
+
 	virtual int getGraphicsMode() const { return _render; }
+	virtual void setSize(int w, int h) { _w = w; _h = h; };
 	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, int count);
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
@@ -305,14 +301,29 @@ struct SystemStub_OGL : SystemStub {
 	virtual void clearBuffer(int listNum, uint8_t color);
 	virtual void copyBuffer(int dstListNum, int srcListNum, int vscroll = 0);
 	virtual void drawBuffer(int listNum);
-	virtual void processEvents();
-	virtual void sleep(uint32_t duration);
-	virtual uint32_t getTimeStamp();
 
 	bool initFBO();
 	void drawVerticesFlat(int count, const Point *vertices);
 	void drawVerticesTex(int count, const Point *vertices);
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
+};
+
+struct SystemStub_OGL : SystemStub {
+	int _w, _h;
+	bool _fullscreen;
+
+	SystemStub_OGL() {}
+	virtual ~SystemStub_OGL() {}
+
+	virtual void init(const char *title);
+	virtual void fini();
+
+	virtual void updateScreen();
+
+	virtual void processEvents();
+	virtual void sleep(uint32_t duration);
+	virtual uint32_t getTimeStamp();
+
 	void resize(int w, int h);
 	void switchGfxMode(bool fullscreen);
 };
@@ -330,7 +341,6 @@ SystemStub *SystemStub_OGL_create(const char *name) {
 		for (int i = 0; modes[i].name; ++i) {
 			if (strcasecmp(modes[i].name, name) == 0) {
 				_render = modes[i].render;
-				_newRender = _render;
 				break;
 			}
 		}
@@ -338,22 +348,24 @@ SystemStub *SystemStub_OGL_create(const char *name) {
 	return new SystemStub_OGL();
 }
 
-SystemStub_OGL::SystemStub_OGL() {
-	_fixUpPalette = FIXUP_PALETTE_NONE;
-}
-
 void SystemStub_OGL::init(const char *title) {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
+	_g = 0;
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 	SDL_ShowCursor(SDL_DISABLE);
 	SDL_WM_SetCaption(title, NULL);
 	memset(&_pi, 0, sizeof(_pi));
 	_fullscreen = false;
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	resize(DEF_SCREEN_W, DEF_SCREEN_H);
+	_g = new GraphicsGL();
+	_g->setSize(_w, _h);
+}
+
+GraphicsGL::GraphicsGL() {
+	_fixUpPalette = FIXUP_PALETTE_NONE;
 	memset(_pal, 0, sizeof(_pal));
 	_alphaColor = &_pal[12]; /* _pal[0x8 | color] */
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
-	resize(DEF_SCREEN_W, DEF_SCREEN_H);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
@@ -374,17 +386,13 @@ void SystemStub_OGL::init(const char *title) {
 	if (hasFbo) {
 		const bool err = initFBO();
 		if (err) {
-			_canChangeRender = true;
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 			return;
 		}
 	}
-	warning("Error initializing GL FBO, using default renderer");
-	_canChangeRender = false;
-	_render = RENDER_ORIGINAL;
 }
 
-bool SystemStub_OGL::initFBO() {
+bool GraphicsGL::initFBO() {
 	GLint buffersCount;
 	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &buffersCount);
 	if (buffersCount < NUM_LISTS) {
@@ -419,11 +427,11 @@ bool SystemStub_OGL::initFBO() {
 	return true;
 }
 
-void SystemStub_OGL::destroy() {
+void SystemStub_OGL::fini() {
 	SDL_Quit();
 }
 
-void SystemStub_OGL::setFont(const uint8_t *src, int w, int h) {
+void GraphicsGL::setFont(const uint8_t *src, int w, int h) {
 	if (src == 0) {
 		_fontTex.readFont(GraphicsSoft::_font);
 	} else {
@@ -431,7 +439,7 @@ void SystemStub_OGL::setFont(const uint8_t *src, int w, int h) {
 	}
 }
 
-void SystemStub_OGL::setPalette(const Color *colors, int n) {
+void GraphicsGL::setPalette(const Color *colors, int n) {
 	assert(n <= 16);
 	for (int i = 0; i < n; ++i) {
 		_pal[i] = colors[i];
@@ -472,7 +480,7 @@ void SystemStub_OGL::setPalette(const Color *colors, int n) {
 	}
 }
 
-void SystemStub_OGL::setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) {
+void GraphicsGL::setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) {
 	_spritesTex.uploadDataRGB(src, w * 4, w, h, GL_RGBA, GL_UNSIGNED_BYTE);
 	_spritesSizeX = xSize;
 	_spritesSizeY = ySize;
@@ -511,7 +519,7 @@ static void drawSpriteHelper(const Point *pt, int num, int xSize, int ySize, int
 	drawTexQuad(pos, uv, texId);
 }
 
-void SystemStub_OGL::drawSprite(int listNum, int num, const Point *pt) {
+void GraphicsGL::drawSprite(int listNum, int num, const Point *pt) {
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -528,7 +536,7 @@ void SystemStub_OGL::drawSprite(int listNum, int num, const Point *pt) {
 	glScalef(1., 1., 1.);
 }
 
-void SystemStub_OGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int fmt) {
+void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int fmt) {
 	switch (_render) {
 	case RENDER_ORIGINAL:
 		if (fmt == FMT_CLUT) {
@@ -565,7 +573,7 @@ void SystemStub_OGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, 
 	_drawLists[listNum].clear(COL_BMP);
 }
 
-void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {
+void GraphicsGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {
 	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
 
 	if (color == COL_PAGE) {
@@ -588,7 +596,7 @@ void SystemStub_OGL::drawVerticesToFb(uint8_t color, int count, const Point *ver
 	glScalef(1., 1., 1.);
 }
 
-void SystemStub_OGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
+void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawPoint(pt->x, pt->y, color);
 
@@ -605,7 +613,7 @@ void SystemStub_OGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 	_drawLists[listNum].append(color, 1, pt);
 }
 
-void SystemStub_OGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) {
+void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) {
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawPolygon(color, *qs);
 
@@ -622,7 +630,7 @@ void SystemStub_OGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *
 	_drawLists[listNum].append(color, qs->numVertices, qs->vertices);
 }
 
-void SystemStub_OGL::drawStringChar(int listNum, uint8_t color, char c, const Point *pt) {
+void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point *pt) {
 	_gfx.setWorkPagePtr(listNum);
 	_gfx.drawChar(c, pt->x / 8, pt->y, color);
 
@@ -664,7 +672,7 @@ void SystemStub_OGL::drawStringChar(int listNum, uint8_t color, char c, const Po
 	glScalef(1., 1., 1.);
 }
 
-void SystemStub_OGL::drawVerticesFlat(int count, const Point *vertices) {
+void GraphicsGL::drawVerticesFlat(int count, const Point *vertices) {
 	switch (count) {
 	case 1:
 		glBegin(GL_POINTS);
@@ -699,7 +707,7 @@ void SystemStub_OGL::drawVerticesFlat(int count, const Point *vertices) {
 	}
 }
 
-void SystemStub_OGL::drawVerticesTex(int count, const Point *vertices) {
+void GraphicsGL::drawVerticesTex(int count, const Point *vertices) {
 	if (count < 4) {
 		warning("Invalid vertices count for drawing mode 0x11", count);
 		return;
@@ -722,7 +730,7 @@ void SystemStub_OGL::drawVerticesTex(int count, const Point *vertices) {
 	glEnd();
 }
 
-void SystemStub_OGL::clearBuffer(int listNum, uint8_t color) {
+void GraphicsGL::clearBuffer(int listNum, uint8_t color) {
 	memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
 
 	assert(listNum < NUM_LISTS);
@@ -753,7 +761,7 @@ static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
 	drawTexQuad(pos, uv, tex);
 }
 
-void SystemStub_OGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
+void GraphicsGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
 	if (vscroll == 0) {
 		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
 	} else if (vscroll >= -199 && vscroll <= 199) {
@@ -797,7 +805,7 @@ static void dumpPalette(const Color *pal) {
 	}
 }
 
-void SystemStub_OGL::drawBuffer(int listNum) {
+void GraphicsGL::drawBuffer(int listNum) {
 	assert(listNum < NUM_LISTS);
 
 	switch (_render){
@@ -836,16 +844,10 @@ void SystemStub_OGL::drawBuffer(int listNum) {
 		glPopAttrib();
 		break;
 	}
+}
 
+void SystemStub_OGL::updateScreen() {
 	SDL_GL_SwapBuffers();
-
-	if (_newRender != _render) {
-		_render = _newRender;
-		if (_render == RENDER_GL) {
-			glViewport(0, 0, FB_W, FB_H);
-		}
-		_backgroundTex.clear();
-	}
 }
 
 void SystemStub_OGL::processEvents() {
@@ -889,18 +891,6 @@ void SystemStub_OGL::processEvents() {
 			} else if (ev.key.keysym.mod & KMOD_CTRL) {
 				if (ev.key.keysym.sym == SDLK_f) {
 					_pi.fastMode = true;
-				} else if (ev.key.keysym.sym == SDLK_r) {
-					if (!_canChangeRender) {
-						break;
-					}
-					switch (_render) {
-					case RENDER_ORIGINAL:
-						_newRender = RENDER_GL;
-						break;
-					case RENDER_GL:
-						_newRender = RENDER_ORIGINAL;
-						break;
-					}
 				}
 				break;
 			}
@@ -950,6 +940,9 @@ void SystemStub_OGL::resize(int w, int h) {
 	_w = w;
 	_h = h;
 	SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | (_fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE));
+	if (_g) {
+		_g->setSize(w, h);
+	}
 }
 
 void SystemStub_OGL::switchGfxMode(bool fullscreen) {

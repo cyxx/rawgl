@@ -12,7 +12,7 @@
 
 Engine::Engine(SystemStub *stub, const char *dataDir, int partNum)
 	: _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(&_ply), _res(&_vid, dataDir),
-	_ply(&_res), _vid(&_res, stub), _dataDir(dataDir), _partNum(partNum) {
+	_ply(&_res), _vid(&_res, stub->_g), _dataDir(dataDir), _partNum(partNum) {
 }
 
 static const int _restartPos[36 * 2] = {
@@ -54,13 +54,14 @@ void Engine::run(Language lang) {
 		_log.runScripts();
 	}
 	finish();
-	_stub->destroy();
+	_stub->fini();
 }
 
 void Engine::setup() {
+	_vid._graphics = _stub->_g;
 	_res.detectVersion();
 	if (_res.getDataType() != Resource::DT_3DO) {
-		_stub->_fixUpPalette = FIXUP_PALETTE_RENDER;
+		_stub->_g->_fixUpPalette = FIXUP_PALETTE_RENDER;
 	}
 	_vid.init();
 	_res.allocMemBlock();
