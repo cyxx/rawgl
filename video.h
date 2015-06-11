@@ -41,7 +41,7 @@ struct Video {
 	uint8_t _tempBitmap[320 * 200];
 	uint16_t _bitmap565[320 * 200];
 
-	Video(Resource *res, Graphics *graphics);
+	Video(Resource *res);
 	void init();
 
 	void setDefaultFont();

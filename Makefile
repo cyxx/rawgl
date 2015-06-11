@@ -7,7 +7,7 @@ DEFINES = -DBYPASS_PROTECTION
 CXX = g++
 CXXFLAGS := -g -O -MMD -Wuninitialized -Wundef -Wreorder $(SDL_CFLAGS) $(DEFINES)
 
-SRCS = aifcplayer.cpp bitmap.cpp file.cpp engine.cpp graphics.cpp script.cpp mixer.cpp pak.cpp resource.cpp resource_nth.cpp resource_win31.cpp resource_3do.cpp systemstub_ogl.cpp \
+SRCS = aifcplayer.cpp bitmap.cpp file.cpp engine.cpp graphics.cpp graphics_gl.cpp script.cpp mixer.cpp pak.cpp resource.cpp resource_nth.cpp resource_win31.cpp resource_3do.cpp systemstub_ogl.cpp \
 	sfxplayer.cpp staticres.cpp unpack.cpp util.cpp video.cpp main.cpp
 
 OBJS = $(SRCS:.cpp=.o)

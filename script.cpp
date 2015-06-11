@@ -5,6 +5,7 @@
  */
 
 #include <ctime>
+#include "graphics.h"
 #include "script.h"
 #include "mixer.h"
 #include "resource.h"
@@ -211,7 +212,7 @@ void Script::op_setPalette() {
 	uint16_t i = _scriptPtr.fetchWord();
 	debug(DBG_SCRIPT, "Script::op_changePalette(%d)", i);
 	const int num = i >> 8;
-	if (_stub->_g->_fixUpPalette == FIXUP_PALETTE_RENDER) {
+	if (_vid->_graphics->_fixUpPalette == FIXUP_PALETTE_RENDER) {
 		if (_res->_currentPart == 16001) {
 			if (num == 10 || num == 16) {
 				return;
@@ -294,6 +295,9 @@ void Script::op_updateDisplay() {
 	}
 
 	_vid->_displayHead = !(_res->_currentPart == 16006 && _screenNum == 202);
+	int w, h;
+	_stub->getScreenSize(w, h);
+	_vid->_graphics->setSize(w, h);
 	_vid->updateDisplay(page);
 	_stub->updateScreen();
 }
@@ -399,7 +403,7 @@ void Script::restartAt(int part, int pos) {
 	if (pos >= 0) {
 		_scriptVars[0] = pos;
 	}
-	if (_stub->_g->_fixUpPalette == FIXUP_PALETTE_RENDER) {
+	if (_vid->_graphics->_fixUpPalette == FIXUP_PALETTE_RENDER) {
 		if (part == 16009) {
 			_vid->changePal(5);
 		}

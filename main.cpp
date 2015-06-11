@@ -73,8 +73,12 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
+	if (render) {
+		extern void setRender(const char *);
+		setRender(render);
+	}
 	g_debugMask = DBG_INFO; // | DBG_VIDEO | DBG_SND | DBG_SCRIPT | DBG_BANK | DBG_SER;
-	SystemStub *stub = SystemStub_OGL_create(render);
+	SystemStub *stub = SystemStub_OGL_create();
 	Engine *e = new Engine(stub, dataPath, part);
 	e->run(lang);
 	delete e;

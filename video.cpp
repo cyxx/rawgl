@@ -5,13 +5,14 @@
 
 #include "video.h"
 #include "bitmap.h"
+#include "graphics.h"
 #include "resource.h"
 #include "systemstub.h"
 #include "util.h"
 
 
-Video::Video(Resource *res, Graphics *graphics)
-	: _res(res), _graphics(graphics), _hasHeadSprites(false), _displayHead(true) {
+Video::Video(Resource *res)
+	: _res(res), _graphics(0), _hasHeadSprites(false), _displayHead(true) {
 }
 
 void Video::init() {
