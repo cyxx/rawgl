@@ -480,6 +480,8 @@ void GraphicsGL::drawSprite(int listNum, int num, const Point *pt) {
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
 
+	glViewport(0, 0, FB_W, FB_H);
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
@@ -517,6 +519,8 @@ void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int 
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+		glViewport(0, 0, FB_W, FB_H);
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
@@ -560,6 +564,8 @@ void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
 
+	glViewport(0, 0, FB_W, FB_H);
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
@@ -577,6 +583,8 @@ void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
 
+	glViewport(0, 0, FB_W, FB_H);
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
@@ -593,6 +601,8 @@ void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point 
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glViewport(0, 0, FB_W, FB_H);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -693,6 +703,8 @@ void GraphicsGL::clearBuffer(int listNum, uint8_t color) {
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
 
+	glViewport(0, 0, FB_W, FB_H);
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
@@ -733,6 +745,8 @@ void GraphicsGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + dstListNum);
+
+	glViewport(0, 0, FB_W, FB_H);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -781,7 +795,6 @@ void GraphicsGL::drawBuffer(int listNum) {
 	case RENDER_GL:
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-		glPushAttrib(GL_VIEWPORT_BIT);
 		glViewport(0, 0, _w, _h);
 
 		glMatrixMode(GL_PROJECTION);
@@ -793,11 +806,6 @@ void GraphicsGL::drawBuffer(int listNum) {
 			glDisable(GL_TEXTURE_2D);
 			dumpPalette(_pal);
 		}
-
-		glLoadIdentity();
-		glOrtho(0, FB_W, 0, FB_H, 0, 1);
-
-		glPopAttrib();
 		break;
 	}
 }

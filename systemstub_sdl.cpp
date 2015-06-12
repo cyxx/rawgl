@@ -14,7 +14,8 @@ static const int DEF_SCREEN_H = 600;
 
 struct SystemStub_OGL : SystemStub {
 	int _w, _h;
-	bool _fullscreen;
+	SDL_Window *_window;
+	SDL_Renderer *_renderer;
 
 	SystemStub_OGL() {}
 	virtual ~SystemStub_OGL() {}
@@ -28,9 +29,6 @@ struct SystemStub_OGL : SystemStub {
 	virtual void processEvents();
 	virtual void sleep(uint32_t duration);
 	virtual uint32_t getTimeStamp();
-
-	void resize(int w, int h);
-	void switchGfxMode(bool fullscreen);
 };
 
 SystemStub *SystemStub_OGL_create() {
@@ -39,21 +37,20 @@ SystemStub *SystemStub_OGL_create() {
 
 void SystemStub_OGL::init(const char *title) {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-	SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 	SDL_ShowCursor(SDL_DISABLE);
-	SDL_WM_SetCaption(title, NULL);
-	memset(&_pi, 0, sizeof(_pi));
-	_fullscreen = false;
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	resize(DEF_SCREEN_W, DEF_SCREEN_H);
+	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DEF_SCREEN_W, DEF_SCREEN_H, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
+	SDL_GetWindowSize(_window, &_w, &_h);
 }
 
 void SystemStub_OGL::fini() {
+	SDL_DestroyRenderer(_renderer);
+	SDL_DestroyWindow(_window);
 	SDL_Quit();
 }
 
 void SystemStub_OGL::updateScreen() {
-	SDL_GL_SwapBuffers();
+	SDL_RenderPresent(_renderer);
 }
 
 void SystemStub_OGL::processEvents() {
@@ -63,9 +60,12 @@ void SystemStub_OGL::processEvents() {
 		case SDL_QUIT:
 			_pi.quit = true;
 			break;
-		case SDL_VIDEORESIZE:
-			resize(ev.resize.w, ev.resize.h);
-			break;			
+		case SDL_WINDOWEVENT:
+			if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
+				_w = ev.window.data1;
+				_h = ev.window.data2;
+			}
+			break;
 		case SDL_KEYUP:
 			switch(ev.key.keysym.sym) {
 			case SDLK_LEFT:
@@ -91,7 +91,6 @@ void SystemStub_OGL::processEvents() {
 		case SDL_KEYDOWN:
 			if (ev.key.keysym.mod & KMOD_ALT) {
 				if (ev.key.keysym.sym == SDLK_RETURN || ev.key.keysym.sym == SDLK_KP_ENTER) {
-					switchGfxMode(!_fullscreen);
 				}
 				break;
 			} else if (ev.key.keysym.mod & KMOD_CTRL) {
@@ -140,16 +139,4 @@ void SystemStub_OGL::sleep(uint32_t duration) {
 
 uint32_t SystemStub_OGL::getTimeStamp() {
 	return SDL_GetTicks();
-}
-
-void SystemStub_OGL::resize(int w, int h) {
-	_w = w;
-	_h = h;
-	SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | (_fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE));
-}
-
-void SystemStub_OGL::switchGfxMode(bool fullscreen) {
-	_fullscreen = fullscreen;
-	const int flags = _fullscreen ? SDL_FULLSCREEN : SDL_RESIZABLE;
-	SDL_SetVideoMode(_w, _h, 0, SDL_OPENGL | flags);
 }

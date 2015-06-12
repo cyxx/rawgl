@@ -30,7 +30,6 @@ In game hotkeys :
     Alt X           exit the game 
     Ctrl F          toggle fast mode 
     Ctrl R          switch between low and high resolution renderer 
-    Alt Enter       toggle windowed/fullscreen mode 
 
 ## Credits
 

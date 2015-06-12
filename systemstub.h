@@ -33,6 +33,9 @@ struct SystemStub {
 
 	PlayerInput _pi;
 
+	SystemStub() {
+		memset(&_pi, 0, sizeof(_pi));
+	}
 	virtual ~SystemStub() {}
 
 	virtual void init(const char *title) = 0;
