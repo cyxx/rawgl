@@ -11,9 +11,8 @@
 #include <vector>
 #include "graphics.h"
 #include "util.h"
+#include "systemstub.h"
 
-
-static int _render = RENDER_GL;
 
 static GLuint kNoTextureId = (GLuint)-1;
 
@@ -266,7 +265,6 @@ struct GraphicsGL : Graphics {
 	int _w, _h;
 	Color _pal[16];
 	Color *_alphaColor;
-	GraphicsSoft _gfx;
 	Texture _backgroundTex;
 	Texture _fontTex;
 	Texture _spritesTex;
@@ -283,8 +281,8 @@ struct GraphicsGL : Graphics {
 	GraphicsGL();
 	virtual ~GraphicsGL() {}
 
-	virtual int getGraphicsMode() const { return _render; }
-	virtual void setSize(int w, int h) { _w = w; _h = h; };
+	virtual bool is1992Graphics() const { false; }
+	virtual void init();
 	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, int count);
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
@@ -295,7 +293,7 @@ struct GraphicsGL : Graphics {
 	virtual void drawStringChar(int listNum, uint8_t color, char c, const Point *pt);
 	virtual void clearBuffer(int listNum, uint8_t color);
 	virtual void copyBuffer(int dstListNum, int srcListNum, int vscroll = 0);
-	virtual void drawBuffer(int listNum);
+	virtual void drawBuffer(int listNum, SystemStub *stub);
 
 	bool initFBO();
 	void drawVerticesFlat(int count, const Point *vertices);
@@ -303,29 +301,13 @@ struct GraphicsGL : Graphics {
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
 };
 
-void setRender(const char *name) {
-	if (name) {
-		struct {
-			const char *name;
-			int render;
-		} modes[] = {
-			{ "original", RENDER_ORIGINAL },
-			{ "gl", RENDER_GL },
-			{ 0, 0 }
-		};
-		for (int i = 0; modes[i].name; ++i) {
-			if (strcasecmp(modes[i].name, name) == 0) {
-				_render = modes[i].render;
-				break;
-			}
-		}
-	}
-}
-
 GraphicsGL::GraphicsGL() {
 	_fixUpPalette = FIXUP_PALETTE_NONE;
 	memset(_pal, 0, sizeof(_pal));
 	_alphaColor = &_pal[12]; /* _pal[0x8 | color] */
+}
+
+void GraphicsGL::init() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
@@ -389,7 +371,7 @@ bool GraphicsGL::initFBO() {
 
 void GraphicsGL::setFont(const uint8_t *src, int w, int h) {
 	if (src == 0) {
-		_fontTex.readFont(GraphicsSoft::_font);
+		_fontTex.readFont(_font);
 	} else {
 		_fontTex.uploadDataRGB(src, w * 4, w, h, GL_RGBA, GL_UNSIGNED_BYTE);
 	}
@@ -400,7 +382,7 @@ void GraphicsGL::setPalette(const Color *colors, int n) {
 	for (int i = 0; i < n; ++i) {
 		_pal[i] = colors[i];
 	}
-	if (_fixUpPalette == FIXUP_PALETTE_RENDER && _render == RENDER_GL) {
+	if (_fixUpPalette == FIXUP_PALETTE_RENDER) {
 		for (int i = 0; i < NUM_LISTS; ++i) {
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
@@ -495,40 +477,29 @@ void GraphicsGL::drawSprite(int listNum, int num, const Point *pt) {
 }
 
 void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int fmt) {
-	switch (_render) {
-	case RENDER_ORIGINAL:
-		if (fmt == FMT_CLUT) {
-			memcpy(_gfx.getPagePtr(listNum), data, _gfx.getPageSize());
-		}
+	assert(listNum == 0);
+	_backgroundTex._fmt = fmt;
+	switch (fmt) {
+	case FMT_CLUT:
+		_backgroundTex.readRaw16(data, _pal);
 		break;
-	case RENDER_GL:
-		assert(listNum == 0);
-		_backgroundTex._fmt = fmt;
-		switch (fmt) {
-		case FMT_CLUT:
-			_backgroundTex.readRaw16(data, _pal);
-			break;
-		case FMT_RGB:
-			_backgroundTex.clear();
-			_backgroundTex.uploadDataRGB(data, w * 3, w, h, GL_RGB, GL_UNSIGNED_BYTE);
-			break;
-		case FMT_RGB565:
-			_backgroundTex.clear();
-			_backgroundTex.uploadDataRGB(data, w * 2, w, h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
-			break;
-		}
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
-
-		glViewport(0, 0, FB_W, FB_H);
-
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, FB_W, 0, FB_H, 0, 1);
-
-		_backgroundTex.draw(FB_W, FB_H);
+	case FMT_RGB:
+		_backgroundTex.clear();
+		_backgroundTex.uploadDataRGB(data, w * 3, w, h, GL_RGB, GL_UNSIGNED_BYTE);
+		break;
+	case FMT_RGB565:
+		_backgroundTex.clear();
+		_backgroundTex.uploadDataRGB(data, w * 2, w, h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
 		break;
 	}
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+
+	_backgroundTex.draw(FB_W, FB_H);
 
 	_drawLists[listNum].clear(COL_BMP);
 }
@@ -557,9 +528,6 @@ void GraphicsGL::drawVerticesToFb(uint8_t color, int count, const Point *vertice
 }
 
 void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
-	_gfx.setWorkPagePtr(listNum);
-	_gfx.drawPoint(pt->x, pt->y, color);
-
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -576,9 +544,6 @@ void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 }
 
 void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) {
-	_gfx.setWorkPagePtr(listNum);
-	_gfx.drawPolygon(color, *qs);
-
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -595,9 +560,6 @@ void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) 
 }
 
 void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point *pt) {
-	_gfx.setWorkPagePtr(listNum);
-	_gfx.drawChar(c, pt->x / 8, pt->y, color);
-
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -697,8 +659,6 @@ void GraphicsGL::drawVerticesTex(int count, const Point *vertices) {
 }
 
 void GraphicsGL::clearBuffer(int listNum, uint8_t color) {
-	memset(_gfx.getPagePtr(listNum), color, _gfx.getPageSize());
-
 	assert(listNum < NUM_LISTS);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
@@ -730,17 +690,6 @@ static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
 }
 
 void GraphicsGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
-	if (vscroll == 0) {
-		memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum), _gfx.getPageSize());
-	} else if (vscroll >= -199 && vscroll <= 199) {
-		const int dy = (int)round(vscroll * _gfx._h / float(GraphicsSoft::GFX_H));
-		if (dy < 0) {
-			memcpy(_gfx.getPagePtr(dstListNum), _gfx.getPagePtr(srcListNum) - dy * _gfx._w, (_gfx._h + dy) * _gfx._w);
-		} else {
-			memcpy(_gfx.getPagePtr(dstListNum) + dy * _gfx._w, _gfx.getPagePtr(srcListNum), (_gfx._h - dy) * _gfx._w);
-		}
-	}
-
 	assert(dstListNum < NUM_LISTS && srcListNum < NUM_LISTS);
 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
@@ -775,39 +724,26 @@ static void dumpPalette(const Color *pal) {
 	}
 }
 
-void GraphicsGL::drawBuffer(int listNum) {
+void GraphicsGL::drawBuffer(int listNum, SystemStub *stub) {
 	assert(listNum < NUM_LISTS);
 
-	switch (_render){
-	case RENDER_ORIGINAL:
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	stub->prepareScreen(_w, _h);
 
-		glViewport(0, 0, _w, _h);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, _w, _h, 0, 0, 1);
+	glViewport(0, 0, _w, _h);
 
-		_backgroundTex._fmt = FMT_CLUT;
-		_backgroundTex.readRaw16(_gfx.getPagePtr(listNum), _pal);
-		_backgroundTex.draw(_w, _h);
-		break;
-	case RENDER_GL:
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, _w, _h, 0, 0, 1);
 
-		glViewport(0, 0, _w, _h);
-
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, _w, _h, 0, 0, 1);
-
-		drawTextureFb(_pageTex[listNum], _w, _h, 0);
-		if (0) {
-			glDisable(GL_TEXTURE_2D);
-			dumpPalette(_pal);
-		}
-		break;
+	drawTextureFb(_pageTex[listNum], _w, _h, 0);
+	if (0) {
+		glDisable(GL_TEXTURE_2D);
+		dumpPalette(_pal);
 	}
+
+	stub->updateScreen();
 }
 
 Graphics *GraphicsGL_create() {

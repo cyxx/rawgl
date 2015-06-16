@@ -98,6 +98,10 @@ struct Color {
 	uint8_t r;
 	uint8_t g;
 	uint8_t b;
+
+	uint16_t rgb565() const {
+		return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+	}
 };
 
 struct Frac {

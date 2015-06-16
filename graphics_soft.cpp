@@ -4,12 +4,61 @@
  * Copyright (C) 2004-2005 Gregory Montoir (cyx@users.sourceforge.net)
  */
 
+#include <math.h>
 #include "graphics.h"
 #include "util.h"
+#include "systemstub.h"
+
+
+struct GraphicsSoft: Graphics {
+	typedef void (GraphicsSoft::*drawLine)(int16_t x1, int16_t x2, int16_t y, uint8_t col);
+
+	enum {
+		GFX_W = 320,
+		GFX_H = 200,
+	};
+
+	uint8_t *_pagePtrs[4];
+	uint8_t *_workPagePtr;
+	int _u, _v;
+	int _w, _h;
+	Color _pal[16];
+	uint16_t *_colorBuffer;
+
+	GraphicsSoft();
+	~GraphicsSoft();
+
+	void setSize(int w, int h);
+	void drawPolygon(uint8_t color, const QuadStrip &qs);
+	void drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color);
+	void drawPoint(int16_t x, int16_t y, uint8_t color);
+	void drawLineT(int16_t x1, int16_t x2, int16_t y, uint8_t color);
+	void drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color);
+	void drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color);
+	uint8_t *getPagePtr(uint8_t page);
+	int getPageSize() const { return _w * _h; }
+	void setWorkPagePtr(uint8_t page);
+
+	virtual bool is1992Graphics() const { return true; }
+	virtual void setFont(const uint8_t *src, int w, int h);
+	virtual void setPalette(const Color *colors, int count);
+	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
+	virtual void drawSprite(int buffer, int num, const Point *pt);
+	virtual void drawBitmap(int buffer, const uint8_t *data, int w, int h, int fmt);
+	virtual void drawPoint(int buffer, uint8_t color, const Point *pt);
+	virtual void drawQuadStrip(int buffer, uint8_t color, const QuadStrip *qs);
+	virtual void drawStringChar(int buffer, uint8_t color, char c, const Point *pt);
+	virtual void clearBuffer(int num, uint8_t color);
+	virtual void copyBuffer(int dst, int src, int vscroll = 0);
+	virtual void drawBuffer(int num, SystemStub *stub);
+};
 
 
 GraphicsSoft::GraphicsSoft() {
+	_fixUpPalette = FIXUP_PALETTE_NONE;
 	memset(_pagePtrs, 0, sizeof(_pagePtrs));
+	_colorBuffer = 0;
+	memset(_pal, 0, sizeof(_pal));
 	setSize(GFX_W, GFX_H);
 }
 
@@ -25,6 +74,10 @@ void GraphicsSoft::setSize(int w, int h) {
 	_v = (h << 16) / GFX_H;
 	_w = w;
 	_h = h;
+	_colorBuffer = (uint16_t *)realloc(_colorBuffer, _w * _h * sizeof(uint16_t));
+	if (!_colorBuffer) {
+		error("Unable to allocate color buffer w %d h %d", _w, _h);
+	}
 	for (int i = 0; i < 4; ++i) {
 		_pagePtrs[i] = (uint8_t *)realloc(_pagePtrs[i], _w * _h);
 		if (!_pagePtrs[i]) {
@@ -64,10 +117,10 @@ void GraphicsSoft::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
 	default:
 		pdl = &GraphicsSoft::drawLineN;
 		break;
-	case 0x11:
+	case COL_PAGE:
 		pdl = &GraphicsSoft::drawLineP;
 		break;
-	case 0x10:
+	case COL_ALPHA:
 		pdl = &GraphicsSoft::drawLineT;
 		break;
 	}
@@ -133,10 +186,10 @@ void GraphicsSoft::drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color) {
 void GraphicsSoft::drawPoint(int16_t x, int16_t y, uint8_t color) {
 	const int off = y * _w + x;
 	switch (color) {
-	case 0x10:
+	case COL_ALPHA:
 		_workPagePtr[off] |= 0x8;
 		break;
-	case 0x11:
+	case COL_PAGE:
 		_workPagePtr[off] = *(_pagePtrs[0] + off);
 		break;
 	default:
@@ -181,4 +234,70 @@ uint8_t *GraphicsSoft::getPagePtr(uint8_t page) {
 
 void GraphicsSoft::setWorkPagePtr(uint8_t page) {
 	_workPagePtr = getPagePtr(page);
+}
+
+void GraphicsSoft::setFont(const uint8_t *src, int w, int h) {
+	// no-op for 1992
+}
+
+void GraphicsSoft::setPalette(const Color *colors, int count) {
+	memcpy(_pal, colors, sizeof(Color) * MIN(count, 16));
+}
+
+void GraphicsSoft::setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) {
+	// no-op for 1992
+}
+
+void GraphicsSoft::drawSprite(int buffer, int num, const Point *pt) {
+	// no-op for 1992
+}
+
+void GraphicsSoft::drawBitmap(int buffer, const uint8_t *data, int w, int h, int fmt) {
+	if (fmt == FMT_CLUT && _w == w && _h == h) {
+	}
+}
+
+void GraphicsSoft::drawPoint(int buffer, uint8_t color, const Point *pt) {
+	setWorkPagePtr(buffer);
+	drawPoint(pt->x, pt->y, color);
+}
+
+void GraphicsSoft::drawQuadStrip(int buffer, uint8_t color, const QuadStrip *qs) {
+	setWorkPagePtr(buffer);
+	drawPolygon(color, *qs);
+}
+
+void GraphicsSoft::drawStringChar(int buffer, uint8_t color, char c, const Point *pt) {
+	setWorkPagePtr(buffer);
+	drawChar(c, pt->x, pt->y, color);
+}
+
+void GraphicsSoft::clearBuffer(int num, uint8_t color) {
+	memset(getPagePtr(num), color, getPageSize());
+}
+
+void GraphicsSoft::copyBuffer(int dst, int src, int vscroll) {
+	if (vscroll == 0) {
+		memcpy(getPagePtr(dst), getPagePtr(src), getPageSize());
+	} else if (vscroll >= -199 && vscroll <= 199) {
+		const int dy = (int)round(vscroll * _h / float(GFX_H));
+		if (dy < 0) {
+			memcpy(getPagePtr(dst), getPagePtr(src) - dy * _w, (_h + dy) * _w);
+		} else {
+			memcpy(getPagePtr(dst) + dy * _w, getPagePtr(src), (_h - dy) * _w);
+		}
+	}
+}
+
+void GraphicsSoft::drawBuffer(int num, SystemStub *stub) {
+	const uint8_t *src = getPagePtr(num);
+	for (int i = 0; i < _w * _h; ++i) {
+		_colorBuffer[i] = _pal[src[i]].rgb565();
+	}
+	stub->setScreenPixels565(_colorBuffer, _w, _h);
+	stub->updateScreen();
+}
+
+Graphics *GraphicsSoft_create() {
+	return new GraphicsSoft();
 }

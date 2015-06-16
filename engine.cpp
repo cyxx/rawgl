@@ -11,8 +11,8 @@
 #include "util.h"
 
 
-Engine::Engine(SystemStub *stub, const char *dataDir, int partNum)
-	: _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(&_ply), _res(&_vid, dataDir),
+Engine::Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum)
+	: _graphics(graphics), _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(&_ply), _res(&_vid, dataDir),
 	_ply(&_res), _vid(&_res), _dataDir(dataDir), _partNum(partNum) {
 }
 
@@ -59,7 +59,8 @@ void Engine::run(Language lang) {
 }
 
 void Engine::setup() {
-	_vid._graphics = GraphicsGL_create();
+	_vid._graphics = _graphics;
+	_graphics->init();
 	_res.detectVersion();
 	if (_res.getDataType() != Resource::DT_3DO) {
 		_vid._graphics->_fixUpPalette = FIXUP_PALETTE_RENDER;
@@ -78,6 +79,7 @@ void Engine::setup() {
 }
 
 void Engine::finish() {
+	_graphics->fini();
 	_ply.stop();
 	_mix.quit();
 	_res.freeMemBlock();

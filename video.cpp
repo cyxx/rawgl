@@ -232,7 +232,7 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 		uint16_t color = 0xFF;
 		if (off & 0x8000) {
 			color = *_pData.pc & 0x7F;
-			if (_hasHeadSprites && _graphics->getGraphicsMode() != RENDER_ORIGINAL && _displayHead) {
+			if (_hasHeadSprites && !_graphics->is1992Graphics() && _displayHead) {
 				const int id = _pData.pc[1];
 				switch (id) {
 				case 0x4A: { // facing right
@@ -437,7 +437,7 @@ void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 		deinterlace555(src, 320, 200, _bitmap565);
 		_graphics->drawBitmap(0, (uint8_t *)_bitmap565, 320, 200, FMT_RGB565);
 	} else { // .BMP
-		if (_graphics->getGraphicsMode() == RENDER_ORIGINAL) {
+		if (_graphics->is1992Graphics()) {
 			const int w = READ_LE_UINT32(src + 0x12);
 			const int h = READ_LE_UINT32(src + 0x16);
 			if (w == 320 && h == 200) {
@@ -508,7 +508,7 @@ void Video::changePal(uint8_t palNum) {
 	}
 }
 
-void Video::updateDisplay(uint8_t page) {
+void Video::updateDisplay(uint8_t page, SystemStub *stub) {
 	debug(DBG_VIDEO, "Video::updateDisplay(%d)", page);
 	if (page != 0xFE) {
 		if (page == 0xFF) {
@@ -521,5 +521,5 @@ void Video::updateDisplay(uint8_t page) {
 		changePal(_nextPal);
 		_nextPal = 0xFF;
 	}
-	_graphics->drawBuffer(_buffers[1]);
+	_graphics->drawBuffer(_buffers[1], stub);
 }

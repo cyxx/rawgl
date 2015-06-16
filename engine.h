@@ -20,7 +20,8 @@ struct Engine {
 	enum {
 		MAX_SAVE_SLOTS = 100
 	};
-	
+
+	Graphics *_graphics;
 	SystemStub *_stub;
 	Script _log;
 	Mixer _mix;
@@ -30,7 +31,7 @@ struct Engine {
 	const char *_dataDir;
 	int _partNum;
 
-	Engine(SystemStub *stub, const char *dataDir, int partNum);
+	Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum);
 
 	void run(Language lang);
 	void setup();

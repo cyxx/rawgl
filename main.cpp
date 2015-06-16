@@ -6,6 +6,7 @@
 
 #include <getopt.h>
 #include "engine.h"
+#include "graphics.h"
 #include "systemstub.h"
 #include "util.h"
 
@@ -26,6 +27,17 @@ static const struct {
 	{ "fr", LANG_FR  },
 	{ "us", LANG_US  },
 };
+
+static Graphics *createGraphics(const char *type) {
+	if (type) {
+		if (strcmp(type, "original") == 0 || strcmp(type, "software") == 0) {
+			debug(DBG_INFO, "Using software graphics");
+			return GraphicsSoft_create();
+		}
+	}
+	debug(DBG_INFO, "Using GL graphics");
+	return GraphicsGL_create();
+}
 
 #undef main
 int main(int argc, char *argv[]) {
@@ -73,13 +85,10 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	if (render) {
-		extern void setRender(const char *);
-		setRender(render);
-	}
 	g_debugMask = DBG_INFO; // | DBG_VIDEO | DBG_SND | DBG_SCRIPT | DBG_BANK | DBG_SER;
-	SystemStub *stub = SystemStub_OGL_create();
-	Engine *e = new Engine(stub, dataPath, part);
+	Graphics *graphics = createGraphics(render);
+	SystemStub *stub = SystemStub_SDL_create();
+	Engine *e = new Engine(graphics, stub, dataPath, part);
 	e->run(lang);
 	delete e;
 	delete stub;

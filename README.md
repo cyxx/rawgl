@@ -29,7 +29,6 @@ In game hotkeys :
     P               pause the game 
     Alt X           exit the game 
     Ctrl F          toggle fast mode 
-    Ctrl R          switch between low and high resolution renderer 
 
 ## Credits
 

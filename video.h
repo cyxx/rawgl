@@ -16,6 +16,7 @@ struct StrEntry {
 
 struct Graphics;
 struct Resource;
+struct SystemStub;
 
 struct Video {
 
@@ -60,7 +61,7 @@ struct Video {
 	void copyPage(uint8_t src, uint8_t dst, int16_t vscroll);
 	void copyBitmapPtr(const uint8_t *src, uint32_t size = 0);
 	void changePal(uint8_t pal);
-	void updateDisplay(uint8_t page);
+	void updateDisplay(uint8_t page, SystemStub *stub);
 };
 
 #endif

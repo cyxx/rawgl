@@ -295,11 +295,7 @@ void Script::op_updateDisplay() {
 	}
 
 	_vid->_displayHead = !(_res->_currentPart == 16006 && _screenNum == 202);
-	int w, h;
-	_stub->getScreenSize(w, h);
-	_vid->_graphics->setSize(w, h);
-	_vid->updateDisplay(page);
-	_stub->updateScreen();
+	_vid->updateDisplay(page, _stub);
 }
 
 void Script::op_removeTask() {

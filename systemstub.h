@@ -26,8 +26,6 @@ struct PlayerInput {
 	bool fastMode;
 };
 
-struct Graphics;
-
 struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
 
@@ -41,14 +39,17 @@ struct SystemStub {
 	virtual void init(const char *title) = 0;
 	virtual void fini() = 0;
 
-	virtual void getScreenSize(int &w, int &h) const = 0;
+	// GL rendering
+	virtual void prepareScreen(int &w, int &h) const = 0;
 	virtual void updateScreen() = 0;
+	// framebuffer rendering
+	virtual void setScreenPixels565(const uint16_t *data, int w, int h) = 0;
 
 	virtual void processEvents() = 0;
 	virtual void sleep(uint32_t duration) = 0;
 	virtual uint32_t getTimeStamp() = 0;
 };
 
-extern SystemStub *SystemStub_OGL_create();
+extern SystemStub *SystemStub_SDL_create();
 
 #endif
