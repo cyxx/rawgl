@@ -36,7 +36,7 @@ struct SystemStub {
 	}
 	virtual ~SystemStub() {}
 
-	virtual void init(const char *title) = 0;
+	virtual void init(int windowW, int windowH, const char *title) = 0;
 	virtual void fini() = 0;
 
 	// GL rendering

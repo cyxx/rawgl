@@ -9,9 +9,6 @@
 #include "systemstub.h"
 #include "util.h"
 
-static const int DEF_SCREEN_W = 800;
-static const int DEF_SCREEN_H = 600;
-
 struct SystemStub_SDL : SystemStub {
 	int _w, _h;
 	SDL_Window *_window;
@@ -22,7 +19,7 @@ struct SystemStub_SDL : SystemStub {
 	SystemStub_SDL();
 	virtual ~SystemStub_SDL() {}
 
-	virtual void init(const char *title);
+	virtual void init(int windowW, int windowH, const char *title);
 	virtual void fini();
 
 	virtual void prepareScreen(int &w, int &h) const { w = _w; h = _h; }
@@ -38,10 +35,10 @@ SystemStub_SDL::SystemStub_SDL()
 	: _w(0), _h(0), _window(0), _renderer(0), _texW(0), _texH(0), _texture(0) {
 }
 
-void SystemStub_SDL::init(const char *title) {
+void SystemStub_SDL::init(int windowW, int windowH, const char *title) {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	SDL_ShowCursor(SDL_DISABLE);
-	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DEF_SCREEN_W, DEF_SCREEN_H, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
 	SDL_GetWindowSize(_window, &_w, &_h);
 }

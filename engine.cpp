@@ -27,8 +27,8 @@ static const int _restartPos[36 * 2] = {
 	16007, 0
 };
 
-void Engine::run(Language lang) {
-	_stub->init((lang == LANG_US) ? "Out Of This World" : "Another World");
+void Engine::run(int w, int h, Language lang) {
+	_stub->init(w, h, (lang == LANG_US) ? "Out Of This World" : "Another World");
 	setup();
 	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA) {
 		switch (lang) {

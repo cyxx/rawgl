@@ -33,7 +33,7 @@ struct Engine {
 
 	Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum);
 
-	void run(Language lang);
+	void run(int w, int h, Language lang);
 	void setup();
 	void finish();
 	void processInput();
