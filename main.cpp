@@ -28,15 +28,25 @@ static const struct {
 	{ "us", LANG_US  },
 };
 
+bool Graphics::_is1991 = false;
+
 static Graphics *createGraphics(const char *type) {
+	bool useSoftwareGraphics = false;
 	if (type) {
-		if (strcmp(type, "original") == 0 || strcmp(type, "software") == 0) {
-			debug(DBG_INFO, "Using software graphics");
-			return GraphicsSoft_create();
+		if (strcmp(type, "original") == 0) {
+			Graphics::_is1991 = true;
+			useSoftwareGraphics = true;
+		} else if (strcmp(type, "software") == 0) {
+			useSoftwareGraphics = true;
 		}
 	}
-	debug(DBG_INFO, "Using GL graphics");
-	return GraphicsGL_create();
+	if (useSoftwareGraphics) {
+		debug(DBG_INFO, "Using software graphics");
+		return GraphicsSoft_create();
+	} else {
+		debug(DBG_INFO, "Using GL graphics");
+		return GraphicsGL_create();
+	}
 }
 
 #undef main

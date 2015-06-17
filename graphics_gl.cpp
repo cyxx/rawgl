@@ -276,12 +276,10 @@ struct GraphicsGL : Graphics {
 		int num;
 		Point pos;
 	} _sprite;
-	int _fixUpPalette;
 
 	GraphicsGL();
 	virtual ~GraphicsGL() {}
 
-	virtual bool is1992Graphics() const { false; }
 	virtual void init();
 	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, int count);
@@ -305,6 +303,8 @@ GraphicsGL::GraphicsGL() {
 	_fixUpPalette = FIXUP_PALETTE_NONE;
 	memset(_pal, 0, sizeof(_pal));
 	_alphaColor = &_pal[12]; /* _pal[0x8 | color] */
+	_spritesSizeX = _spritesSizeY = 0;
+	_sprite.num = -1;
 }
 
 void GraphicsGL::init() {
@@ -324,7 +324,6 @@ void GraphicsGL::init() {
 	_spritesTex.init();
 	_spritesTex._npotTex = npotTex;
 	_spritesTex._fixUpPalette = _fixUpPalette;
-	_sprite.num = -1;
 	if (hasFbo) {
 		const bool err = initFBO();
 		if (err) {

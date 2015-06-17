@@ -39,7 +39,6 @@ struct GraphicsSoft: Graphics {
 	int getPageSize() const { return _w * _h; }
 	void setWorkPagePtr(uint8_t page);
 
-	virtual bool is1992Graphics() const { return true; }
 	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, int count);
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
@@ -237,7 +236,9 @@ void GraphicsSoft::setWorkPagePtr(uint8_t page) {
 }
 
 void GraphicsSoft::setFont(const uint8_t *src, int w, int h) {
-	// no-op for 1992
+	if (_is1991) {
+		// no-op for 1991
+	}
 }
 
 void GraphicsSoft::setPalette(const Color *colors, int count) {
@@ -245,15 +246,22 @@ void GraphicsSoft::setPalette(const Color *colors, int count) {
 }
 
 void GraphicsSoft::setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) {
-	// no-op for 1992
+	if (_is1991) {
+		// no-op for 1991
+	}
 }
 
 void GraphicsSoft::drawSprite(int buffer, int num, const Point *pt) {
-	// no-op for 1992
+	if (_is1991) {
+		// no-op for 1991
+	}
 }
 
 void GraphicsSoft::drawBitmap(int buffer, const uint8_t *data, int w, int h, int fmt) {
-	if (fmt == FMT_CLUT && _w == w && _h == h) {
+	if (_is1991) {
+		if (fmt == FMT_CLUT && _w == w && _h == h) {
+			memcpy(getPagePtr(buffer), data, w * h);
+		}
 	}
 }
 

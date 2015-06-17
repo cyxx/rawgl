@@ -27,6 +27,7 @@ struct SystemStub;
 struct Graphics {
 
 	static const uint8_t _font[];
+	static bool _is1991; // draw graphics as in the original 1991 game release
 
 	int _fixUpPalette;
 
@@ -35,7 +36,6 @@ struct Graphics {
 	virtual void init() {}
 	virtual void fini() {}
 
-	virtual bool is1992Graphics() const = 0;
 	virtual void setFont(const uint8_t *src, int w, int h) = 0;
 	virtual void setPalette(const Color *colors, int count) = 0;
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) = 0;
