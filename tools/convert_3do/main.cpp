@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "cinepak.h"
+#include "opera.h"
 extern "C" {
 #include "tga.h"
 }
@@ -249,7 +250,21 @@ static void decodeBitmap(FILE *fp, int num) {
 int main(int argc, char *argv[]) {
 	if (argc >= 2) {
 		struct stat st;
-		if (stat(argv[1], &st) == 0 && S_ISDIR(st.st_mode)) {
+		if (stat(argv[1], &st) != 0) {
+			fprintf(stderr, "Failed to stat '%s'\n", argv[1]);
+			return -1;
+		}
+		if (S_ISREG(st.st_mode)) {
+			FILE *fp = fopen(argv[1], "rb");
+			if (fp) {
+				extractOperaIso(fp);
+				fclose(fp);
+			} else {
+				fprintf(stderr, "Failed to open '%s'\n", argv[1]);
+			}
+			return 0;
+		}
+		if (S_ISDIR(st.st_mode)) {
 			char path[MAXPATHLEN];
 			for (int i = 200; i <= 340; ++i) {
 				snprintf(path, sizeof(path), "%s/File%3d", argv[1], i);
@@ -274,6 +289,7 @@ int main(int argc, char *argv[]) {
 					}
 				}
 			}
+			return 0;
 		}
 	}
 	return 0;
