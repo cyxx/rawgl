@@ -66,6 +66,7 @@ GraphicsSoft::~GraphicsSoft() {
 		free(_pagePtrs[i]);
 		_pagePtrs[i] = 0;
 	}
+	free(_colorBuffer);
 }
 
 void GraphicsSoft::setSize(int w, int h) {

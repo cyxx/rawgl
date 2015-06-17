@@ -13,13 +13,13 @@ enum {
 
 enum {
 	FIXUP_PALETTE_NONE,
-	FIXUP_PALETTE_RENDER, // redraw all primitives on setPal script call
+	FIXUP_PALETTE_REDRAW, // redraw all primitives on setPal script call
 };
 
 enum {
-	COL_ALPHA = 0x10,
-	COL_PAGE  = 0x11,
-	COL_BMP   = 0xFF,
+	COL_ALPHA = 0x10, // transparent pixel (OR'ed with 0x8)
+	COL_PAGE  = 0x11, // buffer 0 pixel
+	COL_BMP   = 0xFF, // bitmap in buffer 0 pixel
 };
 
 struct SystemStub;

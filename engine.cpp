@@ -63,7 +63,7 @@ void Engine::setup() {
 	_graphics->init();
 	_res.detectVersion();
 	if (_res.getDataType() != Resource::DT_3DO) {
-		_vid._graphics->_fixUpPalette = FIXUP_PALETTE_RENDER;
+		_vid._graphics->_fixUpPalette = FIXUP_PALETTE_REDRAW;
 	}
 	_vid.init();
 	_res.allocMemBlock();

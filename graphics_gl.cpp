@@ -44,7 +44,6 @@ struct Texture {
 	uint8_t *_rgbData;
 	const uint8_t *_raw16Data;
 	int _fmt;
-	int _fixUpPalette;
 
 	void init();
 	void uploadDataCLUT(const uint8_t *data, int srcPitch, int w, int h, const Color *pal);
@@ -63,7 +62,6 @@ void Texture::init() {
 	_rgbData = 0;
 	_raw16Data = 0;
 	_fmt = -1;
-	_fixUpPalette = FIXUP_PALETTE_NONE;
 }
 
 static void convertTexture16(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch) {
@@ -317,13 +315,10 @@ void GraphicsGL::init() {
 	const bool hasFbo = hasExtension(exts, "GL_ARB_framebuffer_object");
 	_backgroundTex.init();
 	_backgroundTex._npotTex = npotTex;
-	_backgroundTex._fixUpPalette = _fixUpPalette;
 	_fontTex.init();
 	_fontTex._npotTex = npotTex;
-	_fontTex._fixUpPalette = _fixUpPalette;
 	_spritesTex.init();
 	_spritesTex._npotTex = npotTex;
-	_spritesTex._fixUpPalette = _fixUpPalette;
 	if (hasFbo) {
 		const bool err = initFBO();
 		if (err) {
@@ -381,7 +376,7 @@ void GraphicsGL::setPalette(const Color *colors, int n) {
 	for (int i = 0; i < n; ++i) {
 		_pal[i] = colors[i];
 	}
-	if (_fixUpPalette == FIXUP_PALETTE_RENDER) {
+	if (_fixUpPalette == FIXUP_PALETTE_REDRAW) {
 		for (int i = 0; i < NUM_LISTS; ++i) {
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
@@ -538,8 +533,9 @@ void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
 	drawVerticesToFb(color, 1, pt);
-
-	_drawLists[listNum].append(color, 1, pt);
+	if (_fixUpPalette != FIXUP_PALETTE_NONE) {
+		_drawLists[listNum].append(color, 1, pt);
+	}
 }
 
 void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) {
@@ -554,8 +550,9 @@ void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) 
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
 	drawVerticesToFb(color, qs->numVertices, qs->vertices);
-
-	_drawLists[listNum].append(color, qs->numVertices, qs->vertices);
+	if (_fixUpPalette != FIXUP_PALETTE_NONE) {
+		_drawLists[listNum].append(color, qs->numVertices, qs->vertices);
+	}
 }
 
 void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point *pt) {
