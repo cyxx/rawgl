@@ -22,6 +22,12 @@ enum {
 	COL_BMP   = 0xFF, // bitmap in buffer 0 pixel
 };
 
+enum {
+	GRAPHICS_ORIGINAL,
+	GRAPHICS_SOFTWARE,
+	GRAPHICS_GL
+};
+
 struct SystemStub;
 
 struct Graphics {

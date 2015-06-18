@@ -14,12 +14,10 @@
 #include "resource.h"
 #include "video.h"
 
+struct Graphics;
 struct SystemStub;
 
 struct Engine {
-	enum {
-		MAX_SAVE_SLOTS = 100
-	};
 
 	Graphics *_graphics;
 	SystemStub *_stub;
@@ -28,7 +26,6 @@ struct Engine {
 	Resource _res;
 	SfxPlayer _ply;
 	Video _vid;
-	const char *_dataDir;
 	int _partNum;
 
 	Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum);

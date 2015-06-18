@@ -13,7 +13,7 @@
 
 Engine::Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum)
 	: _graphics(graphics), _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(&_ply), _res(&_vid, dataDir),
-	_ply(&_res), _vid(&_res), _dataDir(dataDir), _partNum(partNum) {
+	_ply(&_res), _vid(&_res), _partNum(partNum) {
 }
 
 static const int _restartPos[36 * 2] = {

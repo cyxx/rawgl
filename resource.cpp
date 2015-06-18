@@ -20,6 +20,9 @@ Resource::Resource(Video *vid, const char *dataDir)
 	_bankPrefix = "bank";
 	memset(_memList, 0, sizeof(_memList));
 	_numMemList = 0;
+	if (!_dataDir) {
+		_dataDir = ".";
+	}
 }
 
 Resource::~Resource() {

@@ -23,31 +23,38 @@ static const char *USAGE =
 
 static const struct {
 	const char *name;
-	Language lang;
+	int lang;
 } LANGUAGES[] = {
 	{ "fr", LANG_FR  },
 	{ "us", LANG_US  },
+	{ 0, -1 }
+};
+
+static const struct {
+	const char *name;
+	int type;
+} GRAPHICS[] = {
+	{ "original", GRAPHICS_ORIGINAL },
+	{ "software", GRAPHICS_SOFTWARE },
+	{ "gl", GRAPHICS_GL },
+	{ 0,  -1 }
 };
 
 bool Graphics::_is1991 = false;
 
-static Graphics *createGraphics(const char *type) {
-	bool useSoftwareGraphics = false;
-	if (type) {
-		if (strcmp(type, "original") == 0) {
-			Graphics::_is1991 = true;
-			useSoftwareGraphics = true;
-		} else if (strcmp(type, "software") == 0) {
-			useSoftwareGraphics = true;
-		}
-	}
-	if (useSoftwareGraphics) {
+static Graphics *createGraphics(int type) {
+	switch (type) {
+	case GRAPHICS_ORIGINAL:
+		Graphics::_is1991 = true;
+		// fall-through
+	case GRAPHICS_SOFTWARE:
 		debug(DBG_INFO, "Using software graphics");
 		return GraphicsSoft_create();
-	} else {
+	case GRAPHICS_GL:
 		debug(DBG_INFO, "Using GL graphics");
 		return GraphicsGL_create();
 	}
+	return 0;
 }
 
 static const int DEFAULT_WINDOW_W = 640;
@@ -55,11 +62,10 @@ static const int DEFAULT_WINDOW_H = 480;
 
 #undef main
 int main(int argc, char *argv[]) {
-	const char *dataPath = ".";
-	const char *language = 0;
+	char *dataPath = 0;
 	int part = 16001;
 	Language lang = LANG_FR;
-	const char *render = "gl";
+	int graphicsType = GRAPHICS_GL;
 	int windowW = DEFAULT_WINDOW_W;
 	int windowH = DEFAULT_WINDOW_H;
 	while (1) {
@@ -78,16 +84,26 @@ int main(int argc, char *argv[]) {
 		}
 		switch (c) {
 		case 'd':
-			dataPath = optarg;
+			dataPath = strdup(optarg);
 			break;
 		case 'l':
-			language = optarg;
+			for (int i = 0; LANGUAGES[i].name; ++i) {
+				if (strcmp(optarg, LANGUAGES[i].name) == 0) {
+					lang = (Language)LANGUAGES[i].lang;
+					break;
+				}
+			}
 			break;
 		case 'p':
 			part = atoi(optarg);
 			break;
 		case 'r':
-			render = optarg;
+			for (int i = 0; GRAPHICS[i].name; ++i) {
+				if (strcmp(optarg, GRAPHICS[i].name) == 0) {
+					graphicsType = GRAPHICS[i].type;
+					break;
+				}
+			}
 			break;
 		case 'w':
 			sscanf(optarg, "%dx%d", &windowW, &windowH);
@@ -97,16 +113,8 @@ int main(int argc, char *argv[]) {
 			return 0;
 		}
 	}
-	if (language) {
-		for (unsigned int j = 0; j < ARRAYSIZE(LANGUAGES); ++j) {
-			if (strcmp(language, LANGUAGES[j].name) == 0) {
-				lang = LANGUAGES[j].lang;
-				break;
-			}
-		}
-	}
 	g_debugMask = DBG_INFO; // | DBG_VIDEO | DBG_SND | DBG_SCRIPT | DBG_BANK | DBG_SER;
-	Graphics *graphics = createGraphics(render);
+	Graphics *graphics = createGraphics(graphicsType);
 	SystemStub *stub = SystemStub_SDL_create();
 	Engine *e = new Engine(graphics, stub, dataPath, part);
 	e->run(windowW, windowH, lang);
