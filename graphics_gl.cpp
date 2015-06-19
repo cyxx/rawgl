@@ -196,9 +196,9 @@ void Texture::readRaw16(const uint8_t *src, const Color *pal, int w, int h) {
 
 void Texture::readFont(const uint8_t *src) {
 	_fmt = FMT_RGBA;
-	const int W = 768 * 2;
+	const int W = 96 * 8 * 2;
 	const int H = 8;
-	uint8_t *out = (uint8_t *)malloc(W * H);
+	uint8_t *out = (uint8_t *)calloc(1, W * H);
 	if (out) {
 		for (int i = 0; i < 96; ++i) {
 			for (int y = 0; y < 8; ++y) {
