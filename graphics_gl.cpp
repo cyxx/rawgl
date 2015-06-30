@@ -489,6 +489,8 @@ void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
 
+	glViewport(0, 0, FB_W, FB_H);
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
