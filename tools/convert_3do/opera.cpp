@@ -1,14 +1,12 @@
 
 #include <sys/param.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include "opera.h"
 
 static const char *GAMEDATA_DIRECTORY = "GameData";
 
 static void dumpGameData(const char *name, FILE *in, uint32_t offset, uint32_t size) {
 	fprintf(stdout, "%s at 0x%x size %d bytes\n", name, offset, size);
-	mkdir(GAMEDATA_DIRECTORY, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	makeDirectory(GAMEDATA_DIRECTORY);
 	char path[MAXPATHLEN];
 	snprintf(path, sizeof(path), "%s/%s", GAMEDATA_DIRECTORY, name);
 	FILE *out = fopen(path, "wb");
@@ -24,10 +22,6 @@ static void dumpGameData(const char *name, FILE *in, uint32_t offset, uint32_t s
 	}
 }
 
-static uint32_t READ_BE_UINT32(const uint8_t *p) {
-	return htobe32(*(const uint32_t *)p);
-}
-
 static const int BLOCK_SIZE = 2048;
 
 static void readIso(FILE *fp, int block, int flags) {
@@ -35,7 +29,7 @@ static void readIso(FILE *fp, int block, int flags) {
 		uint8_t buf[128];
 		fread(buf, sizeof(buf), 1, fp);
 		if (buf[0] == 1 && memcmp(buf + 40, "CD-ROM", 6) == 0) {
-			const int offset = READ_BE_UINT32(buf + 100);
+			const int offset = readUint32BE(buf + 100);
 			readIso(fp, offset, 0);
 		}
 	}  else {
@@ -45,16 +39,16 @@ static void readIso(FILE *fp, int block, int flags) {
 			do {
 				uint8_t buf[72];
 				fread(buf, sizeof(buf), 1, fp);
-				attr = READ_BE_UINT32(buf);
+				attr = readUint32BE(buf);
 				const char *name = (const char *)buf + 32;
-				const uint32_t count = READ_BE_UINT32(buf + 64);
-				const uint32_t offset = READ_BE_UINT32(buf + 68);
+				const uint32_t count = readUint32BE(buf + 64);
+				const uint32_t offset = readUint32BE(buf + 68);
 				fseek(fp, count * 4, SEEK_CUR);
 				switch (attr & 255) {
 				case 2:
 					if (flags & 1) {
 						const int pos = ftell(fp);
-						dumpGameData(name, fp, offset * BLOCK_SIZE, READ_BE_UINT32(buf + 16));
+						dumpGameData(name, fp, offset * BLOCK_SIZE, readUint32BE(buf + 16));
 						fseek(fp, pos, SEEK_SET);
 					}
 					break;

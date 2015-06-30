@@ -1,6 +1,5 @@
 
 #include <assert.h>
-#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -91,23 +90,23 @@ struct OutputBuffer {
 };
 
 static uint32_t readInt(FILE *fp) {
-	uint32_t i;
-	fread(&i, sizeof(i), 1, fp);
-	return htonl(i);
+	uint8_t buf[4];
+	fread(buf, sizeof(buf), 1, fp);
+	return readUint32BE(buf);
 }
 
 static uint32_t readTag(FILE *fp, char *type) {
 	fread(type, 4, 1, fp);
-	uint32_t size;
-	fread(&size, sizeof(size), 1, fp);
-	return htonl(size);
+	uint8_t buf[4];
+	fread(buf, sizeof(buf), 1, fp);
+	return readUint32BE(buf);
 }
 
 static void decodeCine(FILE *fp, const char *name) {
 	char path[MAXPATHLEN];
 	snprintf(path, sizeof(path), "%s/%s", OUT, name);
 	stringLower(path + strlen(OUT) + 1);
-	mkdir(path, 0777);
+	makeDirectory(path);
 	CinepakDecoder decoder;
 	OutputBuffer out;
 	int frmeCounter = 0;

@@ -1,5 +1,4 @@
 
-CXX = g++
 CXXFLAGS:= -g -O -Wall -Wuninitialized -Wno-unknown-pragmas -Wshadow
 CXXFLAGS+= -Wundef -Wreorder -Wwrite-strings -Wnon-virtual-dtor -Wno-multichar
 CXXFLAGS+= -DSYS_LITTLE_ENDIAN
