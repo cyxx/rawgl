@@ -168,9 +168,9 @@ void GraphicsSoft::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
 }
 
 void GraphicsSoft::drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color) {
-	if (x <= 39 && y <= 192) {
+	if (x <= GFX_W - 8 && y <= GFX_H - 8) {
 		const uint8_t *ft = _font + (c - 0x20) * 8;
-		uint8_t *p = _workPagePtr + x * 8 + y * _w;
+		uint8_t *p = _workPagePtr + x + y * _w;
 		for (int j = 0; j < 8; ++j) {
 			uint8_t ch = *(ft + j);
 			for (int i = 0; i < 8; ++i) {
