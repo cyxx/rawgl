@@ -115,16 +115,14 @@ void SfxPlayer::readSamples(int8_t *buf, int len) {
 			}
 			_samplesLeft -= count;
 			len -= count;
-			int8_t *pBuf = buf;
 			for (int i = 0; i < count; ++i) {
-				mixChannel(*pBuf, &_channels[0]);
-				mixChannel(*pBuf, &_channels[3]);
-				++pBuf;
-				mixChannel(*pBuf, &_channels[1]);
-				mixChannel(*pBuf, &_channels[2]);
-				++pBuf;
+				mixChannel(*buf, &_channels[0]);
+				mixChannel(*buf, &_channels[3]);
+				++buf;
+				mixChannel(*buf, &_channels[1]);
+				mixChannel(*buf, &_channels[2]);
+				++buf;
 			}
-			buf += count;
 		}
 	}
 }
@@ -178,11 +176,9 @@ void SfxPlayer::handlePattern(uint8_t channel, const uint8_t *data) {
 				uint16_t loopLen = READ_BE_UINT16(ptr + 2) * 2;
 				if (loopLen != 0) {
 					pat.loopPos = pat.sampleLen;
-					pat.loopData = ptr;
 					pat.loopLen = loopLen;
 				} else {
 					pat.loopPos = 0;
-					pat.loopData = 0;
 					pat.loopLen = 0;
 				}
 				int16_t m = pat.sampleVolume;
@@ -198,7 +194,7 @@ void SfxPlayer::handlePattern(uint8_t channel, const uint8_t *data) {
 					m -= volume;
 					if (m < 0) {
 						m = 0;
-					}	
+					}
 				}
 				_channels[channel].volume = m;
 				pat.sampleVolume = m;

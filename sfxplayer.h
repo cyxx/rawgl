@@ -30,7 +30,6 @@ struct SfxPattern {
 	uint8_t *sampleBuffer;
 	uint16_t sampleLen;
 	uint16_t loopPos;
-	uint8_t *loopData;
 	uint16_t loopLen;
 	uint16_t sampleVolume;
 };
