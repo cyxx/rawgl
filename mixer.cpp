@@ -41,6 +41,7 @@ struct Mixer_impl {
 	}
 
 	static uint8_t *convertSampleRaw(const uint8_t *data, int len, int fmt, int channels, int freq, uint32_t *size) {
+		freq = (freq > 10000) ? 11025 : 8000;
 		SDL_AudioCVT cvt;
 		memset(&cvt, 0, sizeof(cvt));
 		if (SDL_BuildAudioCVT(&cvt, fmt, channels, freq, AUDIO_S16SYS, 2, kMixFreq) < 0) {
