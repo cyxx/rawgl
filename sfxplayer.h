@@ -67,6 +67,7 @@ struct SfxPlayer {
 	void loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos);
 	void prepareInstruments(const uint8_t *p);
 	void play(int rate);
+	void mixSamples(int8_t *buf, int len);
 	void readSamples(int8_t *buf, int len);
 	void start();
 	void stop();

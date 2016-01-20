@@ -101,29 +101,51 @@ static void mixChannel(int8_t &s, SfxChannel *ch) {
 	s = (int8_t)sample;
 }
 
-void SfxPlayer::readSamples(int8_t *buf, int len) {
-	if (_delay != 0) {
-		const int samplesPerTick = _rate / (1000 / _delay);
-		while (len != 0) {
-			if (_samplesLeft == 0) {
-				handleEvents();
-				_samplesLeft = samplesPerTick;
-			}
-			int count = _samplesLeft;
-			if (count > len) {
-				count = len;
-			}
-			_samplesLeft -= count;
-			len -= count;
-			for (int i = 0; i < count; ++i) {
-				mixChannel(*buf, &_channels[0]);
-				mixChannel(*buf, &_channels[3]);
-				++buf;
-				mixChannel(*buf, &_channels[1]);
-				mixChannel(*buf, &_channels[2]);
-				++buf;
-			}
+void SfxPlayer::mixSamples(int8_t *buf, int len) {
+	memset(buf, 0, len * 2);
+	const int samplesPerTick = _rate / (1000 / _delay);
+	while (len != 0) {
+		if (_samplesLeft == 0) {
+			handleEvents();
+			_samplesLeft = samplesPerTick;
 		}
+		int count = _samplesLeft;
+		if (count > len) {
+			count = len;
+		}
+		_samplesLeft -= count;
+		len -= count;
+		for (int i = 0; i < count; ++i) {
+			mixChannel(*buf, &_channels[0]);
+			mixChannel(*buf, &_channels[3]);
+			++buf;
+			mixChannel(*buf, &_channels[1]);
+			mixChannel(*buf, &_channels[2]);
+			++buf;
+		}
+	}
+}
+
+static void nr(const int8_t *in, int len, int8_t *out) {
+	static int prevL = 0;
+	static int prevR = 0;
+	for (int i = 0; i < len; ++i) {
+		const int sL = *in++ >> 1;
+		*out++ = sL + prevL;
+		prevL = sL;
+		const int sR = *in++ >> 1;
+		*out++ = sR + prevR;
+		prevR = sR;
+	}
+}
+
+void SfxPlayer::readSamples(int8_t *buf, int len) {
+	if (_delay == 0) {
+		memset(buf, 0, len * 2);
+	} else {
+		int8_t bufin[len * 2];
+		mixSamples(bufin, len);
+		nr(bufin, len, buf);
 	}
 }
 
