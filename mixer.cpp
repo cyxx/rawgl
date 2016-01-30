@@ -13,6 +13,31 @@
 #include "systemstub.h"
 #include "util.h"
 
+static uint8_t *convertToWav(const uint8_t *data, int freq, int size) {
+	static const uint8_t kHeaderData[] = {
+		0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20, // RIFF$...WAVEfmt
+		0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x7d, 0x00, 0x00, 0x00, 0x7d, 0x00, 0x00, // .........}...}..
+		0x01, 0x00, 0x08, 0x00, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00                          // ....data....
+	};
+	static const int kHz = 11025;
+	uint8_t *out = (uint8_t *)malloc(sizeof(kHeaderData) + size * 4);
+	if (out) {
+		memcpy(out, kHeaderData, sizeof(kHeaderData));
+		// point resampling
+		int rsmp = 0;
+		const float step = freq / float(kHz);
+		for (float pos = 0.; pos < size; pos += step) {
+			out[sizeof(kHeaderData) + rsmp] = data[int(pos)] ^ 0x80; // S8 to U8
+			++rsmp;
+		}
+		// fixup .wav header
+		WRITE_LE_UINT32(out +  4, 36 + rsmp); // 'RIFF' size
+		WRITE_LE_UINT32(out + 24, kHz); // 'fmt ' sample rate
+		WRITE_LE_UINT32(out + 28, kHz); // 'fmt ' bytes per second
+		WRITE_LE_UINT32(out + 40, rsmp); // 'data' size
+	}
+	return out;
+}
 
 struct Mixer_impl {
 
@@ -40,33 +65,6 @@ struct Mixer_impl {
 		Mix_Quit();
 	}
 
-	static uint8_t *convertSampleRaw(const uint8_t *data, int len, int fmt, int channels, int freq, uint32_t *size) {
-		freq = (freq > 10000) ? 11025 : 8000;
-		SDL_AudioCVT cvt;
-		memset(&cvt, 0, sizeof(cvt));
-		if (SDL_BuildAudioCVT(&cvt, fmt, channels, freq, AUDIO_S16SYS, 2, kMixFreq) < 0) {
-			warning("Failed to resample from %d Hz", freq);
-			return 0;
-		}
-		if (cvt.needed) {
-			cvt.len = len;
-			cvt.buf = (uint8_t *)calloc(1, len * cvt.len_mult);
-			if (cvt.buf) {
-				memcpy(cvt.buf, data, len);
-				SDL_ConvertAudio(&cvt);
-			}
-			*size = cvt.len_cvt;
-			return cvt.buf;
-		} else {
-			uint8_t *buf = (uint8_t *)malloc(len);
-			if (buf) {
-				memcpy(buf, data, len);
-			}
-			*size = len;
-			return buf;
-		}
-	}
-
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
 		stopSound(channel);
 		int len = READ_BE_UINT16(data) * 2;
@@ -74,15 +72,13 @@ struct Mixer_impl {
 		if (loopLen != 0) {
 			len = loopLen;
 		}
-		uint32_t size;
-		uint8_t *sample = convertSampleRaw(data + 8, len, AUDIO_S8, 1, freq, &size);
+		uint8_t *sample = convertToWav(data + 8, freq, len);
 		if (sample) {
-			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, size);
-			playSound(channel, volume, chunk, (loopLen != 0) ? -1 : 0);
-			_samples[channel] = sample;
+			playSoundWav(channel, sample, volume, (loopLen != 0) ? -1 : 0);
+			free(sample);
 		}
 	}
-	void playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume) {
+	void playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume, int loops = 0) {
 		uint32_t size = READ_LE_UINT32(data + 4) + 8;
 		// check format for QuickLoad
 		bool canQuickLoad = (AUDIO_S16SYS == AUDIO_S16LSB);
@@ -99,11 +95,11 @@ struct Mixer_impl {
                 }
 		if (canQuickLoad) {
 			Mix_Chunk *chunk = Mix_QuickLoad_WAV(const_cast<uint8_t *>(data));
-			playSound(channel, volume, chunk);
+			playSound(channel, volume, chunk, loops);
 		} else {
 			SDL_RWops *rw = SDL_RWFromConstMem(data, size);
 			Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
-			playSound(channel, volume, chunk);
+			playSound(channel, volume, chunk, loops);
 		}
 	}
 	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
