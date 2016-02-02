@@ -313,9 +313,11 @@ void Resource::update(uint16_t num) {
 	if (num > _numMemList) {
 		_nextPart = num;
 	} else {
-		for (int i = 0; _memListAudio[i] != -1; ++i) {
-			if (num == _memListAudio[i]) {
-				return;
+		if (0) { // from DOS disassembly
+			for (int i = 0; _memListAudio[i] != -1; ++i) {
+				if (num == _memListAudio[i]) {
+					return;
+				}
 			}
 		}
 		MemEntry *me = &_memList[num];
