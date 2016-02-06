@@ -86,6 +86,8 @@ void SystemStub_SDL::processEvents() {
 			if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
 				_w = ev.window.data1;
 				_h = ev.window.data2;
+			} else if (ev.window.event == SDL_WINDOWEVENT_CLOSE) {
+				_pi.quit = true;
 			}
 			break;
 		case SDL_KEYUP:
@@ -113,6 +115,8 @@ void SystemStub_SDL::processEvents() {
 		case SDL_KEYDOWN:
 			if (ev.key.keysym.mod & KMOD_ALT) {
 				if (ev.key.keysym.sym == SDLK_RETURN || ev.key.keysym.sym == SDLK_KP_ENTER) {
+				} else if (ev.key.keysym.sym == SDLK_x) {
+					_pi.quit = true;
 				}
 				break;
 			} else if (ev.key.keysym.mod & KMOD_CTRL) {
