@@ -90,6 +90,28 @@ void Resource::detectVersion() {
 	}
 }
 
+static const char *kGameTitleEU = "Another World";
+static const char *kGameTitleUS = "Out Of This World";
+static const char *kGameTitle15thEdition = "Another World 15th anniversary edition";
+static const char *kGameTitle20thEdition = "Another World 20th anniversary edition";
+
+const char *Resource::getGameTitle(Language lang) const {
+	switch (_dataType) {
+	case DT_15TH_EDITION:
+		return kGameTitle15thEdition;
+	case DT_20TH_EDITION:
+		return kGameTitle20thEdition;
+	case DT_3DO:
+		return kGameTitleUS;
+	case DT_DOS:
+		if (lang == LANG_US) {
+			return kGameTitleUS;
+		}
+		/* fall-through */
+	}
+	return kGameTitleEU;
+}
+
 void Resource::readEntries() {
 	if (_dataType == DT_15TH_EDITION) {
 		_numMemList = ENTRIES_COUNT;

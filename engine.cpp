@@ -28,7 +28,8 @@ static const int _restartPos[36 * 2] = {
 };
 
 void Engine::run(int w, int h, Language lang) {
-	_stub->init(w, h, (lang == LANG_US) ? "Out Of This World" : "Another World");
+	_res.detectVersion();
+	_stub->init(w, h, _res.getGameTitle(lang));
 	setup();
 	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA) {
 		switch (lang) {
@@ -61,7 +62,6 @@ void Engine::run(int w, int h, Language lang) {
 void Engine::setup() {
 	_vid._graphics = _graphics;
 	_graphics->init();
-	_res.detectVersion();
 	if (_res.getDataType() != Resource::DT_3DO) {
 		_vid._graphics->_fixUpPalette = FIXUP_PALETTE_REDRAW;
 	}
