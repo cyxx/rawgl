@@ -179,10 +179,10 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		fprintf(_out, "installTask(%d, @%04X)", args[0], args[1]);
 		break;
 	case op_jmpIfVar:
-		fprintf(_out, "jmpIfVar(VAR(%02X), @%04X)", args[0], args[1]);
+		fprintf(_out, "jmpIfVar(VAR(0x%02X), @%04X)", args[0], args[1]);
 		break;
 	case op_condJmp:
-		fprintf(_out, "jmpIf(VAR(%02X)", args[1]);
+		fprintf(_out, "jmpIf(VAR(0x%02X)", args[1]);
 		switch (args[0] & 7) {
 		case 0:
 			fprintf(_out, " == ");
@@ -207,7 +207,7 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 			break;
 		}			
 		if (args[0] & 0x80) {
-			fprintf(_out, "VAR(%02X)", args[2]);
+			fprintf(_out, "VAR(0x%02X)", args[2]);
 		} else if (args[0] & 0x40) {
 			fprintf(_out, "%d,", (int16_t)args[2]);
 		} else {
@@ -240,19 +240,19 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		fprintf(_out, "drawString(str=0x%03X, x=%d, y=%d, color=%d)", args[0], args[1], args[2], args[3]);
 		break;
 	case op_sub:
-		fprintf(_out, "VAR(%02X) -= VAR(%02X)", args[0], args[1]);
+		fprintf(_out, "VAR(0x%02X) -= VAR(0x%02X)", args[0], args[1]);
 		break;
 	case op_and:
-		fprintf(_out, "VAR(%02X) &= %d", args[0], args[1]);
+		fprintf(_out, "VAR(0x%02X) &= %d", args[0], args[1]);
 		break;
 	case op_or:
-		fprintf(_out, "VAR(%02X) |= %d", args[0], args[1]);
+		fprintf(_out, "VAR(0x%02X) |= %d", args[0], args[1]);
 		break;
 	case op_shl:
-		fprintf(_out, "VAR(%02X) <<= %d", args[0], args[1]);
+		fprintf(_out, "VAR(0x%02X) <<= %d", args[0], args[1]);
 		break;
 	case op_shr:
-		fprintf(_out, "VAR(%02X) >>= %d", args[0], args[1]);
+		fprintf(_out, "VAR(0x%02X) >>= %d", args[0], args[1]);
 		break;
 	case op_playSound:
 		fprintf(_out, "playSound(res=%d, freq=%d, vol=%d, channel=%d)", args[0], args[1], args[2], args[3]);
@@ -269,17 +269,17 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		break;
 	case op_drawString2:
 		if (_is3DO) {
-			fprintf(_out, "drawString(%d, VAR(%02X), VAR(%02X), %d)", args[0], args[1], args[2], args[3]);
+			fprintf(_out, "drawString(%d, VAR(0x%02X), VAR(0x%02X), %d)", args[0], args[1], args[2], args[3]);
 		}
 		break;
 	case op_jmpIfVarZero:
 		if (_is3DO) {
-			fprintf(_out, "jmpIf(VAR(%02X) == 0, @%04X)", args[0], args[1]);
+			fprintf(_out, "jmpIf(VAR(0x%02X) == 0, @%04X)", args[0], args[1]);
 		}
 		break;
 	case op_jmpIfVarNonZero:
 		if (_is3DO) {
-			fprintf(_out, "jmpIf(VAR(%02X) != 0, @%04X)", args[0], args[1]);
+			fprintf(_out, "jmpIf(VAR(0x%02X) != 0, @%04X)", args[0], args[1]);
 		}
 		break;
 	case op_var0xF7:
