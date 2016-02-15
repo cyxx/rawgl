@@ -476,7 +476,7 @@ static int parse(const uint8_t *buf, uint32_t size) {
 				break;
 			}
 		default:
-			fprintf(stderr, "Invalid opcode %d", op);
+			fprintf(stderr, "Invalid opcode %d at 0x%04x\n", op, addr);
 			return -1;
 		}
 		int args[4] = { a, b, c, d };
@@ -539,7 +539,9 @@ int main(int argc, char *argv[]) {
 				if (_out) {
 					memset(_addr, 0, sizeof(_addr));
 					visitOpcode = checkOpcode;
-					parse(_fileBuf, size);
+					if (parse(_fileBuf, size) < 0) {
+						continue;
+					}
 					visitOpcode = printOpcode;
 					parse(_fileBuf, size);
 					fclose(_out);
