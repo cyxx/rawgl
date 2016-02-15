@@ -24,17 +24,17 @@ void Script::init() {
 	_fastMode = false;
 	_ply->_markVar = &_scriptVars[VAR_MUS_MARK];
 	_scriptPtr.byteSwap = _is3DO = (_res->getDataType() == Resource::DT_3DO);
-	// bypass the protection
-	_scriptVars[0xBC] = 0x10; // 0x4417
-	_scriptVars[0xC6] = 0x80; // 0x78E0
-	_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA) ? 0x1770 : 0xFA0;
-	_scriptVars[0xDC] = 0x21;
 	if (_is3DO) {
 		_scriptVars[0xDB] = 1;
 		_scriptVars[0xE2] = 1;
-		_scriptVars[0xF2] = 0x1770;
+		_scriptVars[0xF2] = 6000;
 	} else {
 		_scriptVars[VAR_RANDOM_SEED] = time(0);
+		// bypass the protection
+		_scriptVars[0xBC] = 0x10;
+		_scriptVars[0xC6] = 0x80;
+		_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA) ? 6000 : 4000;
+		_scriptVars[0xDC] = 33;
 	}
 }
 
@@ -388,8 +388,8 @@ void Script::restartAt(int part, int pos) {
 		// playback sounds resnum >= 146
 		_scriptVars[0xDE] = 1;
 	}
-	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
-		_scriptVars[0xE4] = 0x14;
+	if (_res->getDataType() == Resource::DT_DOS) {
+		_scriptVars[0xE4] = 20;
 	}
 	_res->setupPart(part);
 	memset(_scriptTasks, 0xFF, sizeof(_scriptTasks));
