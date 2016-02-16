@@ -1,31 +1,17 @@
-/* Raw - Another World Interpreter
- * Copyright (C) 2004 Gregory Montoir
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+/* 
+ * Another World Interpreter 
+ * (c) 2004-2005 Gregory Montoir
  */
 
 #include "serializer.h"
 #include "file.h"
 
 
-Serializer::Serializer(File *stream, Mode mode, uint8 *ptrBlock, uint16 saveVer)
-	: _stream(stream), _mode(mode), _ptrBlock(ptrBlock), _saveVer(saveVer) {
+Serializer::Serializer(File *stream, Mode mode, uint16 saveVer)
+	: _stream(stream), _mode(mode), _saveVer(saveVer) {
 }
 
 void Serializer::saveOrLoadEntries(Entry *entry) {
-	debug(DBG_SER, "Serializer::saveOrLoadEntries() _mode=%d", _mode);
 	_bytesCount = 0;
 	switch (_mode) {
 	case SM_SAVE:
@@ -35,11 +21,9 @@ void Serializer::saveOrLoadEntries(Entry *entry) {
 		loadEntries(entry);
 		break;	
 	}
-	debug(DBG_SER, "Serializer::saveOrLoadEntries() _bytesCount=%d", _bytesCount);
 }
 
 void Serializer::saveEntries(Entry *entry) {
-	debug(DBG_SER, "Serializer::saveEntries()");
 	for (; entry->type != SET_END; ++entry) {
 		if (entry->maxVer == CUR_VER) {
 			switch (entry->type) {
@@ -60,10 +44,6 @@ void Serializer::saveEntries(Entry *entry) {
 					}
 				}
 				break;
-			case SET_PTR:
-				_stream->writeUint32BE(*(uint8 **)(entry->data) - _ptrBlock);
-				_bytesCount += 4;
-				break;
 			case SET_END:
 				break;
 			}
@@ -72,7 +52,6 @@ void Serializer::saveEntries(Entry *entry) {
 }
 
 void Serializer::loadEntries(Entry *entry) {
-	debug(DBG_SER, "Serializer::loadEntries()");
 	for (; entry->type != SET_END; ++entry) {
 		if (_saveVer >= entry->minVer && _saveVer <= entry->maxVer) {
 			switch (entry->type) {
@@ -92,10 +71,6 @@ void Serializer::loadEntries(Entry *entry) {
 						_bytesCount += entry->size;
 					}
 				}
-				break;
-			case SET_PTR:
-				*(uint8 **)(entry->data) = _ptrBlock + _stream->readUint32BE();
-				_bytesCount += 4;
 				break;
 			case SET_END:
 				break;				

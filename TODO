@@ -1,8 +1,0 @@
-
-TODO (in no particular order of priority)
-  - improve script disassembler
-  - support non interactive demo version (inputs are read from demo3.joy)
-  - rewrite video code 
-    * abstract drawing primitives
-    * write OpenGL and software (8 bits, dirty blocks) renderers
-  - rewrite the 'bypass protection' code

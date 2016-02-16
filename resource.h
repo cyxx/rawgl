@@ -1,83 +1,64 @@
-/* Raw - Another World Interpreter
- * Copyright (C) 2004 Gregory Montoir
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+/* 
+ * Another World Interpreter 
+ * (c) 2004-2005 Gregory Montoir
  */
 
 #ifndef __RESOURCE_H__
 #define __RESOURCE_H__
 
 #include "intern.h"
+#include "file.h"
 
-struct MemEntry {
-	uint8 valid;         // 0x0
-	uint8 type;          // 0x1, Resource::ResType
-	uint8 *bufPtr;       // 0x2
-	uint16 unk4;         // 0x4, unused
-	uint8 rankNum;       // 0x6
-	uint8 bankNum;       // 0x7
-	uint32 bankPos;      // 0x8 0xA
-	uint16 unkC;         // 0xC, unused
-	uint16 packedSize;   // 0xE
-	uint16 unk10;        // 0x10, unused
-	uint16 unpackedSize; // 0x12
+struct ResDataEntry {
+	bool valid;
+	uint8 state;
+	uint8 type;
+	uint32 size;
+	uint32 offset;
+	uint8 *bufPtr;
 };
 
 struct Serializer;
-struct Video;
+struct Graphics;
 
 struct Resource {
 	enum ResType {
-		RT_SOUND  = 0,
-		RT_MUSIC  = 1,
-		RT_VIDBUF = 2, // full screen video buffer, size=0x7D00
-		RT_PAL    = 3, // palette (1024=vga + 1024=ega), size=2048
-		RT_SCRIPT = 4,
-		RT_VBMP   = 5
+		RT_SOUND   = 0,
+		RT_MUSIC   = 1,
+		RT_BITMAP  = 2,
+		RT_PAL     = 3,
+		RT_SCRIPT  = 4,
+		RT_GFX     = 5
+	};
+	enum ResState {
+		RS_FREE    = 0,
+		RS_LOADED  = 1,
+		RS_TO_LOAD = 2
 	};
 	
-	enum {
-		MEM_BLOCK_SIZE = 600 * 1024
-	};
+	static const char *_dataFileName;
+	static const char *_indexFileName;
+	static const uint16 _resDataSeqList[][4];
 	
-	static const uint16 _memListParts[][4];
-	
-	Video *_vid;
+	Graphics *_gfx;
+	File _dataFile;
 	const char *_dataDir;
-	MemEntry _memList[150];
-	uint16 _numMemList;
-	uint16 _curPtrsId, _newPtrsId;
-	uint8 *_memPtrStart, *_scriptBakPtr, *_scriptCurPtr, *_vidBakPtr, *_vidCurPtr;
-	bool _useSegVideo2;
-	uint8 *_segVideoPal;
-	uint8 *_segCode;
-	uint8 *_segVideo1;
-	uint8 *_segVideo2;
-
-	Resource(Video *vid, const char *dataDir);
+	ResDataEntry _resDataList[150];
+	uint16 _resDataCount;
+	uint16 _curSeqId, _newSeqId;
+	uint8 *_dataPal;
+	uint8 *_dataScript;
+	uint8 *_dataGfx1;
+	uint8 *_dataGfx2;
 	
-	void readBank(const MemEntry *me, uint8 *dstBuf);
-	void readEntries();
-	void load();
+	Resource(Graphics *gfx, const char *dataDir);
+	
+	void prepare();
+	void loadMarked();
 	void invalidateAll();
-	void invalidateRes();	
-	void update(uint16 num);
-	void setupPtrs(uint16 ptrId);
-	void allocMemBlock();
-	void freeMemBlock();
-	
+	void invalidateSnd();
+	void loadData(uint16 num);
+	void loadDataSeq(uint16 seqId);
 	void saveOrLoad(Serializer &ser);
 };
 

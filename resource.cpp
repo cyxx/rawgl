@@ -1,255 +1,191 @@
-/* Raw - Another World Interpreter
- * Copyright (C) 2004 Gregory Montoir
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+/* 
+ * Another World Interpreter 
+ * (c) 2004-2005 Gregory Montoir
  */
 
-#include "resource.h"
-#include "bank.h"
+#include "graphics.h"
 #include "file.h"
 #include "serializer.h"
-#include "video.h"
+#include "resource.h"
 
 
-Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir) {
+Resource::Resource(Graphics *gfx, const char *dataDir) 
+	: _gfx(gfx), _dataDir(dataDir), _curSeqId(0), _newSeqId(0) {
 }
 
-void Resource::readBank(const MemEntry *me, uint8 *dstBuf) {
-	uint16 n = me - _memList;
-	debug(DBG_BANK, "Resource::readBank(%d)", n);
-#ifdef USE_UNPACKED_DATA
-	char bankEntryName[64];
-	sprintf(bankEntryName, "ootw-%02X-%d.dump", n, me->type);
-	File f;
-	if (!f.open(bankEntryName, _dataDir)) {
-		error("Resource::readBank() unable to open '%s' file\n", bankEntryName);
+void Resource::prepare() {	
+	File indexFile;
+	if (!indexFile.open(_indexFileName, _dataDir)) {
+		error("Unable to open the '%s' file", _indexFileName);
 	}
-	f.read(dstBuf, me->unpackedSize);
-#else
-	Bank bk(_dataDir);
-	if (!bk.read(me, dstBuf)) {
-		error("Resource::readBank() unable to unpack entry %d\n", n);
+	indexFile.readUint16BE(); // version
+	uint16 count = indexFile.readUint16BE();
+	
+	if (!_dataFile.open(_dataFileName, _dataDir)) {
+		error("Unable to open the '%s' file", _dataFileName);
 	}
-#endif
-}
+	_dataFile.readUint16BE(); // version
+	if (_dataFile.readUint16BE() != count) {
+		error("Files '%s' and '%s' are mismatching", _indexFileName, _dataFileName);
+	}
 
-void Resource::readEntries() {	
-	File f;
-	if (!f.open("memlist.bin", _dataDir)) {
-		error("Resource::readEntries() unable to open 'memlist.bin' file\n");
+	memset(_resDataList, 0, sizeof(_resDataList));
+	_resDataCount = 0;
+	uint32 offset = 4;
+	while (count--) {
+		uint8 index = indexFile.readByte();
+		assert(index < ARRAYSIZE(_resDataList));
+		ResDataEntry *rde = &_resDataList[index];
+		rde->valid = true;
+		rde->state = RS_FREE;
+		rde->type = indexFile.readByte();
+		rde->size = indexFile.readUint32BE();
+		rde->offset = offset;
+		offset += rde->size;
+		_resDataCount = MAX(index, _resDataCount);
 	}
-	_numMemList = 0;
-	MemEntry *me = _memList;
-	while (1) {
-		assert(_numMemList < ARRAYSIZE(_memList));
-		me->valid = f.readByte();
-		me->type = f.readByte();
-		me->bufPtr = 0; f.readUint16BE();
-		me->unk4 = f.readUint16BE();
-		me->rankNum = f.readByte();
-		me->bankNum = f.readByte();
-		me->bankPos = f.readUint32BE();
-		me->unkC = f.readUint16BE();
-		me->packedSize = f.readUint16BE();
-		me->unk10 = f.readUint16BE();
-		me->unpackedSize = f.readUint16BE();
-		if (me->valid == 0xFF) {
-			break;
-		}
-		++_numMemList;
-		++me;
+	++_resDataCount;
+	if (indexFile.ioErr()) {
+		warning("I/O error when reading '%s'", _indexFileName);
 	}
 }
 
-void Resource::load() {
-	while (1) {
-		MemEntry *it = _memList;
-		MemEntry *me = 0;
-
-		// get resource with max rankNum
-		uint8 maxNum = 0;
-		uint16 i = _numMemList;
-		while (i--) {
-			if (it->valid == 2 && maxNum <= it->rankNum) {
-				maxNum = it->rankNum;
-				me = it;
+void Resource::loadMarked() {
+	for (int i = 0; i < _resDataCount; ++i) {
+		ResDataEntry *rde = &_resDataList[i];
+		if (rde->state == RS_TO_LOAD) {
+			assert(rde->valid);
+			_dataFile.seek(rde->offset);
+			uint8 *p = (uint8 *)malloc(rde->size);
+			if (!p) {
+				error("Not enough memory to load data");
 			}
-			++it;
-		}
-		if (me == 0) {
-			break; // no entry found
-		}
-
-		uint8 *memPtr = 0;
-		if (me->type == 2) {
-			memPtr = _vidCurPtr;
-		} else {
-			memPtr = _scriptCurPtr;
-			if (me->unpackedSize > _vidBakPtr - _scriptCurPtr) {
-				warning("Resource::load() not enough memory");
-				me->valid = 0;
-				continue;
+			assert(p);
+			_dataFile.read(p, rde->size);
+			if (_dataFile.ioErr()) {
+				warning("I/O error when reading '%s'", _dataFileName);
 			}
-		}
-		if (me->bankNum == 0) {
-			warning("Resource::load() ec=0x%X (me->bankNum == 0)", 0xF00);
-			me->valid = 0;
-		} else {
-			debug(DBG_BANK, "Resource::load() bufPos=%X size=%X type=%X pos=%X bankNum=%X", memPtr - _memPtrStart, me->packedSize, me->type, me->bankPos, me->bankNum);
-			readBank(me, memPtr);
-			if(me->type == 2) {
-				_vid->copyPagePtr(_vidCurPtr);
-				me->valid = 0;
+			if (rde->type == RT_BITMAP) {
+				_gfx->copyBitmapToPage(p);
+				rde->state = RS_FREE;
+				free(p);
 			} else {
-				me->bufPtr = memPtr;
-				me->valid = 1;
-				_scriptCurPtr += me->unpackedSize;
+				rde->state = RS_LOADED;
+				rde->bufPtr = p;
 			}
 		}
 	}
 }
 
-void Resource::invalidateRes() {
-	MemEntry *me = _memList;
-	uint16 i = _numMemList;
-	while (i--) {
-		if (me->type <= 2 || me->type > 6) {
-			me->valid = 0;
+void Resource::invalidateSnd() {
+	for (int i = 0; i < _resDataCount; ++i) {
+		ResDataEntry *rde = &_resDataList[i];
+		if (rde->type <= 2 || rde->type > 6) {
+			rde->state = RS_FREE;
+			free(rde->bufPtr);
+			rde->bufPtr = 0;
 		}
-		++me;
 	}
-	_scriptCurPtr = _scriptBakPtr;
 }
 
 void Resource::invalidateAll() {
-	MemEntry *me = _memList;
-	uint16 i = _numMemList;
-	while (i--) {
-		me->valid = 0;
-		++me;
+	for (int i = 0; i < _resDataCount; ++i) {
+		ResDataEntry *rde = &_resDataList[i];
+		rde->state = RS_FREE;
+		free(rde->bufPtr);
+		rde->bufPtr = 0;
 	}
-	_scriptCurPtr = _memPtrStart;
 }
 
-void Resource::update(uint16 num) {
-	if (num > _numMemList) {
-		_newPtrsId = num;
+void Resource::loadData(uint16 num) {
+	if (num < _resDataCount) {
+		ResDataEntry *rde = &_resDataList[num];
+		if (rde->state == RS_FREE) {
+			rde->state = RS_TO_LOAD;
+			loadMarked();
+		}
 	} else {
-		MemEntry *me = &_memList[num];
-		if (me->valid == 0) {
-			me->valid = 2;
-			load();
-		}
+		_newSeqId = num;
 	}
 }
 
-void Resource::setupPtrs(uint16 ptrId) {
-	if (ptrId != _curPtrsId) {
-		uint8 ipal = 0;
-		uint8 icod = 0;
-		uint8 ivd1 = 0;
-		uint8 ivd2 = 0;
-		if (ptrId >= 0x3E80 && ptrId <= 0x3E89) {
-			uint16 part = ptrId - 0x3E80;
-			ipal = _memListParts[part][0];
-			icod = _memListParts[part][1];
-			ivd1 = _memListParts[part][2];
-			ivd2 = _memListParts[part][3];
-		} else {
-			error("Resource::setupPtrs() ec=0x%X invalid ptrId", 0xF07);
-		}
+void Resource::loadDataSeq(uint16 seqId) {
+	assert(seqId >= 16000 && seqId <= 16009);
+	if (seqId != _curSeqId) {
 		invalidateAll();
-		_memList[ipal].valid = 2;
-		_memList[icod].valid = 2;
-		_memList[ivd1].valid = 2;
-		if (ivd2 != 0) {
-			_memList[ivd2].valid = 2;
+		uint16 seq = seqId - 16000;
+		uint8 iData = _resDataSeqList[seq][0];
+		uint8 iScript = _resDataSeqList[seq][1];
+		uint8 iGfx1 = _resDataSeqList[seq][2];
+		uint8 iGfx2 = _resDataSeqList[seq][3];
+		_resDataList[iData].state = RS_TO_LOAD;
+		_resDataList[iScript].state = RS_TO_LOAD;
+		_resDataList[iGfx1].state = RS_TO_LOAD;
+		if (iGfx2 != 0) {
+			_resDataList[iGfx2].state = RS_TO_LOAD;
 		}
-		load();
-		_segVideoPal = _memList[ipal].bufPtr;
-		_segCode = _memList[icod].bufPtr;
-		_segVideo1 = _memList[ivd1].bufPtr;
-		if (ivd2 != 0) {
-			_segVideo2 = _memList[ivd2].bufPtr;
+		loadMarked();
+		_dataPal = _resDataList[iData].bufPtr;
+		_dataScript = _resDataList[iScript].bufPtr;
+		_dataGfx1 = _resDataList[iGfx1].bufPtr;
+		if (iGfx2 != 0) {
+			_dataGfx2 = _resDataList[iGfx2].bufPtr;
+		} else {
+			_dataGfx2 = 0;
 		}
-		_curPtrsId = ptrId;
+		_curSeqId = seqId;
 	}
-	_scriptBakPtr = _scriptCurPtr;	
-}
-
-void Resource::allocMemBlock() {
-	_memPtrStart = (uint8 *)malloc(MEM_BLOCK_SIZE);
-	_scriptBakPtr = _scriptCurPtr = _memPtrStart;
-	_vidBakPtr = _vidCurPtr = _memPtrStart + MEM_BLOCK_SIZE - 0x800 * 16;
-	_useSegVideo2 = false;
-}
-
-void Resource::freeMemBlock() {
-	free(_memPtrStart);
 }
 
 void Resource::saveOrLoad(Serializer &ser) {
-	uint8 loadedList[64];
+	uint8 currentDataList[4];
+	uint8 loadedDataList[64];
+	uint8 loadedDataCount = 0;
 	if (ser._mode == Serializer::SM_SAVE) {
-		memset(loadedList, 0, sizeof(loadedList));
-		uint8 *p = loadedList;
-		uint8 *q = _memPtrStart;
-		while (1) {
-			MemEntry *it = _memList;
-			MemEntry *me = 0;
-			uint16 num = _numMemList;
-			while (num--) {
-				if (it->valid == 1 && it->bufPtr == q) {
-					me = it;
+		memset(currentDataList, 0, sizeof(currentDataList));
+		memset(loadedDataList, 0, sizeof(loadedDataList));
+		for (int i = 0; i < _resDataCount; ++i) {
+			ResDataEntry *rde = &_resDataList[i];
+			if (rde->state == RS_LOADED) {
+				assert(loadedDataCount < 64);
+				loadedDataList[loadedDataCount] = i;
+				++loadedDataCount;
+				if (rde->bufPtr == _dataPal) {
+					currentDataList[0] = i;
+				} else if (rde->bufPtr == _dataScript) {
+					currentDataList[1] = i;
+				} else if (rde->bufPtr == _dataGfx1) {
+					currentDataList[2] = i;
+				} else if (rde->bufPtr == _dataGfx2) {
+					currentDataList[3] = i;
 				}
-				++it;
-			}
-			if (me == 0) {
-				break;
-			} else {
-				assert(p < loadedList + 64);
-				*p++ = me - _memList;
-				q += me->unpackedSize;
 			}
 		}
 	}
 	Serializer::Entry entries[] = {
-		SE_ARRAY(loadedList, 64, Serializer::SES_INT8, VER(1)),
-		SE_INT(&_curPtrsId, Serializer::SES_INT16, VER(1)),
-		SE_PTR(&_scriptBakPtr, VER(1)),
-		SE_PTR(&_scriptCurPtr, VER(1)),
-		SE_PTR(&_vidBakPtr, VER(1)),
-		SE_PTR(&_vidCurPtr, VER(1)),
-		SE_INT(&_useSegVideo2, Serializer::SES_BOOL, VER(1)),
-		SE_PTR(&_segVideoPal, VER(1)),
-		SE_PTR(&_segCode, VER(1)),
-		SE_PTR(&_segVideo1, VER(1)),
-		SE_PTR(&_segVideo2, VER(1)),
+		SE_INT(&loadedDataCount, Serializer::SES_INT8, VER(1)),
+		SE_ARRAY(currentDataList, 4, Serializer::SES_INT8, VER(1)),
+		SE_ARRAY(loadedDataList, 64, Serializer::SES_INT8, VER(1)),
+		SE_INT(&_curSeqId, Serializer::SES_INT16, VER(1)),
+		SE_INT(&_newSeqId, Serializer::SES_INT16, VER(1)),
 		SE_END()
 	};
 	ser.saveOrLoadEntries(entries);
 	if (ser._mode == Serializer::SM_LOAD) {
-		uint8 *p = loadedList;
-		uint8 *q = _memPtrStart;
-		while (*p) {
-			MemEntry *me = &_memList[*p++];
-			readBank(me, q);
-			me->bufPtr = q;
-			me->valid = 1;
-			q += me->unpackedSize;
+		invalidateAll();
+		for (int i = 0; i < loadedDataCount; ++i) {
+			uint8 index = loadedDataList[i];
+			_resDataList[index].state = RS_TO_LOAD;
 		}
-	}	
+		loadMarked();
+		uint8 **dataPtrs[] = { &_dataPal, &_dataScript, &_dataGfx1, &_dataGfx2 };
+		for (int i = 0; i < 4; ++i) {
+			uint8 index = currentDataList[i];
+			if (index != 0) {
+				*(dataPtrs[i]) = _resDataList[index].bufPtr;
+			} else {
+				*(dataPtrs[i]) = 0;
+			}
+		}
+	}
 }

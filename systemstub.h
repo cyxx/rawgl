@@ -1,19 +1,6 @@
-/* Raw - Another World Interpreter
- * Copyright (C) 2004 Gregory Montoir
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+/* 
+ * Another World Interpreter 
+ * (c) 2004-2005 Gregory Montoir
  */
 
 #ifndef __SYSTEMSTUB_H__
@@ -36,23 +23,22 @@ struct PlayerInput {
 	bool quit;
 	char lastChar;
 	bool save, load;
-	bool fastMode;
 	int8 stateSlot;
 };
 
 struct SystemStub {
-	typedef void (*AudioCallback)(void *param, uint8 *stream, int len);
+	typedef void (*AudioCallback)(void *param, void *sbuf);
 	typedef uint32 (*TimerCallback)(uint32 delay, void *param);
 	
-	PlayerInput _pi;
+	PlayerInput pi;
 
 	virtual ~SystemStub() {}
 
-	virtual void init(const char *title) = 0;
+	virtual void init(const char *title, uint16 w, uint16 h) = 0;
 	virtual void destroy() = 0;
 
-	virtual void setPalette(uint8 s, uint8 n, const uint8 *buf) = 0;
-	virtual void copyRect(uint16 x, uint16 y, uint16 w, uint16 h, const uint8 *buf, uint32 pitch) = 0;
+	virtual void setPalette(const Color *colors, int n) = 0;
+	virtual void copyRect(const uint8 *buf, uint32 pitch) = 0;
 
 	virtual void processEvents() = 0;
 	virtual void sleep(uint32 duration) = 0;
@@ -61,8 +47,8 @@ struct SystemStub {
 	virtual void startAudio(AudioCallback callback, void *param) = 0;
 	virtual void stopAudio() = 0;
 	virtual uint32 getOutputSampleRate() = 0;
-	
-	virtual void *addTimer(uint32 delay, TimerCallback callback, void *param) = 0;
+
+	virtual void *addTimer(void *param, uint32 delay) = 0;
 	virtual void removeTimer(void *timerId) = 0;
 
 	virtual void *createMutex() = 0;
@@ -84,6 +70,6 @@ struct MutexStack {
 	}
 };
 
-extern SystemStub *SystemStub_SDL_create();
+extern SystemStub *SystemStub_GP32_create();
 
 #endif

@@ -1,27 +1,45 @@
+EXEC=aw_gp32.exe
+PGM=${ARCH}/$(EXEC)
 
-SDL_CFLAGS = `sdl-config --cflags`
-SDL_LIBS = `sdl-config --libs`
+MANAGERS=semaphore timer event io
 
-DEFINES = -DSYS_LITTLE_ENDIAN
+DEFINES+= -DSYS_LITTLE_ENDIAN -DGP32_PORT
 
-CXX = g++
-CXXFLAGS:= -g -O -Wall -Wuninitialized -Wno-unknown-pragmas -Wshadow -Wstrict-prototypes
-CXXFLAGS+= -Wimplicit -Wundef -Wreorder -Wwrite-strings -Wnon-virtual-dtor -Wno-multichar
-CXXFLAGS+= $(SDL_CFLAGS) $(DEFINES)
+CSRCS = sound.c
+COBJS_ = $(CSRCS:.c=.o)
+COBJS = $(COBJS_:%=${ARCH}/%)
 
-SRCS = bank.cpp file.cpp engine.cpp logic.cpp mixer.cpp resource.cpp sdlstub.cpp \
-	serializer.cpp sfxplayer.cpp staticres.cpp util.cpp video.cpp main.cpp
+CXXSRCS = engine.cpp file.cpp graphics.cpp main.cpp mixer.cpp resource.cpp \
+	serializer.cpp scaler.cpp script.cpp staticres.cpp \
+	splash.cpp systemstub_gp32.cpp sfxplayer.cpp util.cpp
+CXXOBJS_ = $(CXXSRCS:.cpp=.o)
+CXXOBJS = $(CXXOBJS_:%=${ARCH}/%)
 
-OBJS = $(SRCS:.cpp=.o)
-DEPS = $(SRCS:.cpp=.d)
+ASSRCS = xlatgp32.S
+ASOBJS_ = $(ASSRCS:.S=.o)
+ASOBJS = $(ASOBJS_:%=${ARCH}/%)
 
-raw: $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LIBS) -lz
+BSRCS = rootfs.tar
+BOBJS_ = $(BSRCS:.tar=.o)
+BOBJS = $(BOBJS_:%=${ARCH}/%)
 
-.cpp.o:
-	$(CXX) $(CXXFLAGS) -MMD -c $< -o $*.o
+include $(RTEMS_MAKEFILE_PATH)/Makefile.inc
+include $(RTEMS_CUSTOM)
+include $(PROJECT_ROOT)/make/leaf.cfg
 
-clean:
-	rm -f *.o *.d
+OBJS = $(COBJS) $(CXXOBJS) $(ASOBJS) $(BOBJS)
 
--include $(DEPS)
+LD_LIBS += -lz
+CXXFLAGS += -Wall -O -g -MMD
+
+${ARCH}/%.o: %.tar
+	$(OBJCOPY) -I binary -O elf32-littlearm  -B armv4t $< $@
+
+all:	${ARCH} $(PGM)
+
+$(PGM):	${OBJS} ${LINK_FILES}
+	$(make-cxx-exe)
+
+install: $(PGM)
+	gplink put $(basename $(PGM)).gxb / -x
+
