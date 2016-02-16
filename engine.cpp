@@ -20,6 +20,7 @@
 #include "file.h"
 #include "serializer.h"
 #include "systemstub.h"
+#include "stdio.h"
 
 
 Engine::Engine(SystemStub *stub, const char *dataDir, const char *saveDir)
@@ -76,6 +77,14 @@ void Engine::processInput() {
 			debug(DBG_INFO, "Current game state slot is %d", _stateSlot);
 		}
 		_stub->_pi.stateSlot = 0;
+	}
+	if (_stub->_pi.volumeUp) {
+		_mix.masterVolumeUp();
+		_stub->_pi.volumeUp = false;
+	}
+	if (_stub->_pi.volumeDown) {
+		_mix.masterVolumeDown();
+		_stub->_pi.volumeDown = false;
 	}
 }
 

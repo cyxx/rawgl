@@ -40,6 +40,7 @@ void Mixer::init() {
 	memset(_channels, 0, sizeof(_channels));
 	_mutex = _stub->createMutex();
 	_stub->startAudio(Mixer::mixCallback, this);
+	_masterVolume = DEFAULT_MASTER_VOLUME;
 }
 
 void Mixer::free() {
@@ -73,6 +74,25 @@ void Mixer::setChannelVolume(uint8 channel, uint8 volume) {
 	MutexStack(_stub, _mutex);
 	_channels[channel].volume = volume;
 }
+
+void Mixer::masterVolumeUp() {
+	if (_masterVolume < 14)
+		_masterVolume+=2;
+}
+void Mixer::masterVolumeDown() {
+	if (_masterVolume > 1)
+		_masterVolume-=2;
+}
+
+
+//volume should be in range 0..15
+void Mixer::setMasterVolume(uint8 volume) {
+	if (volume > 15)
+		_masterVolume = 15;
+	else
+		_masterVolume = volume;
+}
+
 
 void Mixer::stopAll() {
 	debug(DBG_SND, "Mixer::stopAll()");
@@ -115,7 +135,8 @@ void Mixer::mix(int8 *buf, int len) {
 				int8 b2 = *(int8 *)(ch->chunk.data + p2);
 				int8 b = (int8)((b1 * (0xFF - ilc) + b2 * ilc) >> 8);
 				// set volume and clamp
-				*pBuf = addclamp(*pBuf, (int)b * ch->volume / 0x40);
+				//*pBuf = addclamp(*pBuf, (int)b * ch->volume / 0x40);
+				*pBuf = addclamp(*pBuf, (int)b * ch->volume * _masterVolume / 0x400);
 			}
 		}
 	}

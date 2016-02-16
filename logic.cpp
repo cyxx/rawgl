@@ -24,6 +24,7 @@
 #include "serializer.h"
 #include "sfxplayer.h"
 #include "systemstub.h"
+#include "stdio.h"
 
 
 Logic::Logic(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub)

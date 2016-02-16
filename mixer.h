@@ -19,6 +19,8 @@
 #ifndef __MIXER_H__
 #define __MIXER_H__
 
+#define DEFAULT_MASTER_VOLUME 10
+
 #include "intern.h"
 
 struct MixerChunk {
@@ -47,6 +49,7 @@ struct Mixer {
 	void *_mutex;
 	SystemStub *_stub;
 	MixerChannel _channels[NUM_CHANNELS];
+	uint8 _masterVolume;
 
 	Mixer(SystemStub *stub);
 	void init();
@@ -55,6 +58,9 @@ struct Mixer {
 	void playChannel(uint8 channel, const MixerChunk *mc, uint16 freq, uint8 volume);
 	void stopChannel(uint8 channel);
 	void setChannelVolume(uint8 channel, uint8 volume);
+	void setMasterVolume(uint8 volume); //valid values 0 to 15
+	void masterVolumeUp();
+	void masterVolumeDown();
 	void stopAll();
 	void mix(int8 *buf, int len);
 

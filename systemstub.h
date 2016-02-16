@@ -15,9 +15,38 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
+ 
 #ifndef __SYSTEMSTUB_H__
 #define __SYSTEMSTUB_H__
+
+ 
+//Gp2X keys
+#define GP2X_BUTTON_UP              (0)
+#define GP2X_BUTTON_DOWN            (4)
+#define GP2X_BUTTON_LEFT            (2)
+#define GP2X_BUTTON_RIGHT           (6)
+#define GP2X_BUTTON_UPLEFT          (1)
+#define GP2X_BUTTON_UPRIGHT         (7)
+#define GP2X_BUTTON_DOWNLEFT        (3)
+#define GP2X_BUTTON_DOWNRIGHT       (5)
+#define GP2X_BUTTON_CLICK           (18)
+#define GP2X_BUTTON_A               (12)
+#define GP2X_BUTTON_B               (13)
+#define GP2X_BUTTON_X               (14)
+#define GP2X_BUTTON_Y               (15)
+#define GP2X_BUTTON_L               (10)
+#define GP2X_BUTTON_R               (11)
+#define GP2X_BUTTON_START           (8)
+#define GP2X_BUTTON_SELECT          (9)
+#define GP2X_BUTTON_VOLUP           (16)
+#define GP2X_BUTTON_VOLDOWN         (17)
+
+#if defined __GP2X__
+#define VIDEO_MODE SDL_SWSURFACE
+#else
+#define VIDEO_MODE _fullscreen ? (SDL_FULLSCREEN | SDL_HWSURFACE) : SDL_HWSURFACE
+#endif
+
 
 #include "intern.h"
 
@@ -38,6 +67,10 @@ struct PlayerInput {
 	bool save, load;
 	bool fastMode;
 	int8 stateSlot;
+	bool button_L;
+	bool button_R;
+	bool volumeUp;
+	bool volumeDown;
 };
 
 struct SystemStub {

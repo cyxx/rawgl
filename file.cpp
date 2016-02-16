@@ -41,6 +41,7 @@ struct stdFile : File_impl {
 	void close() {
 		if (_fp) {
 			fclose(_fp);
+			sync();
 			_fp = 0;
 		}
 	}

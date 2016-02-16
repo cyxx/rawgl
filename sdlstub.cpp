@@ -20,13 +20,12 @@
 #include "systemstub.h"
 #include "util.h"
 
-
 struct SDLStub : SystemStub {
 	typedef void (SDLStub::*ScaleProc)(uint16 *dst, uint16 dstPitch, const uint16 *src, uint16 srcPitch, uint16 w, uint16 h);
 
 	enum {
 		SCREEN_W = 320,
-		SCREEN_H = 200,
+		SCREEN_H = 240,
 		SOUND_SAMPLE_RATE = 22050
 	};
 
@@ -83,17 +82,18 @@ SystemStub *SystemStub_SDL_create() {
 }
 
 void SDLStub::init(const char *title) {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK);
 	SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 	SDL_ShowCursor(SDL_DISABLE);
+	SDL_JoystickOpen(0);
 	SDL_WM_SetCaption(title, NULL);
 	memset(&_pi, 0, sizeof(_pi));
 	_offscreen = (uint8 *)malloc(SCREEN_W * SCREEN_H * 2);
 	if (!_offscreen) {
 		error("Unable to allocate offscreen buffer");
 	}
-	_fullscreen = false;
-	_scaler = 1;
+	_fullscreen = true;
+	_scaler = 0;
 	prepareGfxMode();
 }
 
@@ -130,7 +130,10 @@ void SDLStub::copyRect(uint16 x, uint16 y, uint16 w, uint16 h, const uint8 *buf,
 	SDL_LockSurface(_sclscreen);
 	(this->*_scalers[_scaler].proc)((uint16 *)_sclscreen->pixels, _sclscreen->pitch, (uint16 *)_offscreen, SCREEN_W, SCREEN_W, SCREEN_H);
 	SDL_UnlockSurface(_sclscreen);
-	SDL_BlitSurface(_sclscreen, NULL, _screen, NULL);
+	SDL_Rect dest;
+	dest.x = 0;
+	dest.y = 20;
+	SDL_BlitSurface(_sclscreen, NULL, _screen, &dest);
 	SDL_UpdateRect(_screen, 0, 0, 0, 0);
 }
 
@@ -141,83 +144,112 @@ void SDLStub::processEvents() {
 		case SDL_QUIT:
 			_pi.quit = true;
 			break;
-		case SDL_KEYUP:
-			switch(ev.key.keysym.sym) {
-			case SDLK_LEFT:
-				_pi.dirMask &= ~PlayerInput::DIR_LEFT;
-				break;
-			case SDLK_RIGHT:
-				_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
-				break;
-			case SDLK_UP:
+		case SDL_JOYBUTTONUP:
+			switch(ev.jbutton.button) {
+			case GP2X_BUTTON_R:
+				_pi.button_R = false;
 				_pi.dirMask &= ~PlayerInput::DIR_UP;
 				break;
-			case SDLK_DOWN:
+			case GP2X_BUTTON_L:
+				_pi.button_L = false;
+				break;
+			case GP2X_BUTTON_UPLEFT:
+				_pi.dirMask &= ~PlayerInput::DIR_LEFT;
+				//_pi.dirMask &= ~PlayerInput::DIR_UP;
+				break;			
+			case GP2X_BUTTON_UPRIGHT:
+				//_pi.dirMask &= ~PlayerInput::DIR_UP;
+				_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
+				break;		
+			case GP2X_BUTTON_DOWNLEFT:
+				_pi.dirMask &= ~PlayerInput::DIR_LEFT;
+				_pi.dirMask &= ~PlayerInput::DIR_DOWN;
+				break;					
+			case GP2X_BUTTON_DOWNRIGHT:
+				_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
 				_pi.dirMask &= ~PlayerInput::DIR_DOWN;
 				break;
-			case SDLK_SPACE:
-			case SDLK_RETURN:
+			case GP2X_BUTTON_LEFT:
+				_pi.dirMask &= ~PlayerInput::DIR_LEFT;
+				break;
+			case GP2X_BUTTON_RIGHT:
+				_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
+				break;
+			case GP2X_BUTTON_UP:
+				_pi.dirMask &= ~PlayerInput::DIR_UP;
+				break;
+			case GP2X_BUTTON_DOWN:
+				_pi.dirMask &= ~PlayerInput::DIR_DOWN;
+				break;
+			case GP2X_BUTTON_A:
 				_pi.button = false;
 				break;
 			default:
 				break;
 			}
 			break;
-		case SDL_KEYDOWN:
-			if (ev.key.keysym.mod & KMOD_ALT) {
-				if (ev.key.keysym.sym == SDLK_RETURN) {
-					switchGfxMode(!_fullscreen, _scaler);
-				} else if (ev.key.keysym.sym == SDLK_KP_PLUS) {
-					uint8 s = _scaler + 1;
-					if (s < ARRAYSIZE(_scalers)) {
-						switchGfxMode(_fullscreen, s);
-					}
-				} else if (ev.key.keysym.sym == SDLK_KP_MINUS) {
-					int8 s = _scaler - 1;
-					if (_scaler > 0) {
-						switchGfxMode(_fullscreen, s);
-					}
-				} else if (ev.key.keysym.sym == SDLK_x) {
-					_pi.quit = true;
-				}
-				break;
-			} else if (ev.key.keysym.mod & KMOD_CTRL) {
-				if (ev.key.keysym.sym == SDLK_s) {
-					_pi.save = true;
-				} else if (ev.key.keysym.sym == SDLK_l) {
-					_pi.load = true;
-				} else if (ev.key.keysym.sym == SDLK_f) {
-					_pi.fastMode = true;
-				} else if (ev.key.keysym.sym == SDLK_KP_PLUS) {
-					_pi.stateSlot = 1;
-				} else if (ev.key.keysym.sym == SDLK_KP_MINUS) {
-					_pi.stateSlot = -1;
-				}
-				break;
-			}
-			_pi.lastChar = ev.key.keysym.sym;
-			switch(ev.key.keysym.sym) {
-			case SDLK_LEFT:
-				_pi.dirMask |= PlayerInput::DIR_LEFT;
-				break;
-			case SDLK_RIGHT:
-				_pi.dirMask |= PlayerInput::DIR_RIGHT;
-				break;
-			case SDLK_UP:
+		case SDL_JOYBUTTONDOWN:
+			switch(ev.jbutton.button) {
+			case GP2X_BUTTON_R:
+				_pi.button_R = true;
 				_pi.dirMask |= PlayerInput::DIR_UP;
 				break;
-			case SDLK_DOWN:
+			case GP2X_BUTTON_L:
+				_pi.button_L = true;
+				break;
+			case GP2X_BUTTON_UPLEFT:
+				_pi.dirMask |= PlayerInput::DIR_LEFT;
+				//_pi.dirMask |= PlayerInput::DIR_UP;
+				break;			
+			case GP2X_BUTTON_UPRIGHT:
+				_pi.dirMask |= PlayerInput::DIR_RIGHT;
+				//_pi.dirMask |= PlayerInput::DIR_UP;
+				break;		
+			case GP2X_BUTTON_DOWNLEFT:
+				_pi.dirMask |= PlayerInput::DIR_LEFT;
+				_pi.dirMask |= PlayerInput::DIR_DOWN;
+				break;					
+			case GP2X_BUTTON_DOWNRIGHT:
+				_pi.dirMask |= PlayerInput::DIR_RIGHT;
 				_pi.dirMask |= PlayerInput::DIR_DOWN;
 				break;
-			case SDLK_SPACE:
-			case SDLK_RETURN:
+			case GP2X_BUTTON_LEFT:
+				_pi.dirMask |= PlayerInput::DIR_LEFT;
+				break;
+			case GP2X_BUTTON_RIGHT:
+				_pi.dirMask |= PlayerInput::DIR_RIGHT;
+				break;
+			case GP2X_BUTTON_UP:
+				_pi.dirMask |= PlayerInput::DIR_UP;
+				break;
+			case GP2X_BUTTON_DOWN:
+				_pi.dirMask |= PlayerInput::DIR_DOWN;
+				break;
+			case GP2X_BUTTON_A:
 				_pi.button = true;
 				break;
-			case SDLK_c:
+			/*	
+			case GP2X_BUTTON_B:
+				_pi.stateSlot = 1; //Next save state slot
+				break;
+			*/
+			case GP2X_BUTTON_Y:
+				_pi.save = true;  //Save State
+				break;
+			case GP2X_BUTTON_X:
+				_pi.load = true;  //Load State
+				break;
+			case GP2X_BUTTON_SELECT:
 				_pi.code = true;
 				break;
-			case SDLK_p:
+			case GP2X_BUTTON_START:
 				_pi.pause = true;
+				break;
+			case GP2X_BUTTON_VOLUP:
+				_pi.volumeUp = true;
+				break;
+			case GP2X_BUTTON_VOLDOWN:
+				_pi.volumeDown = true;
 				break;
 			default:
 				break;
@@ -226,6 +258,9 @@ void SDLStub::processEvents() {
 		default:
 			break;
 		}
+	}
+	if (_pi.button_R && _pi.button_L) {
+		_pi.quit = true;
 	}
 }
 
@@ -247,10 +282,11 @@ void SDLStub::startAudio(AudioCallback callback, void *param) {
 	desired.samples = 2048;
 	desired.callback = callback;
 	desired.userdata = param;
+
 	if (SDL_OpenAudio(&desired, NULL) == 0) {
 		SDL_PauseAudio(0);
 	} else {
-		error("SDLStub::startAudio() unable to open sound device");
+		printf("SDLStub::startAudio() unable to open sound device\n");
 	}
 }
 
@@ -289,7 +325,9 @@ void SDLStub::unlockMutex(void *mutex) {
 void SDLStub::prepareGfxMode() {
 	int w = SCREEN_W * _scalers[_scaler].factor;
 	int h = SCREEN_H * _scalers[_scaler].factor;
-	_screen = SDL_SetVideoMode(w, h, 16, _fullscreen ? (SDL_FULLSCREEN | SDL_HWSURFACE) : SDL_HWSURFACE);
+
+	_screen = SDL_SetVideoMode(w, h, 16, VIDEO_MODE);
+
 	if (!_screen) {
 		error("SDLStub::prepareGfxMode() unable to allocate _screen buffer");
 	}

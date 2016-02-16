@@ -1,0 +1,46 @@
+CROSS_COMPILE = F:/javier/devkit2/devkitGP2X/bin/arm-linux-
+SDL_BASE = F:/javier/devkit2/devkitGP2X/bin/arm-linux-
+
+CC = $(CROSS_COMPILE)gcc
+CXX = $(CROSS_COMPILE)g++
+STRIP = $(CROSS_COMPILE)strip
+
+Z_LIB_DIR=  ./zlib/
+Z_LIB    =  $(Z_LIB_DIR)libz.a
+
+SDL_CFLAGS = $(SDL_BASE)sdl-config --cflags
+#SDL_LIBS = `sdl-config --libs`
+
+SDL_LIBS= -lSDL
+DEFINES = -DSYS_LITTLE_ENDIAN -D__GP2X__
+
+#CXXFLAGS:= -g -O2 -Wall -Wuninitialized -Wno-unknown-pragmas -Wshadow -pthread
+#CXXFLAGS+= -Wimplicit -Wundef -Wreorder -Wwrite-strings -Wnon-virtual-dtor -Wno-multichar
+#CXXFLAGS:= -g -O2 -fomit-frame-pointer -fno-exceptions -pthread -msoft-float
+CXXFLAGS:= -O2 -fexpensive-optimizations -Wall $(DEFINES)
+LDFLAGS = -static -lpthread
+
+SRCS = bank.cpp file.cpp engine.cpp logic.cpp mixer.cpp resource.cpp sdlstub.cpp \
+	serializer.cpp sfxplayer.cpp staticres.cpp util.cpp video.cpp main.cpp \
+
+OBJS = $(SRCS:.cpp=.o) $(Z_LIB) libpthread.a
+DEPS = $(SRCS:.cpp=.d)
+
+EXE = raw.gpe
+
+all: libs $(OBJS) 
+	$(CXX) $(LDFLAGS) -o $(EXE) $(OBJS) $(SDL_LIBS)
+	$(STRIP) $(EXE)	
+	
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) -c $< -o $*.o
+
+clean:
+	rm -f *.o *.d
+	
+libs: 
+	cd $(Z_LIB_DIR) && make --makefile=Makefile.arm libz.a
+
+
+-include $(DEPS)

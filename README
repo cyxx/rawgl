@@ -1,6 +1,5 @@
-
-raw README
-Release version: 0.1.1 (May 15 2004)
+raw2x README
+Release version: 0.2.1 (Dec 07 2005)
 -------------------------------------------------------------------------------
 
 About:
@@ -11,19 +10,39 @@ game, released under the name Out Of This World in non-European countries, was
 written by Eric Chahi at the beginning of the '90s. More information can be 
 found here : http://www.mobygames.com/game/sheet/p,2/gameId,564/.
 
-Please be aware that, currently, this implementation may contains bugs and 
-non-implemented features that make it impossible to finish the game.
-
-Supported Versions:
+GP2X Version:
 -------------------
 
-Currently, only the english PC DOS version is supported ("Out of this World").
+There is a TODO list with some features not yet implemented in this version:
+
+- Make sound less noisy.
+- More than one state in save state system
+- More screen resolutions for TV-Out mode
+
+I really don't know if you can finish the game in this version. if you can
+test it or you find some bug, please let me know. Thank you.
+
+CHANGELOG
+-------------------
+0.3.1 (Dec 21 2005)
+  - Sound system works. But it sounds a little noise i think.
+  - Filesystem syncronization after save a state to avoid data loss
+
+0.2.1 (Dec 07 2005)
+  - Better controls. Now you can't jump using upper diagonals. Instead use R button.
+  - Save/Load state with X and Y buttons respectively
+  - Screen centred verticaly
+  - Game can be finished in this version (tested). This doesn't ensure you 
+    could finish it in future versions until tested.
+
+0.1.1 (Dec 06 2005)
+  - First release for GP2X
 
 Compiling:
 ----------
 
 Tweak the Makefile if needed and type make (only gcc3 has been tested so far).
-The SDL and zlib libraries are required.
+The SDL and zlib libraries are required. (zlib sources incluided in GP2X version).
 
 Running:
 --------
@@ -32,22 +51,23 @@ You will need the original files, here is the required list :
     BANK*
     MEMLIST.BIN
 	
-To start the game, you can either :
+To start the game, you must :
 - put the game's datafiles in the same directory as the executable
-- use the --datapath command line option to specify the datafiles directory
+- run another.gpe
 
 Here are the various in game hotkeys :
-    Arrow Keys      allow you to move Lester
-    Enter/Space     allow you run/shoot with your gun
-    C               allow to enter a code to jump at a specific level
-    P               pause the game
-    Alt X           exit the game
-    Ctrl S          save game state
-    Ctrl L          load game state
-    Ctrl + and -    change game state slot
-    Ctrl F          toggle fast mode
-    Alt Enter       toggle windowed/fullscreen mode
-    Alt + and -     change scaler factor
+    Stick           allow you to move Lester
+    Button A        allow you run/shoot with your gun
+    Button R        allow you to jump & swim
+    Select          allow to enter a code to jump at a specific level
+    Start           pause the game
+    L + R           exit the game
+    Button X        save game state
+    Button Y        load game state
+    Volume +        volume up
+    Volume -        volume down
+    (not yet)       change game state slot
+    (not yet)       toggle fast mode
 
 Credits:
 --------
@@ -57,4 +77,5 @@ Eric Chahi, obviously, for making this great game.
 Contact:
 --------
 
-Gregory Montoir, cyx@users.sourceforge.net
+Gregory Montoir, cyx@users.sourceforge.net (original Raw for PC)
+Javier Alvarez [WinterN], javi.am@gmail.com (GP2X Version)

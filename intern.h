@@ -24,6 +24,12 @@
 #include <cstdlib>
 #include <cassert>
 
+#if defined __GP2X__
+#include <unistd.h>
+#else
+#define sync() ;
+#endif
+
 #include "sys.h"
 #include "util.h"
 
