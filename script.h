@@ -21,8 +21,6 @@ struct Script {
 	enum ScriptVars {
 		VAR_RANDOM_SEED          = 0x3C,
 		
-		VAR_LOCAL_VERSION        = 0x54,
-
 		VAR_SCREEN_NUM           = 0x67,
 		
 		VAR_LAST_KEYCHAR         = 0xDA,

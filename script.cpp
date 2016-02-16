@@ -135,7 +135,7 @@ void Script::op_jmpIfVar() {
 void Script::op_condJmp() {
 #ifdef BYPASS_PROTECTION
 	if (_res->_currentPart == 16000) {
-		if (_scriptVars[VAR_LOCAL_VERSION] == 0x81 && _scriptPtr.pc == _res->_segCode + 0xCB9) { // us
+		if (_scriptVars[0x54] == 0x81 && _scriptPtr.pc == _res->_segCode + 0xCB9) { // us
 			// (0x0CB8) condJmp(VAR(0x29) == VAR(0x1E), 0x0CD3)
 			// (0x0CB8) condJmp(VAR(0x29) != VAR(0x1E), 0x0D24)
 			*(_scriptPtr.pc + 0x00) = 0x81;
@@ -147,7 +147,7 @@ void Script::op_condJmp() {
 			*(_scriptPtr.pc + 0x9A) = 0x5A;
 			warning("Script::op_condJmp() bypassing protection");
 		}
-		if (_scriptVars[VAR_LOCAL_VERSION] == 0x01 && _scriptPtr.pc == _res->_segCode + 0xC4C) { // fr,eur
+		if (_scriptVars[0x54] == 0x01 && _scriptPtr.pc == _res->_segCode + 0xC4C) { // fr,eur
 			// (0x0C4B) condJmp(VAR(0x29) == VAR(0x1E), 0x0C66)
 			// (0x0C4B) condJmp(VAR(0x29) != VAR(0x1E), 0x0CB7)
 			*(_scriptPtr.pc + 0x00) = 0x81;
@@ -390,6 +390,11 @@ void Script::restartAt(int part, int pos) {
 	}
 	if (_res->getDataType() == Resource::DT_DOS) {
 		_scriptVars[0xE4] = 20;
+		if (part == 16000) {
+			// another world / out of this world splash screen
+			const bool ootwScreen = (_vid->_stringsTable != Video::_stringsTableFr);
+			_scriptVars[0x54] = ootwScreen ? 0x81 : 0x1;
+		}
 	}
 	_res->setupPart(part);
 	memset(_scriptTasks, 0xFF, sizeof(_scriptTasks));

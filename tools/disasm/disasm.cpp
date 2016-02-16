@@ -32,9 +32,6 @@ static const char *varName(uint8_t var) {
 	case 0x3C:
 		strcpy(name, "VAR_RANDOM_SEED");
 		break;
-	case 0x54:
-		strcpy(name, "VAR_LOCAL_VERSION");
-		break;		
 	case 0xDA:
 		strcpy(name, "VAR_LAST_KEYCHAR");
 		break;
