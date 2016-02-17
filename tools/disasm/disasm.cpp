@@ -14,6 +14,7 @@ enum {
 static uint8_t _fileBuf[MAX_FILESIZE];
 
 static bool _is3DO = false;
+static bool _isAmiga = false;
 
 static FILE *_out = stdout;
 
@@ -147,6 +148,10 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		fprintf(_out, "%04X: loc_%04X:\n", addr, addr);
 	}
 	fprintf(_out, "%04X: ", addr);
+	if (_isAmiga && opcode > op_playMusic && opcode < 0xC0) {
+		fprintf(_out, "0x%02x\n", opcode);
+		return;
+	}
 	switch (opcode) {
 	case op_movConst:
 		fprintf(_out, "VAR(0x%02X) = %d", args[0], args[1]);
@@ -474,7 +479,7 @@ static int parse(const uint8_t *buf, uint32_t size) {
 			}
 		default:
 			fprintf(stderr, "Invalid opcode %d at 0x%04x\n", op, addr);
-			return -1;
+			break;
 		}
 		int args[4] = { a, b, c, d };
 		visitOpcode(addr, op, args);
@@ -504,8 +509,12 @@ static const char *NAMES[] = { 0, "intro", "eau", "pri", "cite", "arene", "luxe"
 static const uint8_t RES[] = { 0x15, 0x18, 0x1B, 0x1E, 0x21, 0x24, 0x27, 0x2A, 0x7E };
 
 int main(int argc, char *argv[]) {
-	if (argc >= 3 && strcmp(argv[1], "-3do") == 0) {
-		_is3DO = true;
+	if (argc >= 3) {
+		if (strcmp(argv[1], "-3do") == 0) {
+			_is3DO = true;
+		} else if (strcmp(argv[1], "-amiga") == 0) {
+			_isAmiga = true;
+		}
 		--argc;
 		++argv;
 	}
@@ -536,9 +545,7 @@ int main(int argc, char *argv[]) {
 				if (_out) {
 					memset(_addr, 0, sizeof(_addr));
 					visitOpcode = checkOpcode;
-					if (parse(_fileBuf, size) < 0) {
-						continue;
-					}
+					parse(_fileBuf, size);
 					visitOpcode = printOpcode;
 					parse(_fileBuf, size);
 					fclose(_out);
