@@ -45,12 +45,10 @@ struct Mixer_impl {
 	static const int kMixBufSize = 4096;
 
 	Mix_Chunk *_sounds[4];
-	uint8_t *_samples[4];
 	Mix_Music *_music;
 
 	void init() {
 		memset(_sounds, 0, sizeof(_sounds));
-		memset(_samples, 0, sizeof(_samples));
 		_music = 0;
 
 		Mix_Init(MIX_INIT_OGG | MIX_INIT_FLUIDSYNTH);
@@ -66,7 +64,6 @@ struct Mixer_impl {
 	}
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
-		stopSound(channel);
 		int len = READ_BE_UINT16(data) * 2;
 		const int loopLen = READ_BE_UINT16(data + 2) * 2;
 		if (loopLen != 0) {
@@ -103,49 +100,13 @@ struct Mixer_impl {
 		}
 	}
 	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
-#if 1
 		const uint32_t size = READ_BE_UINT32(data + 4) + 8;
 		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
 		Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
 		playSound(channel, volume, chunk);
-#else
-		uint8_t *sample = 0;
-		uint32_t sampleSize;
-		int channels = 0;
-		int fmt = -1;
-		int rate = 0;
-		const uint32_t size = READ_BE_UINT32(data + 4);
-		if (memcmp(data + 8, "AIFF", 4) == 0) {
-			const uint32_t size = READ_BE_UINT32(data + 4);
-			for (int offset = 12; offset < size; ) {
-				const uint32_t sz = READ_BE_UINT32(data + offset + 4);
-				if (memcmp(data + offset, "COMM", 4) == 0) {
-					channels = READ_BE_UINT16(data + offset + 8);
-					const int bits = READ_BE_UINT16(data + offset + 14);
-					rate = ieee754_80bits(data + offset + 16);
-					debug(DBG_SND, "aiff channels %d rate %d bits %d", channels, rate, bits);
-					if (bits == 8) {
-						fmt = AUDIO_S8;
-					} else if (bits == 16) {
-						fmt = AUDIO_S16MSB;
-					} else {
-						break;
-					}
-				} else if (memcmp(data + offset, "SSND", 4) == 0) {
-					sample = convertSampleRaw(data + offset + 8, sz, fmt, channels, rate, &sampleSize);
-					break;
-				}
-				offset += sz + 8;
-			}
-		}
-		if (sample) {
-			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, sampleSize);
-			playSound(channel, volume, chunk);
-			_samples[channel] = sample;
-		}
-#endif
 	}
 	void playSound(uint8_t channel, int volume, Mix_Chunk *chunk, int loops = 0) {
+		stopSound(channel);
 		if (chunk) {
 			Mix_PlayChannel(channel, chunk, loops);
 		}
@@ -156,8 +117,6 @@ struct Mixer_impl {
 		Mix_HaltChannel(channel);
 		Mix_FreeChunk(_sounds[channel]);
 		_sounds[channel] = 0;
-		free(_samples[channel]);
-		_samples[channel] = 0;
 	}
 	void setChannelVolume(uint8_t channel, uint8_t volume) {
 		Mix_Volume(channel, volume * MIX_MAX_VOLUME / 63);
