@@ -93,6 +93,7 @@ struct Resource {
 	void readBank(const MemEntry *me, uint8_t *dstBuf);
 	void readEntries();
 	void readEntriesAmiga(const AmigaMemEntry *entries, int count);
+	void dumpEntries();
 	void load();
 	void invalidateAll();
 	void invalidateRes();	

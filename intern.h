@@ -13,7 +13,9 @@
 #include <cassert>
 #include <stdint.h>
 
+#undef MAX
 #define MAX(x,y) ((x)>(y)?(x):(y))
+#undef MIN
 #define MIN(x,y) ((x)<(y)?(x):(y))
 #undef ARRAYSIZE
 #define ARRAYSIZE(a) (sizeof(a)/sizeof(a[0]))

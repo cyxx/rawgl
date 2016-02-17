@@ -38,4 +38,6 @@ struct File {
 	void writeUint32BE(uint32_t n);
 };
 
+void dumpFile(const char *filename, const uint8_t *p, int size);
+
 #endif

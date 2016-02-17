@@ -188,6 +188,28 @@ void Resource::readEntriesAmiga(const AmigaMemEntry *entries, int count) {
 	_memList[count].status = 0xFF;
 }
 
+void Resource::dumpEntries() {
+	static const bool kDump = false;
+	if (kDump && (_dataType == DT_DOS || _dataType == DT_AMIGA)) {
+		for (int i = 0; i < _numMemList; ++i) {
+			if (_memList[i].unpackedSize == 0) {
+				continue;
+			}
+			if (_memList[i].bankNum == 5 && _dataType == DT_AMIGA) {
+				continue;
+			}
+			uint8_t *p = (uint8_t *)malloc(_memList[i].unpackedSize);
+			if (p) {
+				readBank(&_memList[i], p);
+				char name[16];
+				snprintf(name, sizeof(name), "data_%02x_%d", i, _memList[i].type);
+				dumpFile(name, p, _memList[i].unpackedSize);
+				free(p);
+			}
+		}
+	}
+}
+
 void Resource::load() {
 	while (1) {
 		MemEntry *me = 0;

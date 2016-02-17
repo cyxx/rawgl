@@ -5,9 +5,11 @@
  */
 
 #include <dirent.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <string.h>
 #include "file.h"
+#include "util.h"
 
 struct File_impl {
 	bool _ioErr;
@@ -108,7 +110,7 @@ static bool getFilePathNoCase(const char *filename, const char *path, char *out)
 
 bool File::open(const char *filename, const char *path) {
 	_impl->close();
-	char filepath[512];
+	char filepath[MAXPATHLEN];
 	if (getFilePathNoCase(filename, path, filepath)) {
 		return _impl->open(filepath, "rb");
 	}
@@ -191,4 +193,17 @@ void File::writeUint16BE(uint16_t n) {
 void File::writeUint32BE(uint32_t n) {
 	writeUint16BE(n >> 16);
 	writeUint16BE(n & 0xFFFF);
+}
+
+void dumpFile(const char *filename, const uint8_t *p, int size) {
+	char path[MAXPATHLEN];
+	snprintf(path, sizeof(path), "DUMP/%s", filename);
+	FILE *fp = fopen(filename, "wb");
+	if (fp) {
+		const int wr = fwrite(p, 1, size, fp);
+		if (wr != size) {
+			warning("Failed to write %d bytes (expected %d)", wr, size);
+		}
+		fclose(fp);
+	}
 }

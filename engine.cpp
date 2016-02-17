@@ -66,6 +66,7 @@ void Engine::setup() {
 	_vid.init();
 	_res.allocMemBlock();
 	_res.readEntries();
+	_res.dumpEntries();
 	if (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION) {
 		_res.loadFont();
 		_res.loadHeads();
