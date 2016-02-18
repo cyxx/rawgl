@@ -47,7 +47,6 @@ struct Script {
 	Video *_vid;
 	SystemStub *_stub;
 
-	int16_t _scriptVar_0xBF;
 	int16_t _scriptVars[0x100];
 	uint16_t _scriptStackCalls[0x40];
 	uint16_t _scriptTasks[2][0x40];

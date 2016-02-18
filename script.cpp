@@ -274,10 +274,6 @@ void Script::op_updateDisplay() {
 	uint8_t page = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_updateDisplay(%d)", page);
 	inp_handleSpecialKeys();
-	if (_res->_currentPart == 16000 && _scriptVars[VAR_SCREEN_NUM] == 1) {
-		_scriptVar_0xBF = _scriptVars[0xBF];
-		_scriptVars[0xDC] = 0x21;
-	}
 
 	const int frameHz = _is3DO ? 60 : 50;
 	if (!_fastMode && _scriptVars[VAR_PAUSE_SLICES] != 0) {
