@@ -133,34 +133,6 @@ void Script::op_jmpIfVar() {
 }
 
 void Script::op_condJmp() {
-#ifdef BYPASS_PROTECTION
-	if (_res->_currentPart == 16000) {
-		if (_scriptVars[0x54] == 0x81 && _scriptPtr.pc == _res->_segCode + 0xCB9) { // us
-			// (0x0CB8) condJmp(VAR(0x29) == VAR(0x1E), 0x0CD3)
-			// (0x0CB8) condJmp(VAR(0x29) != VAR(0x1E), 0x0D24)
-			*(_scriptPtr.pc + 0x00) = 0x81;
-			*(_scriptPtr.pc + 0x03) = 0x0D;
-			*(_scriptPtr.pc + 0x04) = 0x24;
-			// (0x0D4E) condJmp(VAR(0x32) < 6, 0x0DBC)
-			// (0x0D4E) condJmp(VAR(0x32) < 6, 0x0D5A)
-			*(_scriptPtr.pc + 0x99) = 0x0D;
-			*(_scriptPtr.pc + 0x9A) = 0x5A;
-			warning("Script::op_condJmp() bypassing protection");
-		}
-		if (_scriptVars[0x54] == 0x01 && _scriptPtr.pc == _res->_segCode + 0xC4C) { // fr,eur
-			// (0x0C4B) condJmp(VAR(0x29) == VAR(0x1E), 0x0C66)
-			// (0x0C4B) condJmp(VAR(0x29) != VAR(0x1E), 0x0CB7)
-			*(_scriptPtr.pc + 0x00) = 0x81;
-			*(_scriptPtr.pc + 0x03) = 0x0C;
-			*(_scriptPtr.pc + 0x04) = 0xB7;
-			// (0x0CE1) condJmp(VAR(0x32) < 6, 0x0D4F)
-			// (0x0CE1) condJmp(VAR(0x32) < 6, 0x0CED)
-			*(_scriptPtr.pc + 0x99) = 0x0C;
-			*(_scriptPtr.pc + 0x9A) = 0xED;
-			warning("Script::op_condJmp() bypassing protection");
-		}
-	}
-#endif
 	uint8_t op = _scriptPtr.fetchByte();
 	const uint8_t var = _scriptPtr.fetchByte();
 	int16_t b = _scriptVars[var];
@@ -177,6 +149,26 @@ void Script::op_condJmp() {
 	switch (op & 7) {
 	case 0:
 		expr = (b == a);
+#ifdef BYPASS_PROTECTION
+		if (_res->_currentPart == 16000) {
+			//
+			// 0CB8: jmpIf(VAR(0x29) == VAR(0x1E) @0CD3)
+			// ...
+			//
+			if (var == 0x29 && (op & 0x80) != 0) {
+				// 4 symbols
+				_scriptVars[0x29] = _scriptVars[0x1E];
+				_scriptVars[0x2A] = _scriptVars[0x1F];
+				_scriptVars[0x2B] = _scriptVars[0x20];
+				_scriptVars[0x2C] = _scriptVars[0x21];
+				// counters
+				_scriptVars[0x32] = 6;
+				_scriptVars[0x64] = 20;
+				warning("Script::op_condJmp() bypassing protection");
+				expr = true;
+			}
+		}
+#endif
 		break;
 	case 1:
 		expr = (b != a);
