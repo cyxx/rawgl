@@ -21,6 +21,7 @@ struct Mixer {
 	Mixer(SfxPlayer *sfx);
 	void init();
 	void quit();
+	void update();
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume);
 	void playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume);

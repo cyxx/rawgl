@@ -43,6 +43,7 @@ struct Mixer_impl {
 
 	static const int kMixFreq = 44100;
 	static const int kMixBufSize = 4096;
+	static const int kMixChannels = 4;
 
 	Mix_Chunk *_sounds[4];
 	Mix_Music *_music;
@@ -55,12 +56,20 @@ struct Mixer_impl {
 		if (Mix_OpenAudio(kMixFreq, AUDIO_S16SYS, 2, kMixBufSize) < 0) {
 			warning("Mix_OpenAudio failed: %s", Mix_GetError());
 		}
-		Mix_AllocateChannels(4);
+		Mix_AllocateChannels(kMixChannels);
 	}
 	void quit() {
 		stopAll();
 		Mix_CloseAudio();
 		Mix_Quit();
+	}
+
+	void update() {
+		for (int i = 0; i < kMixChannels; ++i) {
+			if (_sounds[i] && !Mix_Playing(i)) {
+				freeSound(i);
+			}
+		}
 	}
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
@@ -115,6 +124,9 @@ struct Mixer_impl {
 	}
 	void stopSound(uint8_t channel) {
 		Mix_HaltChannel(channel);
+		freeSound(channel);
+	}
+	void freeSound(int channel) {
 		Mix_FreeChunk(_sounds[channel]);
 		_sounds[channel] = 0;
 	}
@@ -189,6 +201,12 @@ void Mixer::quit() {
 		delete _impl;
 	}
 	delete _aifc;
+}
+
+void Mixer::update() {
+	if (_impl) {
+		_impl->update();
+	}
 }
 
 void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {

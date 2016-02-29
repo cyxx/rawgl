@@ -52,6 +52,7 @@ void Engine::run(int w, int h, Language lang) {
 		_log.inp_updatePlayer();
 		processInput();
 		_log.runScripts();
+		_mix.update();
 	}
 	finish();
 	_stub->fini();
