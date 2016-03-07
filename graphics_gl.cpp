@@ -13,6 +13,26 @@
 #include "util.h"
 #include "systemstub.h"
 
+static struct {
+	PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
+	PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;
+	PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
+	PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus;
+} _fptr;
+
+static void setupFboFuncs() {
+#ifdef _WIN32
+	_fptr.glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)SDL_GL_GetProcAddress("glBindFramebuffer");
+	_fptr.glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)SDL_GL_GetProcAddress("glGenFramebuffers");
+	_fptr.glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)SDL_GL_GetProcAddress("glFramebufferTexture2D");
+	_fptr.glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)SDL_GL_GetProcAddress("glCheckFramebufferStatus");
+#else
+	_fptr.glBindFramebuffer = glBindFramebuffer;
+	_fptr.glGenFramebuffers = glGenFramebuffers;
+	_fptr.glFramebufferTexture2D = glFramebufferTexture2D;
+	_fptr.glCheckFramebufferStatus = glCheckFramebufferStatus;
+#endif
+}
 
 static GLuint kNoTextureId = (GLuint)-1;
 
@@ -281,7 +301,7 @@ struct GraphicsGL : Graphics {
 	virtual void copyBuffer(int dstListNum, int srcListNum, int vscroll = 0);
 	virtual void drawBuffer(int listNum, SystemStub *stub);
 
-	bool initFBO();
+	bool initFbo();
 	void drawVerticesFlat(int count, const Point *vertices);
 	void drawVerticesTex(int count, const Point *vertices);
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
@@ -303,6 +323,7 @@ void GraphicsGL::init() {
 	const char *exts = (const char *)glGetString(GL_EXTENSIONS);
 	const bool npotTex = hasExtension(exts, "GL_ARB_texture_non_power_of_two");
 	const bool hasFbo = hasExtension(exts, "GL_ARB_framebuffer_object");
+	setupFboFuncs();
 	_backgroundTex.init();
 	_backgroundTex._npotTex = npotTex;
 	_fontTex.init();
@@ -310,24 +331,24 @@ void GraphicsGL::init() {
 	_spritesTex.init();
 	_spritesTex._npotTex = npotTex;
 	if (hasFbo) {
-		const bool err = initFBO();
+		setupFboFuncs();
+		const bool err = initFbo();
 		if (err) {
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-			return;
+			_fptr.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 	}
 }
 
-bool GraphicsGL::initFBO() {
+bool GraphicsGL::initFbo() {
 	GLint buffersCount;
-	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &buffersCount);
+	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &buffersCount);
 	if (buffersCount < NUM_LISTS) {
 		warning("GL_MAX_COLOR_ATTACHMENTS is %d", buffersCount);
 		return false;
 	}
 
-	glGenFramebuffersEXT(1, &_fbPage0);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
+	_fptr.glGenFramebuffers(1, &_fbPage0);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 
 	glGenTextures(NUM_LISTS, _pageTex);
 	for (int i = 0; i < NUM_LISTS; ++i) {
@@ -336,10 +357,10 @@ bool GraphicsGL::initFBO() {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, _pageTex[i], 0);
-		int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-		if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
-			warning("glCheckFramebufferStatusEXT failed, ret %d", status);
+		_fptr.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, _pageTex[i], 0);
+		int status = _fptr.glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (status != GL_FRAMEBUFFER_COMPLETE) {
+			warning("glCheckFramebufferStatus failed, ret %d", status);
 			return false;
 		}
 	}
@@ -368,8 +389,8 @@ void GraphicsGL::setPalette(const Color *colors, int n) {
 	}
 	if (_fixUpPalette == FIXUP_PALETTE_REDRAW) {
 		for (int i = 0; i < NUM_LISTS; ++i) {
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
+			_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
 
 			glMatrixMode(GL_PROJECTION);
 			glLoadIdentity();
@@ -443,8 +464,8 @@ static void drawSpriteHelper(const Point *pt, int num, int xSize, int ySize, int
 
 void GraphicsGL::drawSprite(int listNum, int num, const Point *pt) {
 	assert(listNum < NUM_LISTS);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
 	glViewport(0, 0, FB_W, FB_H);
 
@@ -476,8 +497,8 @@ void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int 
 		_backgroundTex.uploadDataRGB(data, w * 2, w, h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
 		break;
 	}
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
 	glViewport(0, 0, FB_W, FB_H);
 
@@ -515,8 +536,8 @@ void GraphicsGL::drawVerticesToFb(uint8_t color, int count, const Point *vertice
 
 void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 	assert(listNum < NUM_LISTS);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
 	glViewport(0, 0, FB_W, FB_H);
 
@@ -532,8 +553,8 @@ void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 
 void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) {
 	assert(listNum < NUM_LISTS);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
 	glViewport(0, 0, FB_W, FB_H);
 
@@ -549,8 +570,8 @@ void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) 
 
 void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point *pt) {
 	assert(listNum < NUM_LISTS);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
 	glViewport(0, 0, FB_W, FB_H);
 
@@ -648,8 +669,8 @@ void GraphicsGL::drawVerticesTex(int count, const Point *vertices) {
 
 void GraphicsGL::clearBuffer(int listNum, uint8_t color) {
 	assert(listNum < NUM_LISTS);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + listNum);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
 	glViewport(0, 0, FB_W, FB_H);
 
@@ -680,8 +701,8 @@ static void drawTextureFb(GLuint tex, int w, int h, int vscroll) {
 void GraphicsGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
 	assert(dstListNum < NUM_LISTS && srcListNum < NUM_LISTS);
 
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbPage0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + dstListNum);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0 + dstListNum);
 
 	glViewport(0, 0, FB_W, FB_H);
 
@@ -717,7 +738,7 @@ void GraphicsGL::drawBuffer(int listNum, SystemStub *stub) {
 
 	stub->prepareScreen(_w, _h);
 
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glViewport(0, 0, _w, _h);
 
