@@ -14,7 +14,6 @@ static void clut(const uint8_t *src, const uint8_t *pal, int pitch, int w, int h
 			const int b = pal[color * 4];
 			const int g = pal[color * 4 + 1];
 			const int r = pal[color * 4 + 2];
-			const int a = pal[color * 4 + 3];
 			dst[x * bpp]     = r;
 			dst[x * bpp + 1] = g;
 			dst[x * bpp + 2] = b;
@@ -36,8 +35,7 @@ uint8_t *decode_bitmap(const uint8_t *src, bool alpha, int colorKey, int *w, int
 	const int height = READ_LE_UINT32(src + 0x16);
 	const int depth = READ_LE_UINT16(src + 0x1C);
 	const int compression = READ_LE_UINT32(src + 0x1E);
-	const int colorsCount = READ_LE_UINT32(src + 0x2E);
-        if (depth != 8 || compression != 0) {
+	if (depth != 8 || compression != 0) {
 		warning("Unhandled bitmap depth %d compression %d", depth, compression);
 		return 0;
 	}

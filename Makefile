@@ -4,7 +4,7 @@ SDL_LIBS = `sdl2-config --libs` -lSDL2_mixer -lGL
 
 DEFINES = -DBYPASS_PROTECTION
 
-CXXFLAGS := -g -O -MMD -Wuninitialized -Wundef -Wreorder $(SDL_CFLAGS) $(DEFINES)
+CXXFLAGS := -g -O -MMD -Wall $(SDL_CFLAGS) $(DEFINES)
 
 SRCS = aifcplayer.cpp bitmap.cpp file.cpp engine.cpp graphics_gl.cpp graphics_soft.cpp \
 	script.cpp mixer.cpp pak.cpp resource.cpp resource_nth.cpp resource_win31.cpp \

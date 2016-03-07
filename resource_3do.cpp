@@ -3,7 +3,7 @@
 #include "util.h"
 
 
-static int decodeLzss(const uint8_t *src, int len, uint8_t *dst) {
+static int decodeLzss(const uint8_t *src, uint32_t len, uint8_t *dst) {
 	uint32_t rd = 0, wr = 0;
 	int code = 0x100 | src[rd++];
 	while (rd < len) {

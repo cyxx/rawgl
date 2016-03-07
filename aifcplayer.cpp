@@ -18,7 +18,7 @@ bool AifcPlayer::play(int mixRate, const char *path) {
 		_f.read(buf, sizeof(buf));
 		if (memcmp(buf, "FORM", 4) == 0 && memcmp(buf + 8, "AIFC", 4) == 0) {
 			const uint32_t size = READ_BE_UINT32(buf + 4);
-			for (int offset = 12; offset < size; ) {
+			for (uint32_t offset = 12; offset < size; ) {
 				_f.seek(offset);
 				_f.read(buf, 8);
 				const uint32_t sz = READ_BE_UINT32(buf + 4);
@@ -39,8 +39,8 @@ bool AifcPlayer::play(int mixRate, const char *path) {
 					}
 					debug(DBG_SND, "aifc channels %d rate %d bits %d", channels, rate, bits);
 				} else if (memcmp(buf, "SSND", 4) == 0) {
-					const int blockOffset = _f.readUint32BE(); // offset
-					const int blockSize = _f.readUint32BE(); // block size
+					_f.readUint32BE(); // block offset
+					_f.readUint32BE(); // block size
 					_ssndOffset = offset + 8 + 8;
 					_ssndSize = sz;
 					debug(DBG_SND, "aifc ssnd size %d", _ssndSize);

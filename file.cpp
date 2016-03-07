@@ -105,7 +105,7 @@ static bool getFilePathNoCase(const char *filename, const char *path, char *out)
 		}
 		closedir(d);
 	}
-	return true;
+	return ret;
 }
 
 bool File::open(const char *filename, const char *path) {

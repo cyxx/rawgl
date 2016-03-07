@@ -82,7 +82,6 @@ struct Buffer {
 	}
 
 	int fixAddr(int addr) {
-		const uint32_t in = addr;
 		assert((addr & 1) == 0);
 		addr /= 2;
 		assert(addr >= 0x4A30 && addr < 0x52C4);
@@ -367,7 +366,6 @@ uint8_t *ResourceWin31::loadFile(int num, uint8_t *dst, uint32_t *size) {
 }
 
 void ResourceWin31::readStrings() {
-	int count = 0;
 	uint32_t len, offset = 0;
 	_textBuf = loadFile(148, 0, &len);
 	while (1) {

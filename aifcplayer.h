@@ -10,7 +10,7 @@ struct AifcPlayer {
 	File _f;
 	uint32_t _ssndOffset;
 	uint32_t _ssndSize;
-	int _pos;
+	uint32_t _pos;
 	int16_t _samples[2];
 
 	AifcPlayer();

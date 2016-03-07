@@ -71,7 +71,7 @@ void Video::drawShape(uint8_t color, uint16_t zoom, const Point *pt) {
 }
 
 void Video::drawShapePart3DO(int color, int part, const Point *pt) {
-	assert(part < ARRAYSIZE(_vertices3DO));
+	assert(part < (int)ARRAYSIZE(_vertices3DO));
 	const uint8_t *vertices = _vertices3DO[part];
 	const int w = *vertices++;
 	const int h = *vertices++;

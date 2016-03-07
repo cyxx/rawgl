@@ -108,6 +108,8 @@ const char *Resource::getGameTitle(Language lang) const {
 			return kGameTitleUS;
 		}
 		/* fall-through */
+	default:
+		break;
 	}
 	return kGameTitleEU;
 }

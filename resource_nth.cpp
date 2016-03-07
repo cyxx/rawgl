@@ -249,7 +249,7 @@ struct Resource20th: ResourceNth {
 					}
 					_textBuf[count] = 0;
 					count = 0;
-					for (char *p = _textBuf; count < ARRAYSIZE(_stringsTable); ) {
+					for (char *p = _textBuf; count < (int)ARRAYSIZE(_stringsTable); ) {
 						_stringsTable[count++] = p;
 						char *end = strchr(p, '\n');
 						if (!end) {
@@ -261,7 +261,7 @@ struct Resource20th: ResourceNth {
 				}
 			}
 		}
-		if (num >= 0 && num < ARRAYSIZE(_stringsTable)) {
+		if (num >= 0 && num < (int)ARRAYSIZE(_stringsTable)) {
 			return _stringsTable[num];
 		}
 		return 0;

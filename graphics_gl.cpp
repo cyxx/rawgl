@@ -64,16 +64,6 @@ void Texture::init() {
 	_fmt = -1;
 }
 
-static void convertTexture16(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch) {
-	for (int y = 0; y < h; ++y) {
-		for (int x = 0; x < w; ++x) {
-			dst[x] = src[x] * 256 / 16;
-		}
-		dst += dstPitch;
-		src += srcPitch;
-	}
-}
-
 static void convertTextureCLUT(const uint8_t *src, const int srcPitch, int w, int h, uint8_t *dst, int dstPitch, const Color *pal, bool alpha) {
 	for (int y = 0; y < h; ++y) {
 		int offset = 0;
@@ -444,8 +434,8 @@ static void drawSpriteHelper(const Point *pt, int num, int xSize, int ySize, int
 	int u = num % xSize;
 	int v = num / ySize;
 	const float uv[4] = {
-		u * 1. / xSize, v * 1. / ySize,
-		(u + 1) * 1. / xSize, (v + 1) * 1. / ySize
+		u * 1.f / xSize, v * 1.f / ySize,
+		(u + 1) * 1.f / xSize, (v + 1) * 1.f / ySize
 	};
 	glColor4ub(255, 255, 255, 255);
 	drawTexQuad(pos, uv, texId);
@@ -577,8 +567,8 @@ void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point 
 			pt->x + 8, pt->y + 8
 		};
 		const float uv[4] = {
-			(c - 0x20) * 16. / _fontTex._w, 0.,
-			(c - 0x20) * 16. / _fontTex._w + 1 * 8. / _fontTex._w, 1.
+			(c - 0x20) * 16.f / _fontTex._w, 0.f,
+			(c - 0x20) * 16.f / _fontTex._w + 1 * 8.f / _fontTex._w, 1.f
 		};
 		drawTexQuad(pos, uv, _fontTex._id);
 	} else {
@@ -587,10 +577,10 @@ void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point 
 			pt->x, pt->y + 8
 		};
 		float uv[4];
-		uv[0] = (c % 16) * 16 / 256.;
-		uv[2] = uv[0] + 16 / 256.;
-		uv[1] = (c / 16) * 16 / 256.;
-		uv[3] = uv[1] + 16 / 256.;
+		uv[0] = (c % 16) * 16 / 256.f;
+		uv[2] = uv[0] + 16 / 256.f;
+		uv[1] = (c / 16) * 16 / 256.f;
+		uv[3] = uv[1] + 16 / 256.f;
 		drawTexQuad(pos, uv, _fontTex._id);
 	}
 
