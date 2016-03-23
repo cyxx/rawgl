@@ -10,11 +10,15 @@
 #include "util.h"
 
 struct SystemStub_SDL : SystemStub {
+
+	static const int kJoystickCommitValue = 8000;
+
 	int _w, _h;
 	SDL_Window *_window;
 	SDL_Renderer *_renderer;
 	int _texW, _texH;
 	SDL_Texture *_texture;
+	SDL_Joystick *_joystick;
 
 	SystemStub_SDL();
 	virtual ~SystemStub_SDL() {}
@@ -36,16 +40,24 @@ SystemStub_SDL::SystemStub_SDL()
 }
 
 void SystemStub_SDL::init(int windowW, int windowH, const char *title) {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
 	SDL_ShowCursor(SDL_DISABLE);
 	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
 	SDL_GetWindowSize(_window, &_w, &_h);
+	_joystick = 0;
+	if (SDL_NumJoysticks() > 0) {
+		_joystick = SDL_JoystickOpen(0);
+	}
 }
 
 void SystemStub_SDL::fini() {
 	if (_texture) {
 		SDL_DestroyTexture(_texture);
+	}
+	if (_joystick) {
+		SDL_JoystickClose(_joystick);
+		_joystick = 0;
 	}
 	SDL_DestroyRenderer(_renderer);
 	SDL_DestroyWindow(_window);
@@ -152,6 +164,61 @@ void SystemStub_SDL::processEvents() {
 			default:
 				break;
 			}
+			break;
+		case SDL_JOYHATMOTION:
+			_pi.dirMask = 0;
+			if (ev.jhat.value & SDL_HAT_UP) {
+				_pi.dirMask |= PlayerInput::DIR_UP;
+			}
+			if (ev.jhat.value & SDL_HAT_DOWN) {
+				_pi.dirMask |= PlayerInput::DIR_DOWN;
+			}
+			if (ev.jhat.value & SDL_HAT_LEFT) {
+				_pi.dirMask |= PlayerInput::DIR_LEFT;
+			}
+			if (ev.jhat.value & SDL_HAT_RIGHT) {
+				_pi.dirMask |= PlayerInput::DIR_RIGHT;
+			}
+			break;
+		case SDL_JOYAXISMOTION:
+			switch (ev.jaxis.axis) {
+			case 0:
+				if (ev.jaxis.value > kJoystickCommitValue) {
+					_pi.dirMask |= PlayerInput::DIR_RIGHT;
+					if (_pi.dirMask & PlayerInput::DIR_LEFT) {
+						_pi.dirMask &= ~PlayerInput::DIR_LEFT;
+					}
+				} else if (ev.jaxis.value < -kJoystickCommitValue) {
+					_pi.dirMask |= PlayerInput::DIR_LEFT;
+					if (_pi.dirMask & PlayerInput::DIR_RIGHT) {
+						_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
+					}
+				} else {
+					_pi.dirMask &= ~(PlayerInput::DIR_RIGHT | PlayerInput::DIR_LEFT);
+				}
+				break;
+			case 1:
+				if (ev.jaxis.value > kJoystickCommitValue) {
+					_pi.dirMask |= PlayerInput::DIR_DOWN;
+					if (_pi.dirMask & PlayerInput::DIR_UP) {
+						_pi.dirMask &= ~PlayerInput::DIR_UP;
+					}
+				} else if (ev.jaxis.value < -kJoystickCommitValue) {
+					_pi.dirMask |= PlayerInput::DIR_UP;
+					if (_pi.dirMask & PlayerInput::DIR_DOWN) {
+						_pi.dirMask &= ~PlayerInput::DIR_DOWN;
+					}
+				} else {
+					_pi.dirMask &= ~(PlayerInput::DIR_UP | PlayerInput::DIR_DOWN);
+				}
+				break;
+			}
+			break;
+		case SDL_JOYBUTTONDOWN:
+			_pi.button = true;
+			break;
+		case SDL_JOYBUTTONUP:
+			_pi.button = false;
 			break;
 		default:
 			break;
