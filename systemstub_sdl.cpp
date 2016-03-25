@@ -59,10 +59,14 @@ void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, int win
 	SDL_GetWindowSize(_window, &_w, &_h);
 
 	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
-	if (opengl) {
+	if (!windowed) {
 		setAspectRatio(_w, _h);
+		if (!opengl) {
+			SDL_RenderSetLogicalSize(_renderer, 320 * 3, 200 * 4);
+		}
 	} else {
-		SDL_RenderSetLogicalSize(_renderer, 320 * 3, 200 * 4);
+		_aspectRatio[0] = _aspectRatio[1] = 0.;
+		_aspectRatio[2] = _aspectRatio[3] = 1.;
 	}
 	_joystick = 0;
 	if (SDL_NumJoysticks() > 0) {
