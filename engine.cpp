@@ -14,6 +14,7 @@
 Engine::Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum)
 	: _graphics(graphics), _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(&_ply), _res(&_vid, dataDir),
 	_ply(&_res), _vid(&_res), _partNum(partNum) {
+	_res.detectVersion();
 }
 
 static const int _restartPos[36 * 2] = {
@@ -27,9 +28,7 @@ static const int _restartPos[36 * 2] = {
 	16007, 0
 };
 
-void Engine::run(int w, int h, Language lang) {
-	_res.detectVersion();
-	_stub->init(_res.getGameTitle(lang), true, true, w, h);
+void Engine::run(Language lang) {
 	setup();
 	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA) {
 		switch (lang) {
@@ -55,7 +54,6 @@ void Engine::run(int w, int h, Language lang) {
 		_mix.update();
 	}
 	finish();
-	_stub->fini();
 }
 
 void Engine::setup() {

@@ -30,7 +30,9 @@ struct Engine {
 
 	Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum);
 
-	void run(int w, int h, Language lang);
+	const char *getGameTitle(Language lang) const { return _res.getGameTitle(lang); }
+
+	void run(Language lang);
 	void setup();
 	void finish();
 	void processInput();

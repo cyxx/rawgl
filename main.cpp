@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
 	int graphicsType = GRAPHICS_GL;
 	int windowW = DEFAULT_WINDOW_W;
 	int windowH = DEFAULT_WINDOW_H;
+	bool fullscreen = false;
 	while (1) {
 		static struct option options[] = {
 			{ "datapath", required_argument, 0, 'd' },
@@ -75,6 +76,7 @@ int main(int argc, char *argv[]) {
 			{ "part",     required_argument, 0, 'p' },
 			{ "render",   required_argument, 0, 'r' },
 			{ "window",   required_argument, 0, 'w' },
+			{ "fullscreen", no_argument,     0, 'f' },
 			{ 0, 0, 0, 0 }
 		};
 		int index;
@@ -108,6 +110,9 @@ int main(int argc, char *argv[]) {
 		case 'w':
 			sscanf(optarg, "%dx%d", &windowW, &windowH);
 			break;
+		case 'f':
+			fullscreen = true;
+			break;
 		default:
 			printf("%s\n", USAGE);
 			return 0;
@@ -117,8 +122,10 @@ int main(int argc, char *argv[]) {
 	Graphics *graphics = createGraphics(graphicsType);
 	SystemStub *stub = SystemStub_SDL_create();
 	Engine *e = new Engine(graphics, stub, dataPath, part);
-	e->run(windowW, windowH, lang);
+	stub->init(e->getGameTitle(lang), graphicsType == GRAPHICS_GL, !fullscreen, windowW, windowH);
+	e->run(lang);
 	delete e;
+	stub->fini();
 	delete stub;
 	return 0;
 }
