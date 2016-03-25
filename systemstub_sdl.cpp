@@ -12,8 +12,10 @@
 struct SystemStub_SDL : SystemStub {
 
 	static const int kJoystickCommitValue = 8000;
+	static const float kAspectRatio = 4 / 3.;
 
 	int _w, _h;
+	float _aspectRatio[4];
 	SDL_Window *_window;
 	SDL_Renderer *_renderer;
 	int _texW, _texH;
@@ -23,28 +25,45 @@ struct SystemStub_SDL : SystemStub {
 	SystemStub_SDL();
 	virtual ~SystemStub_SDL() {}
 
-	virtual void init(int windowW, int windowH, const char *title);
+	virtual void init(const char *title, bool opengl, bool windowed, int windowW, int windowH);
 	virtual void fini();
 
-	virtual void prepareScreen(int &w, int &h) const { w = _w; h = _h; }
+	virtual void prepareScreen(int &w, int &h, float ar[4]);
 	virtual void updateScreen();
 	virtual void setScreenPixels565(const uint16_t *data, int w, int h);
 
 	virtual void processEvents();
 	virtual void sleep(uint32_t duration);
 	virtual uint32_t getTimeStamp();
+
+	void setAspectRatio(int w, int h);
 };
 
 SystemStub_SDL::SystemStub_SDL()
 	: _w(0), _h(0), _window(0), _renderer(0), _texW(0), _texH(0), _texture(0) {
 }
 
-void SystemStub_SDL::init(int windowW, int windowH, const char *title) {
+void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, int windowW, int windowH) {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
 	SDL_ShowCursor(SDL_DISABLE);
-	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
+
+	int flags = opengl ? SDL_WINDOW_OPENGL : 0;
+	if (windowed) {
+		flags |= SDL_WINDOW_RESIZABLE;
+	} else {
+		flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		windowW = 0;
+		windowH = 0;
+	}
+	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH, flags);
 	SDL_GetWindowSize(_window, &_w, &_h);
+
+	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
+	if (opengl) {
+		setAspectRatio(_w, _h);
+	} else {
+		SDL_RenderSetLogicalSize(_renderer, 320 * 3, 200 * 4);
+	}
 	_joystick = 0;
 	if (SDL_NumJoysticks() > 0) {
 		_joystick = SDL_JoystickOpen(0);
@@ -62,6 +81,15 @@ void SystemStub_SDL::fini() {
 	SDL_DestroyRenderer(_renderer);
 	SDL_DestroyWindow(_window);
 	SDL_Quit();
+}
+
+void SystemStub_SDL::prepareScreen(int &w, int &h, float ar[4]) {
+	w = _w;
+	h = _h;
+	ar[0] = _aspectRatio[0];
+	ar[1] = _aspectRatio[1];
+	ar[2] = _aspectRatio[2];
+	ar[3] = _aspectRatio[3];
 }
 
 void SystemStub_SDL::updateScreen() {
@@ -232,6 +260,35 @@ void SystemStub_SDL::sleep(uint32_t duration) {
 
 uint32_t SystemStub_SDL::getTimeStamp() {
 	return SDL_GetTicks();
+}
+
+void SystemStub_SDL::setAspectRatio(int w, int h) {
+	const float currentAspectRatio = w / (float)h;
+	if (int(currentAspectRatio * 100) == int(kAspectRatio * 100)) {
+		_aspectRatio[0] = 0.;
+		_aspectRatio[1] = 0.;
+		_aspectRatio[2] = 1.;
+		_aspectRatio[3] = 1.;
+		return;
+	}
+	// pillar box
+	if (currentAspectRatio > kAspectRatio) {
+		const float inset = 1. - kAspectRatio / currentAspectRatio;
+		_aspectRatio[0] = inset / 2;
+		_aspectRatio[1] = 0.;
+		_aspectRatio[2] = 1. - inset;
+		_aspectRatio[3] = 1.;
+		return;
+	}
+	// letter box
+	if (currentAspectRatio < kAspectRatio) {
+		const float inset = 1. - currentAspectRatio / kAspectRatio;
+		_aspectRatio[0] = 0.;
+		_aspectRatio[1] = inset / 2;
+		_aspectRatio[2] = 1.;
+		_aspectRatio[3] = 1. - inset;
+		return;
+	}
 }
 
 SystemStub *SystemStub_SDL_create() {

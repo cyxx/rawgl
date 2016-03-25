@@ -736,15 +736,22 @@ static void dumpPalette(const Color *pal) {
 void GraphicsGL::drawBuffer(int listNum, SystemStub *stub) {
 	assert(listNum < NUM_LISTS);
 
-	stub->prepareScreen(_w, _h);
-
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	float ar[4];
+	stub->prepareScreen(_w, _h, ar);
+
 	glViewport(0, 0, _w, _h);
+
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, _w, _h, 0, 0, 1);
+
+	glPushMatrix();
+	glTranslatef(ar[0] * _w, ar[1] * _h, 0.);
+	glScalef(ar[2], ar[3], 1.);
 
 	drawTextureFb(_pageTex[listNum], _w, _h, 0);
 	if (0) {
@@ -752,6 +759,7 @@ void GraphicsGL::drawBuffer(int listNum, SystemStub *stub) {
 		dumpPalette(_pal);
 	}
 
+	glPopMatrix();
 	stub->updateScreen();
 }
 

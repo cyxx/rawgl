@@ -36,11 +36,11 @@ struct SystemStub {
 	}
 	virtual ~SystemStub() {}
 
-	virtual void init(int windowW, int windowH, const char *title) = 0;
+	virtual void init(const char *title, bool opengl, bool windowed, int windowW, int windowH) = 0;
 	virtual void fini() = 0;
 
 	// GL rendering
-	virtual void prepareScreen(int &w, int &h) const = 0;
+	virtual void prepareScreen(int &w, int &h, float ar[4]) = 0;
 	virtual void updateScreen() = 0;
 	// framebuffer rendering
 	virtual void setScreenPixels565(const uint16_t *data, int w, int h) = 0;

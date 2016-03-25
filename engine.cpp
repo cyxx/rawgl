@@ -29,7 +29,7 @@ static const int _restartPos[36 * 2] = {
 
 void Engine::run(int w, int h, Language lang) {
 	_res.detectVersion();
-	_stub->init(w, h, _res.getGameTitle(lang));
+	_stub->init(_res.getGameTitle(lang), true, true, w, h);
 	setup();
 	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA) {
 		switch (lang) {
