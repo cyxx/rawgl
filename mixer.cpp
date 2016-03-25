@@ -13,7 +13,7 @@
 #include "systemstub.h"
 #include "util.h"
 
-static uint8_t *convertToWav(const uint8_t *data, int freq, int size) {
+static uint8_t *convertMono8ToWav(const uint8_t *data, int freq, int size, const uint8_t mask = 0) {
 	static const uint8_t kHeaderData[] = {
 		0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20, // RIFF$...WAVEfmt
 		0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x7d, 0x00, 0x00, 0x00, 0x7d, 0x00, 0x00, // .........}...}..
@@ -27,7 +27,7 @@ static uint8_t *convertToWav(const uint8_t *data, int freq, int size) {
 		int rsmp = 0;
 		const float step = freq / float(kHz);
 		for (float pos = 0.; pos < size; pos += step) {
-			out[sizeof(kHeaderData) + rsmp] = data[int(pos)] ^ 0x80; // S8 to U8
+			out[sizeof(kHeaderData) + rsmp] = data[int(pos)] ^ mask; // S8 to U8
 			++rsmp;
 		}
 		// fixup .wav header
@@ -78,35 +78,43 @@ struct Mixer_impl {
 		if (loopLen != 0) {
 			len = loopLen;
 		}
-		uint8_t *sample = convertToWav(data + 8, freq, len);
+		uint8_t *sample = convertMono8ToWav(data + 8, freq, len, 0x80);
 		if (sample) {
 			playSoundWav(channel, sample, volume, (loopLen != 0) ? -1 : 0);
 			free(sample);
 		}
 	}
 	void playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume, int loops = 0) {
-		uint32_t size = READ_LE_UINT32(data + 4) + 8;
-		// check format for QuickLoad
-		bool canQuickLoad = (AUDIO_S16SYS == AUDIO_S16LSB);
-		if (canQuickLoad) {
-			if (memcmp(data + 8, "WAVEfmt ", 8) == 0 && READ_LE_UINT32(data + 16) == 16) {
-				const uint8_t *fmt = data + 20;
-				const int format = READ_LE_UINT16(fmt);
-				const int channels = READ_LE_UINT16(fmt + 2);
-				const int rate = READ_LE_UINT32(fmt + 4);
-				const int bits = READ_LE_UINT16(fmt + 14);
-				debug(DBG_SND, "wave format %d channels %d rate %d bits %d", format, channels, rate, bits);
-				canQuickLoad = (format == 1 && channels == 2 && rate == kMixFreq && bits == 16);
+		if (memcmp(data + 8, "WAVEfmt ", 8) == 0 && READ_LE_UINT32(data + 16) == 16) {
+			const uint8_t *fmt = data + 20;
+			const int format = READ_LE_UINT16(fmt);
+			const int channels = READ_LE_UINT16(fmt + 2);
+			const int rate = READ_LE_UINT32(fmt + 4);
+			const int bits = READ_LE_UINT16(fmt + 14);
+			debug(DBG_SND, "wave format %d channels %d rate %d bits %d", format, channels, rate, bits);
+			const bool canQuickLoad = (format == 1 && channels == 2 && rate == kMixFreq && bits == 16);
+			if (canQuickLoad && (AUDIO_S16SYS == AUDIO_S16LSB)) {
+				Mix_Chunk *chunk = Mix_QuickLoad_WAV(const_cast<uint8_t *>(data));
+				playSound(channel, volume, chunk, loops);
+				return;
+			}
+			const bool convert = (format == 1 && channels == 1 && bits == 8 && (rate % 11025) != 0);
+			if (convert && memcmp(data + 36, "data", 4) == 0) {
+				const int size = READ_LE_UINT32(data + 40);
+				uint8_t *sample = convertMono8ToWav(data + 44, rate, size);
+				if (sample) {
+					SDL_RWops *rw = SDL_RWFromConstMem(sample, READ_LE_UINT32(sample + 4) + 8);
+					Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
+					playSound(channel, volume, chunk, loops);
+					free(sample);
+				}
+				return;
 			}
                 }
-		if (canQuickLoad) {
-			Mix_Chunk *chunk = Mix_QuickLoad_WAV(const_cast<uint8_t *>(data));
-			playSound(channel, volume, chunk, loops);
-		} else {
-			SDL_RWops *rw = SDL_RWFromConstMem(data, size);
-			Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
-			playSound(channel, volume, chunk, loops);
-		}
+		const uint32_t size = READ_LE_UINT32(data + 4) + 8;
+		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
+		Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
+		playSound(channel, volume, chunk, loops);
 	}
 	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
 		const uint32_t size = READ_BE_UINT32(data + 4) + 8;
