@@ -25,7 +25,7 @@ struct SystemStub_SDL : SystemStub {
 	SystemStub_SDL();
 	virtual ~SystemStub_SDL() {}
 
-	virtual void init(const char *title, bool opengl, bool windowed, int windowW, int windowH);
+	virtual void init(const char *title, bool opengl, bool windowed, bool aspect, int windowW, int windowH);
 	virtual void fini();
 
 	virtual void prepareScreen(int &w, int &h, float ar[4]);
@@ -43,7 +43,7 @@ SystemStub_SDL::SystemStub_SDL()
 	: _w(0), _h(0), _window(0), _renderer(0), _texW(0), _texH(0), _texture(0) {
 }
 
-void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, int windowW, int windowH) {
+void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, bool aspect, int windowW, int windowH) {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
 	SDL_ShowCursor(SDL_DISABLE);
 
@@ -61,7 +61,7 @@ void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, int win
 	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
 	if (!windowed) {
 		setAspectRatio(_w, _h);
-		if (!opengl) {
+		if (!opengl && aspect) {
 			SDL_RenderSetLogicalSize(_renderer, 320 * 3, 200 * 4);
 		}
 	} else {
