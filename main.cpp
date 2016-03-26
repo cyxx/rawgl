@@ -5,6 +5,7 @@
  */
 
 #include <getopt.h>
+#include <sys/stat.h>
 #include "engine.h"
 #include "graphics.h"
 #include "systemstub.h"
@@ -12,13 +13,14 @@
 
 
 static const char *USAGE = 
-	"Raw - Another World Interpreter\n"
-	"Usage: raw [OPTIONS]...\n"
-	"  --datapath=PATH   Path to where the game is installed (default '.')\n"
-	"  --language=LANG   Language of the game to use (fr,us)\n"
-	"  --part=NUM        Starts at specific game part (0-35 or 16001-16009)\n"
-	"  --render=NAME     Renderer to use (original,gl)\n"
-	"  --window=WxH      Window size\n"
+	"Raw(gl) - Another World Interpreter\n"
+	"Usage: rawgl [OPTIONS]...\n"
+	"  --datapath=PATH   Path to data files (default '.')\n"
+	"  --language=LANG   Language (fr,us)\n"
+	"  --part=NUM        Game part to start from (0-35 or 16001-16009)\n"
+	"  --render=NAME     Renderer (original,software,gl)\n"
+	"  --window=WxH      Windowed displayed size (default '640x480')\n"
+	"  --fullscreen      Fullscreen display\n"
 	;
 
 static const struct {
@@ -69,6 +71,13 @@ int main(int argc, char *argv[]) {
 	int windowW = DEFAULT_WINDOW_W;
 	int windowH = DEFAULT_WINDOW_H;
 	bool fullscreen = false;
+	if (argc == 2) {
+		// data path as the only command line argument
+		struct stat st;
+		if (stat(argv[1], &st) == 0 && S_ISDIR(st.st_mode)) {
+			dataPath = strdup(argv[1]);
+		}
+	}
 	while (1) {
 		static struct option options[] = {
 			{ "datapath", required_argument, 0, 'd' },
@@ -77,6 +86,7 @@ int main(int argc, char *argv[]) {
 			{ "render",   required_argument, 0, 'r' },
 			{ "window",   required_argument, 0, 'w' },
 			{ "fullscreen", no_argument,     0, 'f' },
+			{ "help",       no_argument,     0, 'h' },
 			{ 0, 0, 0, 0 }
 		};
 		int index;
@@ -113,6 +123,8 @@ int main(int argc, char *argv[]) {
 		case 'f':
 			fullscreen = true;
 			break;
+		case 'h':
+			// fall-through
 		default:
 			printf("%s\n", USAGE);
 			return 0;
