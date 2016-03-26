@@ -743,6 +743,7 @@ void GraphicsGL::drawBuffer(int listNum, SystemStub *stub) {
 
 	glViewport(0, 0, _w, _h);
 
+	glClearColor(0., 0., 0., 1.);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);

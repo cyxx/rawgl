@@ -59,6 +59,8 @@ void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, int win
 	SDL_GetWindowSize(_window, &_w, &_h);
 
 	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
+	SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
+	SDL_RenderClear(_renderer);
 	if (!windowed) {
 		setAspectRatio(_w, _h);
 		if (!opengl) {
