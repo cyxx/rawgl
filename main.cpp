@@ -19,6 +19,8 @@ static const char *USAGE =
 	"  --part=NUM        Starts at specific game part (0-35 or 16001-16009)\n"
 	"  --render=NAME     Renderer to use (original,gl)\n"
 	"  --window=WxH      Window size\n"
+	"  --fullscreen	     Run the game in fullscreen mode\n"
+	"  --noaspect	     Do not apply aspect ratio correction in fullscreen mode\n"
 	;
 
 static const struct {
@@ -69,6 +71,7 @@ int main(int argc, char *argv[]) {
 	int windowW = DEFAULT_WINDOW_W;
 	int windowH = DEFAULT_WINDOW_H;
 	bool fullscreen = false;
+	bool noaspect = false;
 	while (1) {
 		static struct option options[] = {
 			{ "datapath", required_argument, 0, 'd' },
@@ -77,6 +80,7 @@ int main(int argc, char *argv[]) {
 			{ "render",   required_argument, 0, 'r' },
 			{ "window",   required_argument, 0, 'w' },
 			{ "fullscreen", no_argument,     0, 'f' },
+			{ "noaspect",   no_argument,     0, 'a' },
 			{ 0, 0, 0, 0 }
 		};
 		int index;
@@ -113,6 +117,9 @@ int main(int argc, char *argv[]) {
 		case 'f':
 			fullscreen = true;
 			break;
+		case 'a':
+			noaspect = true;
+			break;
 		default:
 			printf("%s\n", USAGE);
 			return 0;
@@ -122,7 +129,7 @@ int main(int argc, char *argv[]) {
 	Graphics *graphics = createGraphics(graphicsType);
 	SystemStub *stub = SystemStub_SDL_create();
 	Engine *e = new Engine(graphics, stub, dataPath, part);
-	stub->init(e->getGameTitle(lang), graphicsType == GRAPHICS_GL, !fullscreen, windowW, windowH);
+	stub->init(e->getGameTitle(lang), graphicsType == GRAPHICS_GL, !fullscreen, !noaspect, windowW, windowH);
 	e->run(lang);
 	delete e;
 	stub->fini();
