@@ -19,6 +19,7 @@ static const char *USAGE =
 	"  --part=NUM        Starts at specific game part (0-35 or 16001-16009)\n"
 	"  --render=NAME     Renderer to use (original,gl)\n"
 	"  --window=WxH      Window size\n"
+	"  --fullscreen	     Run the game in fullscreen mode\n"
 	"  --noaspect	     Do not apply aspect ratio correction in fullscreen mode\n"
 	;
 
