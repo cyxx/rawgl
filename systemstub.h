@@ -26,6 +26,16 @@ struct PlayerInput {
 	bool fastMode;
 };
 
+struct DisplayMode {
+	enum {
+		WINDOWED,
+		FULLSCREEN,    // stretch
+		FULLSCREEN_AR, // 4:3 aspect ratio
+	} mode;
+	int width, height; // window dimensions
+	bool opengl;       // GL renderer
+};
+
 struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
 
@@ -36,7 +46,7 @@ struct SystemStub {
 	}
 	virtual ~SystemStub() {}
 
-	virtual void init(const char *title, bool opengl, bool windowed, int windowW, int windowH) = 0;
+	virtual void init(const char *title, const DisplayMode *dm) = 0;
 	virtual void fini() = 0;
 
 	// GL rendering

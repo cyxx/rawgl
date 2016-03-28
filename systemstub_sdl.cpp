@@ -25,7 +25,7 @@ struct SystemStub_SDL : SystemStub {
 	SystemStub_SDL();
 	virtual ~SystemStub_SDL() {}
 
-	virtual void init(const char *title, bool opengl, bool windowed, int windowW, int windowH);
+	virtual void init(const char *title, const DisplayMode *dm);
 	virtual void fini();
 
 	virtual void prepareScreen(int &w, int &h, float ar[4]);
@@ -43,17 +43,19 @@ SystemStub_SDL::SystemStub_SDL()
 	: _w(0), _h(0), _window(0), _renderer(0), _texW(0), _texH(0), _texture(0) {
 }
 
-void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, int windowW, int windowH) {
+void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
 	SDL_ShowCursor(SDL_DISABLE);
 
-	int flags = opengl ? SDL_WINDOW_OPENGL : 0;
-	if (windowed) {
+	int windowW = 0;
+	int windowH = 0;
+	int flags = dm->opengl ? SDL_WINDOW_OPENGL : 0;
+	if (dm->mode == DisplayMode::WINDOWED) {
 		flags |= SDL_WINDOW_RESIZABLE;
+		windowW = dm->width;
+		windowH = dm->height;
 	} else {
 		flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-		windowW = 0;
-		windowH = 0;
 	}
 	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH, flags);
 	SDL_GetWindowSize(_window, &_w, &_h);
@@ -61,9 +63,9 @@ void SystemStub_SDL::init(const char *title, bool opengl, bool windowed, int win
 	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
 	SDL_RenderClear(_renderer);
-	if (!windowed) {
+	if (dm->mode == DisplayMode::FULLSCREEN_AR) {
 		setAspectRatio(_w, _h);
-		if (!opengl) {
+		if (!dm->opengl) {
 			SDL_RenderSetLogicalSize(_renderer, 320 * 3, 200 * 4);
 		}
 	} else {

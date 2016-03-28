@@ -20,7 +20,8 @@ static const char *USAGE =
 	"  --part=NUM        Game part to start from (0-35 or 16001-16009)\n"
 	"  --render=NAME     Renderer (original,software,gl)\n"
 	"  --window=WxH      Windowed displayed size (default '640x480')\n"
-	"  --fullscreen      Fullscreen display\n"
+	"  --fullscreen      Fullscreen display (stretched)\n"
+	"  --fullscreen-ar   Fullscreen display (4:3 aspect ratio)\n"
 	;
 
 static const struct {
@@ -68,9 +69,11 @@ int main(int argc, char *argv[]) {
 	int part = 16001;
 	Language lang = LANG_FR;
 	int graphicsType = GRAPHICS_GL;
-	int windowW = DEFAULT_WINDOW_W;
-	int windowH = DEFAULT_WINDOW_H;
-	bool fullscreen = false;
+	DisplayMode dm;
+	dm.mode   = DisplayMode::WINDOWED;
+	dm.width  = DEFAULT_WINDOW_W;
+	dm.height = DEFAULT_WINDOW_H;
+	dm.opengl = (graphicsType == GRAPHICS_GL);
 	if (argc == 2) {
 		// data path as the only command line argument
 		struct stat st;
@@ -86,6 +89,7 @@ int main(int argc, char *argv[]) {
 			{ "render",   required_argument, 0, 'r' },
 			{ "window",   required_argument, 0, 'w' },
 			{ "fullscreen", no_argument,     0, 'f' },
+			{ "fullscreen-ar", no_argument,  0, 'a' },
 			{ "help",       no_argument,     0, 'h' },
 			{ 0, 0, 0, 0 }
 		};
@@ -113,15 +117,19 @@ int main(int argc, char *argv[]) {
 			for (int i = 0; GRAPHICS[i].name; ++i) {
 				if (strcmp(optarg, GRAPHICS[i].name) == 0) {
 					graphicsType = GRAPHICS[i].type;
+					dm.opengl = (graphicsType == GRAPHICS_GL);
 					break;
 				}
 			}
 			break;
 		case 'w':
-			sscanf(optarg, "%dx%d", &windowW, &windowH);
+			sscanf(optarg, "%dx%d", &dm.width, &dm.height);
 			break;
 		case 'f':
-			fullscreen = true;
+			dm.mode = DisplayMode::FULLSCREEN;
+			break;
+		case 'a':
+			dm.mode = DisplayMode::FULLSCREEN_AR;
 			break;
 		case 'h':
 			// fall-through
@@ -134,7 +142,7 @@ int main(int argc, char *argv[]) {
 	Graphics *graphics = createGraphics(graphicsType);
 	SystemStub *stub = SystemStub_SDL_create();
 	Engine *e = new Engine(graphics, stub, dataPath, part);
-	stub->init(e->getGameTitle(lang), graphicsType == GRAPHICS_GL, !fullscreen, windowW, windowH);
+	stub->init(e->getGameTitle(lang), &dm);
 	e->run(lang);
 	delete e;
 	stub->fini();
