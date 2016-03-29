@@ -54,7 +54,7 @@ struct Resource {
 	};
 
 	enum {
-		MEM_BLOCK_SIZE = 600 * 1024,
+		MEM_BLOCK_SIZE = 4 * 1024 * 1024,
 		ENTRIES_COUNT = 146,
 	};
 

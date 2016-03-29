@@ -44,7 +44,7 @@ void Pak::readEntries() {
 	const uint32_t entriesSize = READ_LE_UINT32(header + 8);
 	_entriesCount = entriesSize / 0x40;
 	debug(DBG_PAK, "Pak::readEntries() entries count %d", _entriesCount);
-	_entries = (PakEntry *)malloc(_entriesCount * sizeof(PakEntry));
+	_entries = (PakEntry *)calloc(_entriesCount, sizeof(PakEntry));
 	if (!_entries) {
 		_entriesCount = 0;
 		return;
@@ -56,7 +56,7 @@ void Pak::readEntries() {
 			break;
 		}
 		const char *name = (const char *)buf;
-		if (strncmp(name, "dlx/", 4) != 0 || strchr(name + 4, '/')) {
+		if (strncmp(name, "dlx/", 4) != 0) {
 			continue;
 		}
 		PakEntry *e = &_entries[i];

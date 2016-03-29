@@ -57,13 +57,9 @@ struct Resource15th: ResourceNth {
 	}
 
 	virtual uint8_t *loadWav(int num, uint8_t *dst, uint32_t *size) {
-		char name[16];
-		snprintf(name, sizeof(name), "file%03d.wav", num);
+		char name[32];
+		snprintf(name, sizeof(name), "rmsnd/file%03d.wav", num);
 		const PakEntry *e = _pak.find(name);
-		if (!e) {
-			snprintf(name, sizeof(name), "file%03db.wav", num);
-			e = _pak.find(name);
-		}
 		if (e) {
 			_pak.loadData(e, dst, size);
 			return dst;
