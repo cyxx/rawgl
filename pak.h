@@ -18,8 +18,11 @@ struct Pak {
 	PakEntry *_entries;
 	int _entriesCount;
 
-	Pak(const char *dataPath);
+	Pak();
 	~Pak();
+
+	void open(const char *dataPath);
+	void close();
 
 	void readEntries();
 	const PakEntry *find(const char *name);

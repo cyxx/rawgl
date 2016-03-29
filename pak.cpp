@@ -22,13 +22,22 @@ static uint8_t *decode_toodc(uint8_t *p, int count) {
 
 const char *Pak::FILENAME = "Pak01.pak";
 
-Pak::Pak(const char *dataPath)
+Pak::Pak()
 	: _entries(0), _entriesCount(0) {
-	_f.open(FILENAME, dataPath);
 }
 
 Pak::~Pak() {
+	close();
+}
+
+void Pak::open(const char *dataPath) {
+	_f.open(FILENAME, dataPath);
+}
+
+void Pak::close() {
 	free(_entries);
+	_entries = 0;
+	_entriesCount = 0;
 }
 
 void Pak::readEntries() {

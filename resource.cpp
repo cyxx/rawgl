@@ -53,6 +53,12 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 	}
 }
 
+static bool check15th(File &f, const char *dataDir) {
+	char path[MAXPATHLEN];
+	snprintf(path, sizeof(path), "%s/Data", dataDir);
+	return f.open(Pak::FILENAME, path);
+}
+
 static bool check20th(File &f, const char *dataDir) {
 	char path[MAXPATHLEN];
 	snprintf(path, sizeof(path), "%s/game/DAT", dataDir);
@@ -67,7 +73,7 @@ static bool check3DO(File &f, const char *dataDir) {
 
 void Resource::detectVersion() {
 	File f;
-	if (f.open(Pak::FILENAME, _dataDir)) {
+	if (check15th(f, _dataDir)) {
 		_dataType = DT_15TH_EDITION;
 		debug(DBG_INFO, "Using 15th anniversary edition data files");
 	} else if (check20th(f, _dataDir)) {

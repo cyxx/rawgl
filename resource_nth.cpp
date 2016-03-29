@@ -8,12 +8,14 @@
 
 struct Resource15th: ResourceNth {
 	Pak _pak;
+	char _dataPath[MAXPATHLEN];
 
-	Resource15th(const char *dataPath)
-		: _pak(dataPath) {
+	Resource15th(const char *dataPath) {
+		snprintf(_dataPath, sizeof(_dataPath), "%s/Data", dataPath);
 	}
 
 	virtual bool init() {
+		_pak.open(_dataPath);
 		_pak.readEntries();
 		return _pak._entriesCount != 0;
 	}
@@ -78,10 +80,10 @@ struct Resource15th: ResourceNth {
 		const char *path = 0;
 		switch (num) {
 		case 7:
-			path = "Intro2004.wav";
+			path = "Music/AW/RmSnd/Intro2004.wav";
 			break;
 		case 138:
-			path = "End2004.wav";
+			path = "Music/AW/RmSnd/End2004.wav";
 			break;
 		}
 		return path;
