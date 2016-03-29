@@ -233,6 +233,15 @@ struct Resource20th: ResourceNth {
 			case LANG_US:
 				name = "EN";
 				break;
+			case LANG_DE:
+				name = "DE";
+				break;
+			case LANG_ES:
+				name = "ES";
+				break;
+			case LANG_IT:
+				name = "IT";
+				break;
 			default:
 				return 0;
 			}

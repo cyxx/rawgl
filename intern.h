@@ -59,6 +59,9 @@ inline void WRITE_LE_UINT32(uint8_t *ptr, uint32_t value) {
 enum Language {
 	LANG_FR,
 	LANG_US,
+	LANG_DE,
+	LANG_ES,
+	LANG_IT
 };
 
 struct Ptr {

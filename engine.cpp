@@ -36,6 +36,7 @@ void Engine::run(Language lang) {
 			_vid._stringsTable = Video::_stringsTableFr;
 			break;
 		case LANG_US:
+		default:
 			_vid._stringsTable = Video::_stringsTableEng;
 			break;
 		}

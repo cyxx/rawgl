@@ -16,7 +16,7 @@ static const char *USAGE =
 	"Raw(gl) - Another World Interpreter\n"
 	"Usage: rawgl [OPTIONS]...\n"
 	"  --datapath=PATH   Path to data files (default '.')\n"
-	"  --language=LANG   Language (fr,us)\n"
+	"  --language=LANG   Language (fr,us,de,es,it)\n"
 	"  --part=NUM        Game part to start from (0-35 or 16001-16009)\n"
 	"  --render=NAME     Renderer (original,software,gl)\n"
 	"  --window=WxH      Windowed displayed size (default '640x480')\n"
@@ -28,8 +28,11 @@ static const struct {
 	const char *name;
 	int lang;
 } LANGUAGES[] = {
-	{ "fr", LANG_FR  },
-	{ "us", LANG_US  },
+	{ "fr", LANG_FR },
+	{ "us", LANG_US },
+	{ "de", LANG_DE },
+	{ "es", LANG_ES },
+	{ "it", LANG_IT },
 	{ 0, -1 }
 };
 
