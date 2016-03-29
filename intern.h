@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <stdint.h>
+#include <sys/param.h>
 
 #undef MAX
 #define MAX(x,y) ((x)>(y)?(x):(y))

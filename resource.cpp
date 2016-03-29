@@ -54,13 +54,13 @@ void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 }
 
 static bool check20th(File &f, const char *dataDir) {
-	char path[512];
+	char path[MAXPATHLEN];
 	snprintf(path, sizeof(path), "%s/game/DAT", dataDir);
 	return f.open("FILE017.DAT", path);
 }
 
 static bool check3DO(File &f, const char *dataDir) {
-	char path[512];
+	char path[MAXPATHLEN];
 	snprintf(path, sizeof(path), "%s/GameData", dataDir);
 	return f.open("File340", path);
 }

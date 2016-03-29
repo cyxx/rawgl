@@ -674,7 +674,7 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		if (resNum == 0) {
 			_mix->stopMusic();
 		} else {
-			char path[512];
+			char path[MAXPATHLEN];
 			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
 			if (p) {
 				_mix->playMusic(p);
@@ -685,7 +685,7 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		if (resNum == 0) {
 			_mix->stopAifcMusic();
 		} else {
-			char path[512];
+			char path[MAXPATHLEN];
 			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
 			if (p) {
 				_mix->playAifcMusic(p);

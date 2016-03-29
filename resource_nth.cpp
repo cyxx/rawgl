@@ -150,7 +150,7 @@ struct Resource20th: ResourceNth {
 	virtual bool init() {
 		static const char *dirs[] = { "BGZ", "DAT", "WGZ", 0 };
 		for (int i = 0; dirs[i]; ++i) {
-			char path[512];
+			char path[MAXPATHLEN];
 			snprintf(path, sizeof(path), "%s/game/%s", _dataPath, dirs[i]);
 			struct stat s;
 			if (stat(path, &s) != 0 || !S_ISDIR(s.st_mode)) {
@@ -163,11 +163,11 @@ struct Resource20th: ResourceNth {
 
 	virtual uint8_t *load(const char *name) {
 		if (strcmp(name, "font.bmp") == 0) {
-			char path[512];
+			char path[MAXPATHLEN];
 			snprintf(path, sizeof(path), "%s/game/BGZ/Font.bgz", _dataPath);
 			return inflateGzip(path);
 		} else if (strcmp(name, "heads.bmp") == 0) {
-			char path[512];
+			char path[MAXPATHLEN];
 			snprintf(path, sizeof(path), "%s/game/BGZ/Heads.bgz", _dataPath);
 			return inflateGzip(path);
 		}
@@ -175,7 +175,7 @@ struct Resource20th: ResourceNth {
 	}
 
 	virtual uint8_t *loadBmp(int num) {
-		char path[512];
+		char path[MAXPATHLEN];
 		if (num >= 3000) {
 			snprintf(path, sizeof(path), "%s/game/BGZ/data1280x800/1280x800_e%04d.bgz", _dataPath, num);
 		} else {
@@ -185,7 +185,7 @@ struct Resource20th: ResourceNth {
 	}
 
 	virtual uint8_t *loadDat(int num, uint8_t *dst, uint32_t *size) {
-		char path[512];
+		char path[MAXPATHLEN];
 		snprintf(path, sizeof(path), "%s/game/DAT/FILE%03d.DAT", _dataPath, num);
 		File f;
 		if (f.open(path)) {
@@ -203,7 +203,7 @@ struct Resource20th: ResourceNth {
 	}
 
 	virtual uint8_t *loadWav(int num, uint8_t *dst, uint32_t *size) {
-		char path[512];
+		char path[MAXPATHLEN];
 		snprintf(path, sizeof(path), "%s/game/WGZ/file%03d.wgz", _dataPath, num);
 		struct stat s;
 		if (stat(path, &s) != 0) {
@@ -226,7 +226,7 @@ struct Resource20th: ResourceNth {
 			default:
 				return 0;
 			}
-			char path[512];
+			char path[MAXPATHLEN];
 			static const char *fmt[] = {
 				"%s/game/TXT/%s.txt",
 				"%s/game/TXT/Linux/%s.txt",

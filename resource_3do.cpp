@@ -41,7 +41,7 @@ void Resource3do::readEntries() {
 uint8_t *Resource3do::loadFile(int num, uint8_t *dst, uint32_t *size) {
 	uint8_t *in = dst;
 	if (1) {
-		char path[512];
+		char path[MAXPATHLEN];
 		snprintf(path, sizeof(path), "%s/GameData/File%d", _dataPath, num);
 		File f;
 		if (f.open(path)) {
