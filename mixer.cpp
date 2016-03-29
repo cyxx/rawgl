@@ -72,7 +72,7 @@ struct Mixer_impl {
 		}
 	}
 
-	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
+	void playSoundRaw(uint8_t channel, const uint8_t *data, int freq, uint8_t volume) {
 		int len = READ_BE_UINT16(data) * 2;
 		const int loopLen = READ_BE_UINT16(data + 2) * 2;
 		if (loopLen != 0) {
@@ -84,7 +84,7 @@ struct Mixer_impl {
 			free(sample);
 		}
 	}
-	void playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume, int loops = 0) {
+	void playSoundWav(uint8_t channel, const uint8_t *data, int freq, uint8_t volume, int loops = 0) {
 		if (memcmp(data + 8, "WAVEfmt ", 8) == 0 && READ_LE_UINT32(data + 16) == 16) {
 			const uint8_t *fmt = data + 20;
 			const int format = READ_LE_UINT16(fmt);
@@ -92,16 +92,16 @@ struct Mixer_impl {
 			const int rate = READ_LE_UINT32(fmt + 4);
 			const int bits = READ_LE_UINT16(fmt + 14);
 			debug(DBG_SND, "wave format %d channels %d rate %d bits %d", format, channels, rate, bits);
-			const bool canQuickLoad = (format == 1 && channels == 2 && rate == kMixFreq && bits == 16);
-			if (canQuickLoad && (AUDIO_S16SYS == AUDIO_S16LSB)) {
+			const bool isMixerFormat = (format == 1 && channels == 2 && rate == kMixFreq && bits == 16);
+			if (isMixerFormat && (AUDIO_S16SYS == AUDIO_S16LSB)) {
 				Mix_Chunk *chunk = Mix_QuickLoad_WAV(const_cast<uint8_t *>(data));
 				playSound(channel, volume, chunk, loops);
 				return;
 			}
-			const bool convert = (format == 1 && channels == 1 && bits == 8 && (rate % 11025) != 0);
-			if (convert && memcmp(data + 36, "data", 4) == 0) {
+			const bool doConvert = (format == 1 && channels == 1 && bits == 8 && (rate % 11025) != 0);
+			if (doConvert && freq != 0 && memcmp(data + 36, "data", 4) == 0) {
 				const int size = READ_LE_UINT32(data + 40);
-				uint8_t *sample = convertMono8ToWav(data + 44, rate, size);
+				uint8_t *sample = convertMono8ToWav(data + 44, freq, size);
 				if (sample) {
 					SDL_RWops *rw = SDL_RWFromConstMem(sample, READ_LE_UINT32(sample + 4) + 8);
 					Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
@@ -224,10 +224,10 @@ void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, ui
 	}
 }
 
-void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume) {
+void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
 	debug(DBG_SND, "Mixer::playSoundWav(%d, %d)", channel, volume);
 	if (_impl) {
-		return _impl->playSoundWav(channel, data, volume);
+		return _impl->playSoundWav(channel, data, freq, volume);
 	}
 }
 

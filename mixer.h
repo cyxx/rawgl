@@ -24,7 +24,7 @@ struct Mixer {
 	void update();
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume);
-	void playSoundWav(uint8_t channel, const uint8_t *data, uint8_t volume);
+	void playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume);
 	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume);
 	void stopSound(uint8_t channel);
 	void setChannelVolume(uint8_t channel, uint8_t volume);

@@ -645,10 +645,16 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		_mix->stopSound(channel);
 		return;
 	}
-	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION || _res->getDataType() == Resource::DT_WIN31) {
+	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
 		uint8_t *buf = _res->loadWav(resNum);
 		if (buf) {
-			_mix->playSoundWav(channel & 3, buf, MIN(vol, 63));
+			_mix->playSoundWav(channel & 3, buf, _freqTable[freq], MIN(vol, 63));
+		}
+	} else if (_res->getDataType() == Resource::DT_20TH_EDITION || _res->getDataType() == Resource::DT_WIN31) {
+		// ignore sample rate specified by the script, use .wav header value
+		uint8_t *buf = _res->loadWav(resNum);
+		if (buf) {
+			_mix->playSoundWav(channel & 3, buf, 0, MIN(vol, 63));
 		}
 	} else if (_res->getDataType() == Resource::DT_3DO) {
 		MemEntry *me = &_res->_memList[resNum];
