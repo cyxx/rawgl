@@ -62,6 +62,14 @@ struct Resource15th: ResourceNth {
 		char name[32];
 		snprintf(name, sizeof(name), "rmsnd/file%03d.wav", num);
 		const PakEntry *e = _pak.find(name);
+		if (!e) {
+			snprintf(name, sizeof(name), "file%03db.wav", num);
+			e = _pak.find(name);
+			if (!e) {
+				snprintf(name, sizeof(name), "file%03d.wav", num);
+				e = _pak.find(name);
+			}
+		}
 		if (e) {
 			uint8_t *p = (uint8_t *)malloc(e->size);
 			if (p) {
