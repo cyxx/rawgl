@@ -61,8 +61,13 @@ struct Resource15th: ResourceNth {
 		snprintf(name, sizeof(name), "rmsnd/file%03d.wav", num);
 		const PakEntry *e = _pak.find(name);
 		if (e) {
-			_pak.loadData(e, dst, size);
-			return dst;
+			uint8_t *p = (uint8_t *)malloc(e->size);
+			if (p) {
+				_pak.loadData(e, p, size);
+				*size = 0;
+				return p;
+			}
+			warning("Failed to allocate %d bytes", e->size);
 		} else {
 			warning("Unable to load '%s'", name);
 		}
@@ -98,7 +103,7 @@ static uint8_t *inflateGzip(const char *filepath) {
 	const uint32_t dataSize = f.readUint32LE();
 	uint8_t *out = (uint8_t *)malloc(dataSize);
 	if (!out) {
-		warning("Failed to allocate %d bytes",  dataSize);
+		warning("Failed to allocate %d bytes", dataSize);
 		return 0;
 	}
 	f.seek(0);
@@ -204,6 +209,7 @@ struct Resource20th: ResourceNth {
 		if (stat(path, &s) != 0) {
 			snprintf(path, sizeof(path), "%s/game/WGZ/file%03dB.wgz", _dataPath, num);
 		}
+		*size = 0;
 		return inflateGzip(path);
 	}
 

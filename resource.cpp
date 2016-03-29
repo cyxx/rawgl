@@ -443,7 +443,7 @@ uint8_t *Resource::loadWav(int num) {
 	} else if (_win31) {
 		p = _win31->loadFile(num, _scriptCurPtr, &size);
 	}
-	if (p) {
+	if (p && size != 0) {
 		_scriptCurPtr += size;
 		_memList[num].bufPtr = p;
 		_memList[num].status = STATUS_LOADED;
