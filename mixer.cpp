@@ -80,7 +80,7 @@ struct Mixer_impl {
 		}
 		uint8_t *sample = convertMono8ToWav(data + 8, freq, len, 0x80);
 		if (sample) {
-			playSoundWav(channel, sample, volume, (loopLen != 0) ? -1 : 0);
+			playSoundWav(channel, sample, 0, volume, (loopLen != 0) ? -1 : 0);
 			free(sample);
 		}
 	}
