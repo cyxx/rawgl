@@ -7,11 +7,9 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "bitmap.h"
 #include "cinepak.h"
 #include "opera.h"
-extern "C" {
-#include "tga.h"
-}
 #include "util.h"
 
 static const char *OUT = "out";
@@ -64,13 +62,13 @@ struct OutputBuffer {
 		if (1) {
 			static const int W = 320;
 			static const int H = 100;
-			snprintf(name, sizeof(name), "%s/%04d.tga", path, num);
-			struct TgaFile *f = tgaOpen(name, W, H, 16);
-			if (f) {
+			snprintf(name, sizeof(name), "%s/%04d.bmp", path, num);
+			FILE *fp = fopen(name, "wb");
+			if (fp) {
 				const int size = W * H * sizeof(uint16_t);
 				uyvy_to_rgb555(_buf, size, _cineBitmap555);
-				tgaWritePixelsData(f, _cineBitmap555, size);
-				tgaClose(f);
+				writeBitmap555(fp, _cineBitmap555, W, H);
+				fclose(fp);
 			}
 			return;
 		}
@@ -191,16 +189,6 @@ static uint8_t *readFile(FILE *fp, int *size) {
 	return buf;
 }
 
-static void writeTga555(const char *path, int w, int h, const uint16_t *data) {
-	struct TgaFile *f;
-
-	f = tgaOpen(path, w, h, 16);
-	if (f) {
-		tgaWritePixelsData(f, data, w * h * 2);
-		tgaClose(f);
-	}
-}
-
 static uint8_t _bitmap555[320 * 200 * 2];
 static uint16_t _bitmapDei555[320 * 200];
 
@@ -233,9 +221,13 @@ static void decodeBitmap(FILE *fp, int num) {
 			decodedSize = decodeLzss(data + 4, dataSize - 4, _bitmap555);
 			if (decodedSize == sizeof(_bitmap555)) {
 				char name[64];
-				snprintf(name, sizeof(name), "%s/File%03d.tga", OUT, num);
-				deinterlace555(_bitmap555, 320, 200, _bitmapDei555);
-				writeTga555(name, 320, 200, _bitmapDei555);
+				snprintf(name, sizeof(name), "%s/File%03d.bmp", OUT, num);
+				FILE *fp = fopen(name, "wb");
+				if (fp) {
+					deinterlace555(_bitmap555, 320, 200, _bitmapDei555);
+					writeBitmap555(fp, _bitmapDei555, 320, 200);
+					fclose(fp);
+				}
 			} else {
 				fprintf(stderr, "Unexpected decoded size %d\n", decodedSize);
 			}
