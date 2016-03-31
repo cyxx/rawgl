@@ -282,7 +282,7 @@ void Script::op_updateDisplay() {
 		_scriptVars[0xF7] = 0;
 	}
 
-	_vid->_displayHead = !(_res->_currentPart == 16006 && _screenNum == 202);
+	_vid->_displayHead = !((_res->_currentPart == 16004 && _screenNum == 37) || (_res->_currentPart == 16006 && _screenNum == 202));
 	_vid->updateDisplay(page, _stub);
 }
 
