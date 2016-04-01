@@ -11,6 +11,7 @@
 #include "cinepak.h"
 #include "opera.h"
 #include "util.h"
+#include "wave.h"
 
 static const char *OUT = "out";
 
@@ -238,6 +239,89 @@ static void decodeBitmap(FILE *fp, int num) {
 	}
 }
 
+static int16_t decodeSampleSDX(int16_t prev, int8_t data) {
+        const int sqr = (data * ((data < 0) ? -data : data)) * 2;
+        return (data & 1) != 0 ? prev + sqr : sqr;
+}
+
+static const char *kSDX = "SDX22:1 Squareroot-Delta-Exact compression";
+
+static void decodeSong(FILE *fp, int num) {
+	uint8_t buf[64];
+	int count, offset, formSize, dataSize;
+
+	count = fread(buf, 1, 12, fp);
+	if (count == 12 && memcmp(buf, "FORM", 4) == 0 && memcmp(buf + 8, "AIFC", 4) == 0) {
+		formSize = readUint32BE(buf + 4);
+		for (offset = 12; offset < formSize; offset += dataSize + 8) {
+			fseek(fp, offset, SEEK_SET);
+
+			count = fread(buf, 1, 8, fp);
+			dataSize = readUint32BE(buf + 4);
+
+			if (memcmp(buf, "FVER", 4) == 0) {
+				continue;
+			}
+			if (memcmp(buf, "COMM", 4) == 0) {
+				assert(dataSize < (int)sizeof(buf));
+				count = fread(buf, 1, dataSize, fp);
+
+				const int channels = readUint16BE(buf);
+				const int samplesPerFrame = readUint32BE(buf + 2);
+				const int bits = readUint16BE(buf + 6);
+				int rate = 0;
+				{
+					const uint8_t *ieee754 = buf + 8;
+					const uint32_t m = readUint32BE(ieee754 + 2);
+					const int e = 30 - ieee754[1];
+					rate = (m >> e);
+				}
+				if (memcmp(buf + 18, kSDX, strlen(kSDX)) == 0) {
+					fprintf(stdout, "bits %d samples %d channels %d rate %d\n", bits, samplesPerFrame, channels, rate);
+				}
+				continue;
+			}
+			if (memcmp(buf, "INST", 4) == 0) {
+				continue;
+			}
+			if (memcmp(buf, "MARK", 4) == 0) {
+				continue;
+			}
+			if (memcmp(buf, "SSND", 4) == 0) {
+				count = fread(buf, 1, 4, fp);
+				// block offset
+				count = fread(buf, 1, 4, fp);
+				// block size
+
+				int16_t *samples = (int16_t *)calloc(dataSize, sizeof(int16_t));
+				if (samples) {
+					int16_t sampleL = 0;
+					int16_t sampleR = 0;
+					for (int i = 0; i < dataSize; i += 2) {
+						count = fread(buf, 1, 2, fp);
+
+						samples[i]     = sampleL = decodeSampleSDX(sampleL, buf[0]);
+						samples[i + 1] = sampleR = decodeSampleSDX(sampleR, buf[1]);
+					}
+					char path[MAXPATHLEN];
+					snprintf(path, sizeof(path), "%s/song%d.wav", OUT, num);
+					FILE *fp = fopen(path, "wb");
+					if (fp) {
+						writeWav_stereoS16(fp, samples, dataSize);
+						fclose(fp);
+					}
+					free(samples);
+				}
+				continue;
+			}
+
+
+			fprintf(stdout, "form %c%c%c%c size %d\n", buf[0], buf[1], buf[2], buf[3], dataSize);
+
+		}
+	}
+}
+
 int main(int argc, char *argv[]) {
 	if (argc >= 2) {
 		struct stat st;
@@ -257,6 +341,16 @@ int main(int argc, char *argv[]) {
 		}
 		if (S_ISDIR(st.st_mode)) {
 			char path[MAXPATHLEN];
+			for (int i = 1; i <= 30; ++i) {
+				snprintf(path, sizeof(path), "%s/song%d", argv[1], i);
+				FILE *fp = fopen(path, "rb");
+				if (fp) {
+					decodeSong(fp, i);
+					fclose(fp);
+				} else {
+					fprintf(stderr, "Failed to open '%s'\n", path);
+				}
+			}
 			for (int i = 200; i <= 340; ++i) {
 				snprintf(path, sizeof(path), "%s/File%3d", argv[1], i);
 				FILE *fp = fopen(path, "rb");
