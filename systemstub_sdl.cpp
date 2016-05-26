@@ -11,7 +11,8 @@
 
 struct SystemStub_SDL : SystemStub {
 
-	static const int kJoystickCommitValue = 8000;
+	static const int kJoystickIndex = 0;
+	static const int kJoystickCommitValue = 16384;
 	static const float kAspectRatio = 4 / 3.;
 
 	int _w, _h;
@@ -21,6 +22,7 @@ struct SystemStub_SDL : SystemStub {
 	int _texW, _texH;
 	SDL_Texture *_texture;
 	SDL_Joystick *_joystick;
+	SDL_GameController *_controller;
 
 	SystemStub_SDL();
 	virtual ~SystemStub_SDL() {}
@@ -44,7 +46,7 @@ SystemStub_SDL::SystemStub_SDL()
 }
 
 void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 	SDL_ShowCursor(SDL_DISABLE);
 
 	int windowW = 0;
@@ -73,8 +75,15 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 		_aspectRatio[2] = _aspectRatio[3] = 1.;
 	}
 	_joystick = 0;
+	_controller = 0;
 	if (SDL_NumJoysticks() > 0) {
-		_joystick = SDL_JoystickOpen(0);
+		SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt");
+		if (SDL_IsGameController(kJoystickIndex)) {
+			_controller = SDL_GameControllerOpen(kJoystickIndex);
+		}
+		if (!_controller) {
+			_joystick = SDL_JoystickOpen(kJoystickIndex);
+		}
 	}
 }
 
@@ -85,6 +94,10 @@ void SystemStub_SDL::fini() {
 	if (_joystick) {
 		SDL_JoystickClose(_joystick);
 		_joystick = 0;
+	}
+	if (_controller) {
+		SDL_GameControllerClose(_controller);
+		_controller = 0;
 	}
 	SDL_DestroyRenderer(_renderer);
 	SDL_DestroyWindow(_window);
@@ -202,45 +215,87 @@ void SystemStub_SDL::processEvents() {
 			}
 			break;
 		case SDL_JOYHATMOTION:
-			_pi.dirMask = 0;
-			if (ev.jhat.value & SDL_HAT_UP) {
-				_pi.dirMask |= PlayerInput::DIR_UP;
-			}
-			if (ev.jhat.value & SDL_HAT_DOWN) {
-				_pi.dirMask |= PlayerInput::DIR_DOWN;
-			}
-			if (ev.jhat.value & SDL_HAT_LEFT) {
-				_pi.dirMask |= PlayerInput::DIR_LEFT;
-			}
-			if (ev.jhat.value & SDL_HAT_RIGHT) {
-				_pi.dirMask |= PlayerInput::DIR_RIGHT;
+			if (_joystick) {
+				_pi.dirMask = 0;
+				if (ev.jhat.value & SDL_HAT_UP) {
+					_pi.dirMask |= PlayerInput::DIR_UP;
+				}
+				if (ev.jhat.value & SDL_HAT_DOWN) {
+					_pi.dirMask |= PlayerInput::DIR_DOWN;
+				}
+				if (ev.jhat.value & SDL_HAT_LEFT) {
+					_pi.dirMask |= PlayerInput::DIR_LEFT;
+				}
+				if (ev.jhat.value & SDL_HAT_RIGHT) {
+					_pi.dirMask |= PlayerInput::DIR_RIGHT;
+				}
 			}
 			break;
 		case SDL_JOYAXISMOTION:
-			switch (ev.jaxis.axis) {
-			case 0:
-				_pi.dirMask &= ~(PlayerInput::DIR_RIGHT | PlayerInput::DIR_LEFT);
-				if (ev.jaxis.value > kJoystickCommitValue) {
-					_pi.dirMask |= PlayerInput::DIR_RIGHT;
-				} else if (ev.jaxis.value < -kJoystickCommitValue) {
-					_pi.dirMask |= PlayerInput::DIR_LEFT;
+			if (_joystick) {
+				switch (ev.jaxis.axis) {
+				case 0:
+					_pi.dirMask &= ~(PlayerInput::DIR_RIGHT | PlayerInput::DIR_LEFT);
+					if (ev.jaxis.value > kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_RIGHT;
+					} else if (ev.jaxis.value < -kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_LEFT;
+					}
+					break;
+				case 1:
+					_pi.dirMask &= ~(PlayerInput::DIR_UP | PlayerInput::DIR_DOWN);
+					if (ev.jaxis.value > kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_DOWN;
+					} else if (ev.jaxis.value < -kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_UP;
+					}
+					break;
 				}
-				break;
-			case 1:
-				_pi.dirMask &= ~(PlayerInput::DIR_UP | PlayerInput::DIR_DOWN);
-				if (ev.jaxis.value > kJoystickCommitValue) {
-					_pi.dirMask |= PlayerInput::DIR_DOWN;
-				} else if (ev.jaxis.value < -kJoystickCommitValue) {
-					_pi.dirMask |= PlayerInput::DIR_UP;
-				}
-				break;
 			}
 			break;
 		case SDL_JOYBUTTONDOWN:
-			_pi.button = true;
-			break;
 		case SDL_JOYBUTTONUP:
-			_pi.button = false;
+			if (_joystick) {
+				_pi.button = (ev.jbutton.state == SDL_PRESSED);
+			}
+			break;
+		case SDL_CONTROLLERAXISMOTION:
+			if (_controller) {
+				switch (ev.caxis.axis) {
+				case SDL_CONTROLLER_AXIS_LEFTX:
+				case SDL_CONTROLLER_AXIS_RIGHTX:
+					if (ev.caxis.value < -kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_LEFT;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_LEFT;
+					}
+					if (ev.caxis.value > kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_RIGHT;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
+					}
+					break;
+				case SDL_CONTROLLER_AXIS_LEFTY:
+				case SDL_CONTROLLER_AXIS_RIGHTY:
+					if (ev.caxis.value < -kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_UP;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_UP;
+					}
+					if (ev.caxis.value > kJoystickCommitValue) {
+						_pi.dirMask |= PlayerInput::DIR_DOWN;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_DOWN;
+					}
+					break;
+				}
+			}
+			break;
+		case SDL_CONTROLLERBUTTONDOWN:
+		case SDL_CONTROLLERBUTTONUP:
+			if (_controller) {
+				_pi.button = (ev.jbutton.state == SDL_PRESSED);
+			}
 			break;
 		default:
 			break;
