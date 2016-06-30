@@ -19,6 +19,7 @@ struct SystemStub_SDL : SystemStub {
 	float _aspectRatio[4];
 	SDL_Window *_window;
 	SDL_Renderer *_renderer;
+	SDL_GLContext _glcontext;
 	int _texW, _texH;
 	SDL_Texture *_texture;
 	SDL_Joystick *_joystick;
@@ -62,9 +63,13 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 	_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH, flags);
 	SDL_GetWindowSize(_window, &_w, &_h);
 
-	_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
-	SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
-	SDL_RenderClear(_renderer);
+	if (dm->opengl) {
+		_glcontext = SDL_GL_CreateContext(_window);
+	} else {
+		_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
+		SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
+		SDL_RenderClear(_renderer);
+	}
 	if (dm->mode == DisplayMode::FULLSCREEN_AR) {
 		setAspectRatio(_w, _h);
 		if (!dm->opengl) {
@@ -99,7 +104,11 @@ void SystemStub_SDL::fini() {
 		SDL_GameControllerClose(_controller);
 		_controller = 0;
 	}
-	SDL_DestroyRenderer(_renderer);
+	if (_renderer) {
+		SDL_DestroyRenderer(_renderer);
+		_renderer = 0;
+	}
+	SDL_GL_DeleteContext(_glcontext);
 	SDL_DestroyWindow(_window);
 	SDL_Quit();
 }
@@ -114,26 +123,32 @@ void SystemStub_SDL::prepareScreen(int &w, int &h, float ar[4]) {
 }
 
 void SystemStub_SDL::updateScreen() {
-	SDL_RenderPresent(_renderer);
+	if (_renderer) {
+		SDL_RenderPresent(_renderer);
+	} else {
+		SDL_GL_SwapWindow(_window);
+	}
 }
 
 void SystemStub_SDL::setScreenPixels565(const uint16_t *data, int w, int h) {
-	if (_texW != w || _texH != h) {
-		if (_texture) {
-			SDL_DestroyTexture(_texture);
-			_texture = 0;
+	if (_renderer) {
+		if (_texW != w || _texH != h) {
+			if (_texture) {
+				SDL_DestroyTexture(_texture);
+				_texture = 0;
+			}
 		}
-	}
-	if (!_texture) {
-		_texture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w, h);
 		if (!_texture) {
-			return;
+			_texture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w, h);
+			if (!_texture) {
+				return;
+			}
+			_texW = w;
+			_texH = h;
 		}
-		_texW = w;
-		_texH = h;
+		SDL_UpdateTexture(_texture, 0, data, w * sizeof(uint16_t));
+		SDL_RenderCopy(_renderer, _texture, 0, 0);
 	}
-	SDL_UpdateTexture(_texture, 0, data, w * sizeof(uint16_t));
-	SDL_RenderCopy(_renderer, _texture, 0, 0);
 }
 
 void SystemStub_SDL::processEvents() {
