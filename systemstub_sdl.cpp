@@ -13,7 +13,7 @@ struct SystemStub_SDL : SystemStub {
 
 	static const int kJoystickIndex = 0;
 	static const int kJoystickCommitValue = 16384;
-	static const float kAspectRatio = 4 / 3.;
+	static const float kAspectRatio;
 
 	int _w, _h;
 	float _aspectRatio[4];
@@ -41,6 +41,8 @@ struct SystemStub_SDL : SystemStub {
 
 	void setAspectRatio(int w, int h);
 };
+
+const float SystemStub_SDL::kAspectRatio = 4 / 3.;
 
 SystemStub_SDL::SystemStub_SDL()
 	: _w(0), _h(0), _window(0), _renderer(0), _texW(0), _texH(0), _texture(0) {
