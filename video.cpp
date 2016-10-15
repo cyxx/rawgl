@@ -426,6 +426,17 @@ static void yflip(const uint8_t *src, int w, int h, uint8_t *dst) {
 	}
 }
 
+static void decode_pict(const uint8_t *src, uint8_t *dst) {
+	src += 512;
+	const int size = READ_BE_UINT16(src); src += 2;
+	const int xoffset = READ_BE_UINT16(src); src += 2;
+	const int yoffset = READ_BE_UINT16(src); src += 2;
+	assert(xoffset == 0 && yoffset == 0);
+	const int w = READ_BE_UINT16(src); src += 2;
+	const int h = READ_BE_UINT16(src); src += 2;
+	warning("decode_pict() size %d w %d h %d", size, w, h);
+}
+
 void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
 		decode_amiga(src, _tempBitmap);
@@ -436,6 +447,8 @@ void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 	} else if (_res->getDataType() == Resource::DT_3DO) {
 		deinterlace555(src, 320, 200, _bitmap565);
 		_graphics->drawBitmap(0, (uint8_t *)_bitmap565, 320, 200, FMT_RGB565);
+	} else if (_res->getDataType() == Resource::DT_MAC) {
+		decode_pict(src, _tempBitmap);
 	} else { // .BMP
 		if (Graphics::_is1991) {
 			const int w = READ_LE_UINT32(src + 0x12);

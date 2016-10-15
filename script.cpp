@@ -661,6 +661,8 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		if (me->status == Resource::STATUS_LOADED) {
 			_mix->playSoundAiff(channel & 3, me->bufPtr, MIN(vol, 63));
 		}
+	} else if (_res->getDataType() == Resource::DT_MAC) {
+		// TODO
 	} else { // DT_AMIGA, DT_DOS
 		MemEntry *me = &_res->_memList[resNum];
 		if (me->status == Resource::STATUS_LOADED) {
@@ -696,6 +698,9 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 				_mix->playAifcMusic(p);
 			}
 		}
+		break;
+	case Resource::DT_MAC:
+		// TODO
 		break;
 	default: // DT_AMIGA, DT_DOS
 		if (resNum != 0) {

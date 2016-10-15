@@ -10,13 +10,14 @@
 #include "resource_nth.h"
 #include "resource_win31.h"
 #include "resource_3do.h"
+#include "resource_mac.h"
 #include "unpack.h"
 #include "util.h"
 #include "video.h"
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0) {
+	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0), _mac(0) {
 	_bankPrefix = "bank";
 	memset(_memList, 0, sizeof(_memList));
 	_numMemList = 0;
@@ -29,6 +30,7 @@ Resource::~Resource() {
 	delete _nth;
 	delete _win31;
 	delete _3do;
+	delete _mac;
 }
 
 void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -91,6 +93,9 @@ void Resource::detectVersion() {
 	} else if (check3DO(f, _dataDir)) {
 		_dataType = DT_3DO;
 		debug(DBG_INFO, "Using 3DO data files");
+	} else if (f.open(ResourceMac::FILE017, _dataDir)) {
+		_dataType = DT_MAC;
+		debug(DBG_INFO, "Using Macintosh data files");
 	} else {
 		error("No data files found in '%s'", _dataDir);
 	}
@@ -179,6 +184,10 @@ void Resource::readEntries() {
 		_numMemList = ENTRIES_COUNT;
 		_3do = new Resource3do(_dataDir);
 		_3do->readEntries();
+		return;
+	} else if (_dataType == DT_MAC) {
+		_numMemList = ENTRIES_COUNT;
+		_mac = new ResourceMac(_dataDir);
 		return;
 	}
 	error("No data files found in '%s'", _dataDir);
@@ -334,7 +343,7 @@ static const int _memListBmp[] = {
 };
 
 void Resource::update(uint16_t num) {
-	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31) {
+	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31 || _dataType == DT_MAC) {
 		if (num > 16000) {
 			_nextPart = num;
 		} else if (num >= 3000) {
@@ -389,6 +398,8 @@ void Resource::loadBmp(int num) {
 		p = _win31->loadFile(num, 0, &size);
 	} else if (_3do) {
 		p = _3do->loadFile(num, 0, &size);
+	} else if (_mac) {
+		p = _mac->loadFile(num, 0, &size);
 	}
 	if (p) {
 		_vid->copyBitmapPtr(p, size);
@@ -409,6 +420,8 @@ uint8_t *Resource::loadDat(int num) {
 		p = _win31->loadFile(num, _scriptCurPtr, &size);
 	} else if (_3do) {
 		p = _3do->loadFile(num, _scriptCurPtr, &size);
+	} else if (_mac) {
+		p = _mac->loadFile(num, _scriptCurPtr, &size);
 	}
 	if (p) {
 		_scriptCurPtr += size;
@@ -515,7 +528,7 @@ static const uint8_t _memListParts[][4] = {
 };
 
 void Resource::setupPart(int ptrId) {
-	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31 || _dataType == DT_3DO) {
+	if (_dataType == DT_15TH_EDITION || _dataType == DT_20TH_EDITION || _dataType == DT_WIN31 || _dataType == DT_3DO || _dataType == DT_MAC) {
 		if (ptrId >= 16001 && ptrId <= 16009) {
 			invalidateAll();
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };
