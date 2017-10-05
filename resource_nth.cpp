@@ -1,4 +1,5 @@
 
+#include <time.h>
 #include <sys/stat.h>
 #include <zlib.h>
 #include "pak.h"
@@ -147,10 +148,13 @@ struct Resource20th: ResourceNth {
 	char *_textBuf;
 	const char *_stringsTable[192];
 	char _musicName[64];
+	uint8_t _musicType;
 
 	Resource20th(const char *dataPath)
 		: _dataPath(dataPath), _textBuf(0) {
 		memset(_stringsTable, 0, sizeof(_stringsTable));
+		_musicType = 0;
+		srand(time(NULL));
 	}
 
 	virtual ~Resource20th() {
@@ -214,10 +218,50 @@ struct Resource20th: ResourceNth {
 
 	virtual uint8_t *loadWav(int num, uint8_t *dst, uint32_t *size) {
 		char path[MAXPATHLEN];
-		snprintf(path, sizeof(path), "%s/game/WGZ/file%03d.wgz", _dataPath, num);
-		struct stat s;
-		if (stat(path, &s) != 0) {
-			snprintf(path, sizeof(path), "%s/game/WGZ/file%03dB.wgz", _dataPath, num);
+		switch (num) {
+		case 81: {
+				const int r = 1 + rand() % 3;
+				snprintf(path, sizeof(path), "%s/game/WGZ/file081-EX-%d.wgz", _dataPath, r);
+			}
+			break;
+		case 85: {
+				const int r = 1 + rand() % 2;
+				const char *snd = "IN";
+				if (_musicType == 1) {
+					snd = "EX";
+				}
+				snprintf(path, sizeof(path), "%s/game/WGZ/file085-%s-%d.wgz", _dataPath, snd, r);
+			}
+			break;
+		case 96: {
+				const int r = 1 + rand() % 3;
+				const char *snd = "GR";
+				if (_musicType == 1) {
+					snd = "EX";
+				} else if (_musicType == 2) {
+					snd = "IN";
+				}
+				snprintf(path, sizeof(path), "%s/game/WGZ/file096-%s-%d.wgz", _dataPath, snd, r);
+			}
+			break;
+		case 163: {
+				const char *snd = "GR";
+				if (_musicType == 1) {
+					snd = "EX";
+				} else if (_musicType == 2) {
+					snd = "IN";
+				}
+				snprintf(path, sizeof(path), "%s/game/WGZ/file163-%s-1.wgz", _dataPath, snd);
+			}
+			break;
+		default: {
+				snprintf(path, sizeof(path), "%s/game/WGZ/file%03d.wgz", _dataPath, num);
+				struct stat s;
+				if (stat(path, &s) != 0) {
+					snprintf(path, sizeof(path), "%s/game/WGZ/file%03dB.wgz", _dataPath, num);
+				}
+			}
+			break;
 		}
 		*size = 0;
 		return inflateGzip(path);
@@ -291,6 +335,17 @@ struct Resource20th: ResourceNth {
 	virtual const char *getMusicName(int num) {
 		if (num >= 5000) {
 			snprintf(_musicName, sizeof(_musicName), "game/OGG/amb%d.ogg", num);
+			switch (num) {
+			case 5005:
+				_musicType = 1;
+				break;
+			case 5006:
+				_musicType = 3;
+				break;
+			default:
+				_musicType = 2;
+				break;
+			}
 		} else {
 			switch (num) {
 			case 7:

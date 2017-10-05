@@ -678,7 +678,7 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	case Resource::DT_15TH_EDITION:
 	case Resource::DT_20TH_EDITION:
 	case Resource::DT_WIN31:
-		if (resNum == 0) {
+		if (resNum == 0 || resNum == 5000) {
 			_mix->stopMusic();
 		} else {
 			char path[MAXPATHLEN];
