@@ -594,16 +594,21 @@ void Script::inp_updatePlayer() {
 	}
 	if (_stub->_pi.dirMask & PlayerInput::DIR_DOWN) {
 		ud = 1;
-		m |= 4;
+		m |= 4; // crouch
+	}
+	if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
+		ud = -1;
+		m |= 8; // jump
 	}
 	_scriptVars[VAR_HERO_POS_UP_DOWN] = ud;
-	if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
-		_scriptVars[VAR_HERO_POS_UP_DOWN] = -1;
+
+	// The password selection screen in the 3DO version accepts both 'action'
+	// and 'jump' buttons. As 'up' is also mapped to 'jump', pressing it selects
+	// the highlighted letter instead of moving the cursor. We zero the jump code.
+	if (_is3DO && _res->_currentPart == 16009) {
+		ud = 0;
 	}
-	if (_stub->_pi.dirMask & PlayerInput::DIR_UP) { // inpJump
-		ud = -1;
-		m |= 8;
-	}
+
 	_scriptVars[VAR_HERO_POS_JUMP_DOWN] = ud;
 	_scriptVars[VAR_HERO_POS_LEFT_RIGHT] = lr;
 	_scriptVars[VAR_HERO_POS_MASK] = m;
