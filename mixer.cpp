@@ -24,10 +24,12 @@ static uint8_t *convertMono8ToWav(const uint8_t *data, int freq, int size, const
 	if (out) {
 		memcpy(out, kHeaderData, sizeof(kHeaderData));
 		// point resampling
+		Frac pos;
+		pos.offset = 0;
+		pos.inc = (freq << Frac::BITS) / kHz;
 		int rsmp = 0;
-		const float step = freq / float(kHz);
-		for (float pos = 0.; pos < size; pos += step) {
-			out[sizeof(kHeaderData) + rsmp] = data[int(pos)] ^ mask; // S8 to U8
+		for (; int(pos.getInt()) < size; pos.offset += pos.inc) {
+			out[sizeof(kHeaderData) + rsmp] = data[pos.getInt()] ^ mask; // S8 to U8
 			++rsmp;
 		}
 		// fixup .wav header

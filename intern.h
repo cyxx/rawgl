@@ -113,13 +113,19 @@ struct Color {
 
 struct Frac {
 	static const int BITS = 16;
+	static const int MASK = (1 << BITS) - 1;
 	uint32_t inc;
 	uint64_t offset;
 
-	int16_t interpolate(int16_t sample1, int16_t sample2) {
-		static const int MASK = (1 << Frac::BITS) - 1;
-		const int fp = inc & MASK;
-		return (sample1 * (MASK - fp) + sample2 * fp) >> Frac::BITS;
+	uint32_t getInt() const {
+		return offset >> BITS;
+	}
+	uint32_t getFrac() const {
+		return offset & MASK;
+	}
+	int interpolate(int sample1, int sample2) const {
+		const int fp = getFrac();
+		return (sample1 * (MASK - fp) + sample2 * fp) >> BITS;
 	}
 };
 
