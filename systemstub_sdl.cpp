@@ -75,7 +75,7 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 	if (dm->mode == DisplayMode::FULLSCREEN_AR) {
 		setAspectRatio(_w, _h);
 		if (!dm->opengl) {
-			SDL_RenderSetLogicalSize(_renderer, 320 * 3, 200 * 4);
+			SDL_RenderSetLogicalSize(_renderer, 320, 200);
 		}
 	} else {
 		_aspectRatio[0] = _aspectRatio[1] = 0.;
