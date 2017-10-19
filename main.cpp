@@ -64,7 +64,7 @@ static Graphics *createGraphics(int type) {
 }
 
 static const int DEFAULT_WINDOW_W = 640;
-static const int DEFAULT_WINDOW_H = 480;
+static const int DEFAULT_WINDOW_H = 400;
 
 #undef main
 int main(int argc, char *argv[]) {

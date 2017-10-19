@@ -42,7 +42,7 @@ struct SystemStub_SDL : SystemStub {
 	void setAspectRatio(int w, int h);
 };
 
-const float SystemStub_SDL::kAspectRatio = 4 / 3.;
+const float SystemStub_SDL::kAspectRatio = 16 / 10.;
 
 SystemStub_SDL::SystemStub_SDL()
 	: _w(0), _h(0), _window(0), _renderer(0), _texW(0), _texH(0), _texture(0) {
@@ -72,14 +72,14 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 		SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(_renderer);
 	}
+	_aspectRatio[0] = _aspectRatio[1] = 0.;
+	_aspectRatio[2] = _aspectRatio[3] = 1.;
 	if (dm->mode == DisplayMode::FULLSCREEN_AR) {
-		setAspectRatio(_w, _h);
-		if (!dm->opengl) {
-			SDL_RenderSetLogicalSize(_renderer, 320 * 3, 200 * 4);
+		if (dm->opengl) {
+			setAspectRatio(_w, _h);
+		} else {
+			SDL_RenderSetLogicalSize(_renderer, 320, 200);
 		}
-	} else {
-		_aspectRatio[0] = _aspectRatio[1] = 0.;
-		_aspectRatio[2] = _aspectRatio[3] = 1.;
 	}
 	_joystick = 0;
 	_controller = 0;
