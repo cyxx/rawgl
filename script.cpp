@@ -371,10 +371,10 @@ void Script::restartAt(int part, int pos) {
 	if (_res->getDataType() == Resource::DT_20TH_EDITION && part != 16001) {
 		// difficulty (0 to 2)
 		_scriptVars[0xBF] = 1;
-		// mute sounds and enable resnum >= 2000
+		// mute sounds and enable resnum >= 2000 (Debug Mode ?)
 //		_scriptVars[0xDB] = 1;
 		// playback sounds resnum >= 146
-		_scriptVars[0xDE] = 1;
+		_scriptVars[0xDE] = Graphics::_is1991 ? 0 : 1;
 	}
 	if (_res->getDataType() == Resource::DT_DOS) {
 		_scriptVars[0xE4] = 20;
