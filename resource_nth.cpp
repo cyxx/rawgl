@@ -127,7 +127,7 @@ static uint8_t *inflateGzip(const char *filepath) {
 	memset(&str, 0, sizeof(str));
 	int err = inflateInit2(&str, MAX_WBITS + 16);
 	if (err == Z_OK) {
-		uint8_t buf[1 << MAX_WBITS];
+		Bytef buf[1 << MAX_WBITS];
 		str.next_in = buf;
 		str.avail_in = 0;
 		str.next_out = out;
