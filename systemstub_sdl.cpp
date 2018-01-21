@@ -84,7 +84,11 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 	_joystick = 0;
 	_controller = 0;
 	if (SDL_NumJoysticks() > 0) {
+
+#if SDL_COMPILEDVERSION >= SDL_VERSIONNUM(2,0,2)
 		SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt");
+#endif
+
 		if (SDL_IsGameController(kJoystickIndex)) {
 			_controller = SDL_GameControllerOpen(kJoystickIndex);
 		}
