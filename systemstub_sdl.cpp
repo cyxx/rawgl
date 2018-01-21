@@ -42,7 +42,7 @@ struct SystemStub_SDL : SystemStub {
 	void setAspectRatio(int w, int h);
 };
 
-const float SystemStub_SDL::kAspectRatio = 16 / 10.;
+const float SystemStub_SDL::kAspectRatio = 16.f / 10.f;
 
 SystemStub_SDL::SystemStub_SDL()
 	: _w(0), _h(0), _window(0), _renderer(0), _texW(0), _texH(0), _texture(0) {
@@ -331,28 +331,28 @@ uint32_t SystemStub_SDL::getTimeStamp() {
 void SystemStub_SDL::setAspectRatio(int w, int h) {
 	const float currentAspectRatio = w / (float)h;
 	if (int(currentAspectRatio * 100) == int(kAspectRatio * 100)) {
-		_aspectRatio[0] = 0.;
-		_aspectRatio[1] = 0.;
-		_aspectRatio[2] = 1.;
-		_aspectRatio[3] = 1.;
+		_aspectRatio[0] = 0.f;
+		_aspectRatio[1] = 0.f;
+		_aspectRatio[2] = 1.f;
+		_aspectRatio[3] = 1.f;
 		return;
 	}
 	// pillar box
 	if (currentAspectRatio > kAspectRatio) {
-		const float inset = 1. - kAspectRatio / currentAspectRatio;
+		const float inset = 1.f - kAspectRatio / currentAspectRatio;
 		_aspectRatio[0] = inset / 2;
-		_aspectRatio[1] = 0.;
-		_aspectRatio[2] = 1. - inset;
-		_aspectRatio[3] = 1.;
+		_aspectRatio[1] = 0.f;
+		_aspectRatio[2] = 1.f - inset;
+		_aspectRatio[3] = 1.f;
 		return;
 	}
 	// letter box
 	if (currentAspectRatio < kAspectRatio) {
-		const float inset = 1. - currentAspectRatio / kAspectRatio;
-		_aspectRatio[0] = 0.;
+		const float inset = 1.f - currentAspectRatio / kAspectRatio;
+		_aspectRatio[0] = 0.f;
 		_aspectRatio[1] = inset / 2;
-		_aspectRatio[2] = 1.;
-		_aspectRatio[3] = 1. - inset;
+		_aspectRatio[2] = 1.f;
+		_aspectRatio[3] = 1.f - inset;
 		return;
 	}
 }
