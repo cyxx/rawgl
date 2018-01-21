@@ -47,7 +47,7 @@ struct stdFile : File_impl {
 		}
 		return sz;
 	}
-	void seek(int32_t off, int whence) {
+	void seek(int off, int whence) {
 		if (_fp) {
 			fseek(_fp, off, whence);
 		}
@@ -134,7 +134,7 @@ uint32_t File::size() {
 	return _impl->size();
 }
 
-void File::seek(int32_t off, int whence) {
+void File::seek(int off, int whence) {
 	_impl->seek(off, whence);
 }
 
