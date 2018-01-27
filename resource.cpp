@@ -33,26 +33,20 @@ Resource::~Resource() {
 	delete _mac;
 }
 
-void Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
-	uint16_t n = me - _memList;
-	debug(DBG_BANK, "Resource::readBank(%d)", n);
+bool Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
+	bool ret = false;
 	char name[10];
 	snprintf(name, sizeof(name), "%s%02x", _bankPrefix, me->bankNum);
 	File f;
 	if (f.open(name, _dataDir)) {
 		f.seek(me->bankPos);
-		if (me->packedSize == me->unpackedSize) {
-			f.read(dstBuf, me->packedSize);
-		} else {
-			f.read(dstBuf, me->packedSize);
-			bool ret = delphine_unpack(dstBuf, dstBuf, me->packedSize);
-			if (!ret) {
-				error("Resource::readBank() failed to unpack resource %d", n);
-			}
+		const size_t count = f.read(dstBuf, me->packedSize);
+		ret = (count == me->packedSize);
+		if (ret && me->packedSize != me->unpackedSize) {
+			ret = delphine_unpack(dstBuf, dstBuf, me->packedSize);
 		}
-	} else {
-		error("Resource::readBank() unable to open '%s'", name);
 	}
+	return ret;
 }
 
 static bool check15th(File &f, const char *dataDir) {
@@ -217,11 +211,12 @@ void Resource::dumpEntries() {
 			}
 			uint8_t *p = (uint8_t *)malloc(_memList[i].unpackedSize);
 			if (p) {
-				readBank(&_memList[i], p);
-				char name[16];
-				snprintf(name, sizeof(name), "data_%02x_%d", i, _memList[i].type);
-				dumpFile(name, p, _memList[i].unpackedSize);
-				free(p);
+				if (readBank(&_memList[i], p)) {
+					char name[16];
+					snprintf(name, sizeof(name), "data_%02x_%d", i, _memList[i].type);
+					dumpFile(name, p, _memList[i].unpackedSize);
+					free(p);
+				}
 			}
 		}
 	}
@@ -244,6 +239,8 @@ void Resource::load() {
 			break; // no entry found
 		}
 
+		const int resourceNum = me - _memList;
+
 		uint8_t *memPtr = 0;
 		if (me->type == 2) {
 			memPtr = _vidCurPtr;
@@ -259,15 +256,23 @@ void Resource::load() {
 			warning("Resource::load() ec=0x%X (me->bankNum == 0)", 0xF00);
 			me->status = STATUS_NULL;
 		} else {
-			debug(DBG_BANK, "Resource::load() bufPos=%X size=%X type=%X pos=%X bankNum=%X", memPtr - _memPtrStart, me->packedSize, me->type, me->bankPos, me->bankNum);
-			readBank(me, memPtr);
-			if(me->type == 2) {
-				_vid->copyBitmapPtr(_vidCurPtr, me->unpackedSize);
-				me->status = STATUS_NULL;
+			debug(DBG_BANK, "Resource::load() bufPos=0x%X size=%d type=%d pos=0x%X bankNum=%d", memPtr - _memPtrStart, me->packedSize, me->type, me->bankPos, me->bankNum);
+			if (readBank(me, memPtr)) {
+				if (me->type == 2) {
+					_vid->copyBitmapPtr(_vidCurPtr, me->unpackedSize);
+					me->status = STATUS_NULL;
+				} else {
+					me->bufPtr = memPtr;
+					me->status = STATUS_LOADED;
+					_scriptCurPtr += me->unpackedSize;
+				}
 			} else {
-				me->bufPtr = memPtr;
-				me->status = STATUS_LOADED;
-				_scriptCurPtr += me->unpackedSize;
+				if (_dataType == DT_DOS && me->bankNum == 12 && me->type == RT_UNK) {
+					// DOS demo version does not have the bank for this resource
+					// this should be safe to ignore as the resource does not appear to be used by the game code
+					continue;
+				}
+				error("Unable to read resource %d from bank %d", resourceNum, me->bankNum);
 			}
 		}
 	}

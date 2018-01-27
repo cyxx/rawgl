@@ -93,7 +93,7 @@ struct Resource {
 	DataType getDataType() const { return _dataType; }
 	void detectVersion();
 	const char *getGameTitle(Language lang) const;
-	void readBank(const MemEntry *me, uint8_t *dstBuf);
+	bool readBank(const MemEntry *me, uint8_t *dstBuf);
 	void readEntries();
 	void readEntriesAmiga(const AmigaMemEntry *entries, int count);
 	void dumpEntries();
