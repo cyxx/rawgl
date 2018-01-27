@@ -59,7 +59,7 @@ struct Script {
 	bool _is3DO;
 	uint32_t _startTime, _timeStamp;
 
-	Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub);
+	Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid);
 	void init();
 	
 	void op_movConst();

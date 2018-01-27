@@ -15,8 +15,8 @@
 #include "util.h"
 
 
-Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid, SystemStub *stub)
-	: _mix(mix), _res(res), _ply(ply), _vid(vid), _stub(stub) {
+Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid)
+	: _mix(mix), _res(res), _ply(ply), _vid(vid), _stub(0) {
 }
 
 void Script::init() {

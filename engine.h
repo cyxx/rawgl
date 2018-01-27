@@ -28,7 +28,9 @@ struct Engine {
 	Video _vid;
 	int _partNum;
 
-	Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum);
+	Engine(const char *dataDir, int partNum);
+
+	void setSystemStub(SystemStub *, Graphics *);
 
 	const char *getGameTitle(Language lang) const { return _res.getGameTitle(lang); }
 

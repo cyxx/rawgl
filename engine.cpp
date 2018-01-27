@@ -11,8 +11,8 @@
 #include "util.h"
 
 
-Engine::Engine(Graphics *graphics, SystemStub *stub, const char *dataDir, int partNum)
-	: _graphics(graphics), _stub(stub), _log(&_mix, &_res, &_ply, &_vid, _stub), _mix(&_ply), _res(&_vid, dataDir),
+Engine::Engine(const char *dataDir, int partNum)
+	: _graphics(0), _stub(0), _log(&_mix, &_res, &_ply, &_vid), _mix(&_ply), _res(&_vid, dataDir),
 	_ply(&_res), _vid(&_res), _partNum(partNum) {
 	_res.detectVersion();
 }
@@ -27,6 +27,12 @@ static const int _restartPos[36 * 2] = {
 	16006, 66, 16006, 67, 16006, 68, 16005, 50, 16006, 60,
 	16007, 0
 };
+
+void Engine::setSystemStub(SystemStub *stub, Graphics *graphics) {
+	_stub = stub;
+	_log._stub = stub;
+	_graphics = graphics;
+}
 
 void Engine::run(Language lang) {
 	setup();
