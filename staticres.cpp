@@ -394,6 +394,17 @@ const StrEntry Video::_stringsTableEng[] = {
 	{ 0xFFFF, 0 }
 };
 
+const StrEntry Video::_stringsTableDemo[] = {
+	{ 0x1F4, "Over Two Years in the Making" },
+	{ 0x1F5, "   A New, State\nof the Art, Polygon\n  Graphics System" },
+	{ 0x1F6, "   Comes to the\nComputer With Full\n Screen Graphics" },
+	{ 0x1F7, "While conducting a nuclear fission\nexperiment at your local\nparticle accelerator ..." },
+	{ 0x1F8, "Nature decides to put a little\n    extra spin on the ball" },
+	{ 0x1F9, "And sends you ..." },
+	{ 0x1FA, "'     Out of this World\nA Cinematic Action Adventure\n from Interplay Productions\n                    \n       By Eric CHAHI      \n\n  IBM version : D.MORAIS\n" },
+	{ 0xFFFF, 0 }
+};
+
 const uint16_t Video::_stringsId15th[] = {
 	0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007, 0x008, 0x00A, 0x00B, 0x00C, 0x00D, 0x00E, 0x00F, 0x010, 0x011,
 	0x012, 0x013, 0x014, 0x015, 0x016, 0x017, 0x018, 0x019, 0x01A, 0x01B, 0x01C, 0x021, 0x022, 0x023, 0x024, 0x025,

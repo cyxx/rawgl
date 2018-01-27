@@ -302,9 +302,12 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 		str = findString(_stringsTable3DO, strId);
 	} else {
 		str = findString(_stringsTable, strId);
+		if (!str && _res->getDataType() == Resource::DT_DOS) {
+			str = findString(_stringsTableDemo, strId);
+		}
 	}
 	if (!str) {
-		warning("Unknown string id 0x%x", strId);
+		warning("Unknown string id %d", strId);
 		return;
 	}
 	debug(DBG_VIDEO, "drawString(%d, %d, %d, '%s')", color, x, y, str);
