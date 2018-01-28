@@ -270,6 +270,7 @@ void Resource::load() {
 				if (_dataType == DT_DOS && me->bankNum == 12 && me->type == RT_UNK) {
 					// DOS demo version does not have the bank for this resource
 					// this should be safe to ignore as the resource does not appear to be used by the game code
+					me->status = STATUS_NULL;
 					continue;
 				}
 				error("Unable to read resource %d from bank %d", resourceNum, me->bankNum);
