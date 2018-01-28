@@ -19,16 +19,17 @@ struct GraphicsSoft: Graphics {
 	};
 
 	uint8_t *_pagePtrs[4];
-	uint8_t *_workPagePtr;
+	uint8_t *_drawPagePtr;
 	int _u, _v;
 	int _w, _h;
+	int _byteDepth;
 	Color _pal[16];
 	uint16_t *_colorBuffer;
 
 	GraphicsSoft();
 	~GraphicsSoft();
 
-	void setSize(int w, int h);
+	void setSize(int w, int h, int byteDepth);
 	void drawPolygon(uint8_t color, const QuadStrip &qs);
 	void drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color);
 	void drawPoint(int16_t x, int16_t y, uint8_t color);
@@ -36,7 +37,7 @@ struct GraphicsSoft: Graphics {
 	void drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color);
 	void drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color);
 	uint8_t *getPagePtr(uint8_t page);
-	int getPageSize() const { return _w * _h; }
+	int getPageSize() const { return _w * _h * _byteDepth; }
 	void setWorkPagePtr(uint8_t page);
 
 	virtual void setFont(const uint8_t *src, int w, int h);
@@ -58,7 +59,7 @@ GraphicsSoft::GraphicsSoft() {
 	memset(_pagePtrs, 0, sizeof(_pagePtrs));
 	_colorBuffer = 0;
 	memset(_pal, 0, sizeof(_pal));
-	setSize(GFX_W, GFX_H);
+	setSize(GFX_W, GFX_H, 1);
 }
 
 GraphicsSoft::~GraphicsSoft() {
@@ -69,21 +70,23 @@ GraphicsSoft::~GraphicsSoft() {
 	free(_colorBuffer);
 }
 
-void GraphicsSoft::setSize(int w, int h) {
+void GraphicsSoft::setSize(int w, int h, int byteDepth) {
 	_u = (w << 16) / GFX_W;
 	_v = (h << 16) / GFX_H;
 	_w = w;
 	_h = h;
+	_byteDepth = byteDepth;
+	assert(_byteDepth == 1 || _byteDepth == 2);
 	_colorBuffer = (uint16_t *)realloc(_colorBuffer, _w * _h * sizeof(uint16_t));
 	if (!_colorBuffer) {
 		error("Unable to allocate color buffer w %d h %d", _w, _h);
 	}
 	for (int i = 0; i < 4; ++i) {
-		_pagePtrs[i] = (uint8_t *)realloc(_pagePtrs[i], _w * _h);
+		_pagePtrs[i] = (uint8_t *)realloc(_pagePtrs[i], getPageSize());
 		if (!_pagePtrs[i]) {
 			error("Not enough memory to allocate offscreen buffers");
 		}
-		memset(_pagePtrs[i], 0, _w * _h);
+		memset(_pagePtrs[i], 0, getPageSize());
 	}
 	setWorkPagePtr(2);
 }
@@ -170,31 +173,49 @@ void GraphicsSoft::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
 void GraphicsSoft::drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color) {
 	if (x <= GFX_W - 8 && y <= GFX_H - 8) {
 		const uint8_t *ft = _font + (c - 0x20) * 8;
-		uint8_t *p = _workPagePtr + x + y * _w;
-		for (int j = 0; j < 8; ++j) {
-			uint8_t ch = *(ft + j);
-			for (int i = 0; i < 8; ++i) {
-				if (ch & 0x80) {
-					p[j * _w + i] = color;
+		uint8_t *p = _drawPagePtr + (x + y * _w) * _byteDepth;
+		if (_byteDepth == 1) {
+			for (int j = 0; j < 8; ++j) {
+				uint8_t ch = *(ft + j);
+				for (int i = 0; i < 8; ++i) {
+					if (ch & 0x80) {
+						p[j * _w + i] = color;
+					}
+					ch <<= 1;
 				}
-				ch <<= 1;
 			}
+		} else if (_byteDepth == 2) {
+			// TODO
 		}
 	}
 }
 
 void GraphicsSoft::drawPoint(int16_t x, int16_t y, uint8_t color) {
-	const int off = y * _w + x;
-	switch (color) {
-	case COL_ALPHA:
-		_workPagePtr[off] |= 0x8;
-		break;
-	case COL_PAGE:
-		_workPagePtr[off] = *(_pagePtrs[0] + off);
-		break;
-	default:
-		_workPagePtr[off] = color;
-		break;
+	const int offset = y * _w + x * _byteDepth;
+	if (_byteDepth == 1) {
+		switch (color) {
+		case COL_ALPHA:
+			_drawPagePtr[offset] |= 0x8;
+			break;
+		case COL_PAGE:
+			_drawPagePtr[offset] = *(_pagePtrs[0] + offset);
+			break;
+		default:
+			_drawPagePtr[offset] = color;
+			break;
+		}
+	} else if (_byteDepth == 2) {
+		switch (color) {
+		case COL_ALPHA:
+			// TODO
+			break;
+		case COL_PAGE:
+			*(uint16_t *)(_drawPagePtr + offset) = *(uint16_t *)(_pagePtrs[0] + offset);
+			break;
+		default:
+			*(uint16_t *)(_drawPagePtr + offset) = _pal[color].rgb565();
+			break;
+		}
 	}
 }
 
@@ -202,9 +223,13 @@ void GraphicsSoft::drawLineT(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	int16_t xmax = MAX(x1, x2);
 	int16_t xmin = MIN(x1, x2);
 	int w = xmax - xmin + 1;
-	uint8_t *p = _workPagePtr + y * _w + xmin;
-	while (w--) {
-		*p++ |= 0x8;
+	uint8_t *p = _drawPagePtr + (y * _w + xmin) * _byteDepth;
+	if (_byteDepth == 1) {
+		while (w--) {
+			*p++ |= 0x8;
+		}
+	} else if (_byteDepth == 2) {
+		// TODO
 	}
 }
 
@@ -212,19 +237,26 @@ void GraphicsSoft::drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
 	int16_t xmax = MAX(x1, x2);
 	int16_t xmin = MIN(x1, x2);
 	const int w = xmax - xmin + 1;
-	const int off = y * _w + xmin;
-	memset(_workPagePtr + off, color, w);
+	const int offset = (y * _w + xmin) * _byteDepth;
+	if (_byteDepth == 1) {
+		memset(_drawPagePtr + offset, color, w);
+	} else if (_byteDepth == 2) {
+		const uint16_t rgbColor = _pal[color].rgb565();
+		for (int i = 0; i < w; ++i) {
+			((uint16_t *)(_drawPagePtr + offset))[i] = rgbColor;
+		}
+	}
 }
 
 void GraphicsSoft::drawLineP(int16_t x1, int16_t x2, int16_t y, uint8_t color) {
-	if (_workPagePtr == _pagePtrs[0]) {
+	if (_drawPagePtr == _pagePtrs[0]) {
 		return;
 	}
 	int16_t xmax = MAX(x1, x2);
 	int16_t xmin = MIN(x1, x2);
 	const int w = xmax - xmin + 1;
-	const int off = y * _w + xmin;
-	memcpy(_workPagePtr + off, _pagePtrs[0] + off, w);
+	const int offset = (y * _w + xmin) * _byteDepth;
+	memcpy(_drawPagePtr + offset, _pagePtrs[0] + offset, w * _byteDepth);
 }
 
 uint8_t *GraphicsSoft::getPagePtr(uint8_t page) {
@@ -233,7 +265,7 @@ uint8_t *GraphicsSoft::getPagePtr(uint8_t page) {
 }
 
 void GraphicsSoft::setWorkPagePtr(uint8_t page) {
-	_workPagePtr = getPagePtr(page);
+	_drawPagePtr = getPagePtr(page);
 }
 
 void GraphicsSoft::setFont(const uint8_t *src, int w, int h) {
@@ -260,8 +292,14 @@ void GraphicsSoft::drawSprite(int buffer, int num, const Point *pt) {
 
 void GraphicsSoft::drawBitmap(int buffer, const uint8_t *data, int w, int h, int fmt) {
 	if (_is1991) {
+		assert(_byteDepth == 1);
 		if (fmt == FMT_CLUT && _w == w && _h == h) {
 			memcpy(getPagePtr(buffer), data, w * h);
+		}
+	}
+	if (_byteDepth == 2) {
+		if (fmt == FMT_RGB565 && _w == w && _h == h) {
+			memcpy(getPagePtr(buffer), data, getPageSize());
 		}
 	}
 }
@@ -282,7 +320,15 @@ void GraphicsSoft::drawStringChar(int buffer, uint8_t color, char c, const Point
 }
 
 void GraphicsSoft::clearBuffer(int num, uint8_t color) {
-	memset(getPagePtr(num), color, getPageSize());
+	if (_byteDepth == 1) {
+		memset(getPagePtr(num), color, getPageSize());
+	} else if (_byteDepth == 2) {
+		const uint16_t rgbColor = _pal[color].rgb565();
+		uint16_t *p = (uint16_t *)getPagePtr(num);
+		for (int i = 0; i < _w * _h; ++i) {
+			p[i] = rgbColor;
+		}
+	}
 }
 
 void GraphicsSoft::copyBuffer(int dst, int src, int vscroll) {
@@ -291,19 +337,24 @@ void GraphicsSoft::copyBuffer(int dst, int src, int vscroll) {
 	} else if (vscroll >= -199 && vscroll <= 199) {
 		const int dy = (int)round(vscroll * _h / float(GFX_H));
 		if (dy < 0) {
-			memcpy(getPagePtr(dst), getPagePtr(src) - dy * _w, (_h + dy) * _w);
+			memcpy(getPagePtr(dst), getPagePtr(src) - dy * _w * _byteDepth, (_h + dy) * _w * _byteDepth);
 		} else {
-			memcpy(getPagePtr(dst) + dy * _w, getPagePtr(src), (_h - dy) * _w);
+			memcpy(getPagePtr(dst) + dy * _w * _byteDepth, getPagePtr(src), (_h - dy) * _w * _byteDepth);
 		}
 	}
 }
 
 void GraphicsSoft::drawBuffer(int num, SystemStub *stub) {
-	const uint8_t *src = getPagePtr(num);
-	for (int i = 0; i < _w * _h; ++i) {
-		_colorBuffer[i] = _pal[src[i]].rgb565();
+	if (_byteDepth == 1) {
+		const uint8_t *src = getPagePtr(num);
+		for (int i = 0; i < _w * _h; ++i) {
+			_colorBuffer[i] = _pal[src[i]].rgb565();
+		}
+		stub->setScreenPixels565(_colorBuffer, _w, _h);
+	} else if (_byteDepth == 2) {
+		const uint16_t *src = (uint16_t *)getPagePtr(num);
+		stub->setScreenPixels565(src, _w, _h);
 	}
-	stub->setScreenPixels565(_colorBuffer, _w, _h);
 	stub->updateScreen();
 }
 
