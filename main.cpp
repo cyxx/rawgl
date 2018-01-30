@@ -48,6 +48,7 @@ static const struct {
 };
 
 bool Graphics::_is1991 = false;
+bool Graphics::_use565 = false;
 
 static Graphics *createGraphics(int type) {
 	switch (type) {
@@ -161,6 +162,10 @@ int main(int argc, char *argv[]) {
 		// if not set, use original software graphics for 199x editions and GL for the anniversary and 3DO versions
 		graphicsType = getGraphicsType(e->_res.getDataType());
 		dm.opengl = (graphicsType == GRAPHICS_GL);
+	}
+	if (graphicsType != GRAPHICS_GL && e->_res.getDataType() == Resource::DT_3DO) {
+		graphicsType = GRAPHICS_SOFTWARE;
+		Graphics::_use565 = true;
 	}
 	Graphics *graphics = createGraphics(graphicsType);
 	SystemStub *stub = SystemStub_SDL_create();
