@@ -401,7 +401,7 @@ const StrEntry Video::_stringsTableDemo[] = {
 	{ 0x1F7, "While conducting a nuclear fission\nexperiment at your local\nparticle accelerator ..." },
 	{ 0x1F8, "Nature decides to put a little\n    extra spin on the ball" },
 	{ 0x1F9, "And sends you ..." },
-	{ 0x1FA, "'     Out of this World\nA Cinematic Action Adventure\n from Interplay Productions\n                    \n       By Eric CHAHI      \n\n  IBM version : D.MORAIS\n" },
+	{ 0x1FA, "     Out of this World\nA Cinematic Action Adventure\n from Interplay Productions\n                    \n       By Eric CHAHI      \n\n  IBM version : D.MORAIS\n" },
 	{ 0xFFFF, 0 }
 };
 
