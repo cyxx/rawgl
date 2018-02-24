@@ -7,35 +7,28 @@
 #include "unpack.h"
 
 struct UnpackCtx {
-	int size, datasize;
+	int datasize;
 	uint32_t crc;
 	uint32_t bits;
 	uint8_t *dst;
 	const uint8_t *src;
 };
 
-static int shiftBit(UnpackCtx *uc, int CF) {
-	int rCF = (uc->bits & 1);
+static bool nextBit(UnpackCtx *uc) {
+	bool carry = (uc->bits & 1) != 0;
 	uc->bits >>= 1;
-	if (CF) {
-		uc->bits |= 0x80000000;
-	}
-	return rCF;
-}
-
-static int nextBit(UnpackCtx *uc) {
-	int CF = shiftBit(uc, 0);
 	if (uc->bits == 0) {
 		uc->bits = READ_BE_UINT32(uc->src); uc->src -= 4;
 		uc->crc ^= uc->bits;
-		CF = shiftBit(uc, 1);
+		carry = (uc->bits & 1) != 0;
+		uc->bits = (1 << 31) | (uc->bits >> 1);
 	}
-	return CF;
+	return carry;
 }
 
-static uint16_t getBits(UnpackCtx *uc, uint8_t num_bits) {
+static uint16_t getBits(UnpackCtx *uc, int bitsCount) {
 	uint16_t c = 0;
-	while (num_bits--) {
+	for (int i = 0; i < bitsCount; ++i) {
 		c <<= 1;
 		if (nextBit(uc)) {
 			c |= 1;
@@ -44,23 +37,22 @@ static uint16_t getBits(UnpackCtx *uc, uint8_t num_bits) {
 	return c;
 }
 
-static void unpackHelper1(UnpackCtx *uc, uint8_t num_bits, uint8_t add_count) {
-	uint16_t count = getBits(uc, num_bits) + add_count + 1;
-	uc->datasize -= count;
-	while (count--) {
+static void copyLiteral(UnpackCtx *uc, int bitsCount, int len) {
+	const int count = getBits(uc, bitsCount) + len + 1;
+	for (int i = 0; i < count; ++i) {
 		*uc->dst = (uint8_t)getBits(uc, 8);
 		--uc->dst;
 	}
+	uc->datasize -= count;
 }
 
-static void unpackHelper2(UnpackCtx *uc, uint8_t num_bits) {
-	uint16_t i = getBits(uc, num_bits);
-	uint16_t count = uc->size + 1;
-	uc->datasize -= count;
-	while (count--) {
-		*uc->dst = *(uc->dst + i);
+static void copyReference(UnpackCtx *uc, int bitsCount, int count) {
+	const uint16_t offset = getBits(uc, bitsCount);
+	for (int i = 0; i < count; ++i) {
+		*uc->dst = *(uc->dst + offset);
 		--uc->dst;
 	}
+	uc->datasize -= count;
 }
 
 bool delphine_unpack(uint8_t *dst, const uint8_t *src, int len) {
@@ -68,28 +60,31 @@ bool delphine_unpack(uint8_t *dst, const uint8_t *src, int len) {
 	uc.src = src + len - 4;
 	uc.datasize = READ_BE_UINT32(uc.src); uc.src -= 4;
 	uc.dst = dst + uc.datasize - 1;
-	uc.size = 0;
 	uc.crc = READ_BE_UINT32(uc.src); uc.src -= 4;
 	uc.bits = READ_BE_UINT32(uc.src); uc.src -= 4;
 	uc.crc ^= uc.bits;
 	do {
 		if (!nextBit(&uc)) {
-			uc.size = 1;
 			if (!nextBit(&uc)) {
-				unpackHelper1(&uc, 3, 0);
+				copyLiteral(&uc, 3, 0);
 			} else {
-				unpackHelper2(&uc, 8);
+				copyReference(&uc, 8, 2);
 			}
 		} else {
-			uint16_t c = getBits(&uc, 2);
-			if (c == 3) {
-				unpackHelper1(&uc, 8, 8);
-			} else if (c < 2) {
-				uc.size = c + 2;
-				unpackHelper2(&uc, c + 9);
-			} else {
-				uc.size = getBits(&uc, 8);
-				unpackHelper2(&uc, 12);
+			const int code = getBits(&uc, 2);
+			switch (code) {
+			case 3:
+				copyLiteral(&uc, 8, 8);
+				break;
+			case 2:
+				copyReference(&uc, 12, getBits(&uc, 8) + 1);
+				break;
+			case 1:
+				copyReference(&uc, 10, 4);
+				break;
+			case 0:
+				copyReference(&uc, 9, 3);
+				break;
 			}
 		}
 	} while (uc.datasize > 0);
