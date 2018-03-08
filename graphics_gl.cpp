@@ -323,7 +323,6 @@ void GraphicsGL::init() {
 	const char *exts = (const char *)glGetString(GL_EXTENSIONS);
 	const bool npotTex = hasExtension(exts, "GL_ARB_texture_non_power_of_two");
 	const bool hasFbo = hasExtension(exts, "GL_ARB_framebuffer_object");
-	setupFboFuncs();
 	_backgroundTex.init();
 	_backgroundTex._npotTex = npotTex;
 	_fontTex.init();
