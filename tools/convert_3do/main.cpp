@@ -1,5 +1,6 @@
 
 #include <assert.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -47,22 +48,22 @@ static void uyvy_to_rgb555(const uint8_t *in, int len, uint16_t *out) {
 	}
 }
 
-static uint16_t _cineBitmap555[320 * 100];
+static uint16_t _cineBitmap555[320 * 200];
 
 struct OutputBuffer {
 	void setup(int w, int h, CinepakDecoder *decoder) {
-		_bufSize = w * h * 2;
+		_bufSize = w * h * sizeof(uint16_t);
 		_buf = (uint8_t *)malloc(_bufSize);
 		decoder->_yuvFrame = _buf;
 		decoder->_yuvW = w;
 		decoder->_yuvH = h;
-		decoder->_yuvPitch = w * 2;
+		decoder->_yuvPitch = w * sizeof(uint16_t);
 	}
 	void dump(const char *path, int num) {
 		char name[MAXPATHLEN];
 		if (1) {
 			static const int W = 320;
-			static const int H = 100;
+			static const int H = 200;
 			snprintf(name, sizeof(name), "%s/%04d.bmp", path, num);
 			FILE *fp = fopen(name, "wb");
 			if (fp) {
@@ -79,7 +80,7 @@ struct OutputBuffer {
 			fwrite(_buf, _bufSize, 1, fp);
 			fclose(fp);
 			char cmd[256];
-			snprintf(cmd, sizeof(cmd), "convert -size 320x100 -depth 8 %s/%04d.uyvy %s/%04d.png", path, num, path, num);
+			snprintf(cmd, sizeof(cmd), "convert -size 320x200 -depth 8 %s/%04d.uyvy %s/%04d.png", path, num, path, num);
 			system(cmd);
 		}
 	}
@@ -323,48 +324,79 @@ static void decodeSong(FILE *fp, int num) {
 }
 
 int main(int argc, char *argv[]) {
-	if (argc >= 2) {
+	bool doDecodeSong = false;
+	bool doDecodeBitmap = false;
+	bool doDecodeCine = false;
+	while (1) {
+		static struct option options[] = {
+			{ "decode_song",   no_argument, 0, 1 },
+			{ "decode_bitmap", no_argument, 0, 2 },
+			{ "decode_cine",   no_argument, 0, 3 },
+			{ 0, 0, 0, 0 }
+		};
+		int index;
+		const int c = getopt_long(argc, argv, "", options, &index);
+		if (c == -1) {
+			break;
+		}
+		switch (c) {
+		case 1:
+			doDecodeSong = true;
+			break;
+		case 2:
+			doDecodeBitmap = true;
+			break;
+		case 3:
+			doDecodeCine = true;
+			break;
+		}
+	}
+        if (optind < argc) {
 		struct stat st;
-		if (stat(argv[1], &st) != 0) {
-			fprintf(stderr, "Failed to stat '%s'\n", argv[1]);
+		if (stat(argv[optind], &st) != 0) {
+			fprintf(stderr, "Failed to stat '%s'\n", argv[optind]);
 			return -1;
 		}
-		if (S_ISREG(st.st_mode)) {
-			FILE *fp = fopen(argv[1], "rb");
+		if (S_ISREG(st.st_mode)) { // .iso file
+			FILE *fp = fopen(argv[optind], "rb");
 			if (fp) {
 				extractOperaIso(fp);
 				fclose(fp);
 			} else {
-				fprintf(stderr, "Failed to open '%s'\n", argv[1]);
+				fprintf(stderr, "Failed to open '%s'\n", argv[optind]);
 			}
 			return 0;
 		}
-		if (S_ISDIR(st.st_mode)) {
+		if (S_ISDIR(st.st_mode)) { // extracted .iso file
 			char path[MAXPATHLEN];
-			for (int i = 1; i <= 30; ++i) {
-				snprintf(path, sizeof(path), "%s/song%d", argv[1], i);
-				FILE *fp = fopen(path, "rb");
-				if (fp) {
-					decodeSong(fp, i);
-					fclose(fp);
-				} else {
-					fprintf(stderr, "Failed to open '%s'\n", path);
+			if (doDecodeSong) {
+				for (int i = 1; i <= 30; ++i) {
+					snprintf(path, sizeof(path), "%s/song%d", argv[optind], i);
+					FILE *fp = fopen(path, "rb");
+					if (fp) {
+						decodeSong(fp, i);
+						fclose(fp);
+					} else {
+						fprintf(stderr, "Failed to open '%s'\n", path);
+					}
 				}
 			}
-			for (int i = 200; i <= 340; ++i) {
-				snprintf(path, sizeof(path), "%s/File%3d", argv[1], i);
-				FILE *fp = fopen(path, "rb");
-				if (fp) {
-					decodeBitmap(fp, i);
-					fclose(fp);
-				} else {
-					fprintf(stderr, "Failed to open '%s'\n", path);
+			if (doDecodeBitmap) {
+				for (int i = 200; i <= 340; ++i) {
+					snprintf(path, sizeof(path), "%s/File%3d", argv[optind], i);
+					FILE *fp = fopen(path, "rb");
+					if (fp) {
+						decodeBitmap(fp, i);
+						fclose(fp);
+					} else {
+						fprintf(stderr, "Failed to open '%s'\n", path);
+					}
 				}
 			}
-			if (1) {
+			if (doDecodeCine) {
 				static const char *cines[] = { "Logo.Cine", "ootw2.cine", "Spintitle.Cine", 0 };
 				for (int i = 0; cines[i]; ++i) {
-					snprintf(path, sizeof(path), "%s/%s", argv[1], cines[i]);
+					snprintf(path, sizeof(path), "%s/%s", argv[optind], cines[i]);
 					FILE *fp = fopen(path, "rb");
 					if (fp) {
 						decodeCine(fp, cines[i]);
