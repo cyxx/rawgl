@@ -60,28 +60,16 @@ struct OutputBuffer {
 		decoder->_yuvPitch = w * sizeof(uint16_t);
 	}
 	void dump(const char *path, int num) {
+		static const int W = 320;
+		static const int H = 200;
 		char name[MAXPATHLEN];
-		if (1) {
-			static const int W = 320;
-			static const int H = 200;
-			snprintf(name, sizeof(name), "%s/%04d.bmp", path, num);
-			FILE *fp = fopen(name, "wb");
-			if (fp) {
-				const int size = W * H * sizeof(uint16_t);
-				uyvy_to_rgb555(_buf, size, _cineBitmap555);
-				writeBitmap555(fp, _cineBitmap555, W, H);
-				fclose(fp);
-			}
-			return;
-		}
-		snprintf(name, sizeof(name), "%s/%04d.uyvy", path, num);
+		snprintf(name, sizeof(name), "%s/%04d.bmp", path, num);
 		FILE *fp = fopen(name, "wb");
 		if (fp) {
-			fwrite(_buf, _bufSize, 1, fp);
+			const int size = W * H * sizeof(uint16_t);
+			uyvy_to_rgb555(_buf, size, _cineBitmap555);
+			writeBitmap555(fp, _cineBitmap555, W, H);
 			fclose(fp);
-			char cmd[256];
-			snprintf(cmd, sizeof(cmd), "convert -size 320x200 -depth 8 %s/%04d.uyvy %s/%04d.png", path, num, path, num);
-			system(cmd);
 		}
 	}
 
@@ -141,10 +129,27 @@ static void decodeCine(FILE *fp, const char *name) {
 				}
 				++frmeCounter;
 			} else {
-				fprintf(stdout, "Ignoring FILM chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
+				fprintf(stdout, "Unhandled FILM chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
+				break;
 			}
+		} else if (memcmp(tag, "SNDS", 4) == 0) {
+			fseek(fp, 8, SEEK_CUR);
+			char type[4];
+			fread(type, 4, 1, fp);
+			if (memcmp(type, "SHDR", 4) == 0) {
+
+			} else if (memcmp(type, "SSMP", 4) == 0) {
+
+			} else {
+				fprintf(stdout, "Unhandled SNDS chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
+				break;
+			}
+		} else if (memcmp(tag, "SHDR", 4) == 0) { // ignore
+		} else if (memcmp(tag, "FILL", 4) == 0) { // ignore
+		} else if (memcmp(tag, "CTRL", 4) == 0) { // ignore
 		} else {
-			fprintf(stdout, "Ignoring tag '%c%c%c%c' size %d\n", tag[0], tag[1], tag[2], tag[3], size);
+			fprintf(stdout, "Unhandled tag '%c%c%c%c' size %d\n", tag[0], tag[1], tag[2], tag[3], size);
+			break;
 		}
 		fseek(fp, pos + size, SEEK_SET);
 	}
