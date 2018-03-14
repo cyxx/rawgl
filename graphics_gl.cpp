@@ -709,7 +709,7 @@ void GraphicsGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
 	glLoadIdentity();
 	glOrtho(0, FB_W, 0, FB_H, 0, 1);
 
-	const int yoffset = (int)round(vscroll * FB_H / float(SCREEN_H));
+	const int yoffset = vscroll * FB_H / (SCREEN_H - 1);
 	drawTextureFb(_pageTex[srcListNum], FB_W, FB_H, yoffset);
 
 	_drawLists[dstListNum] = _drawLists[srcListNum];
