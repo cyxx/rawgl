@@ -5,9 +5,10 @@
  */
 
 #include "unpack.h"
+#include "util.h"
 
 struct UnpackCtx {
-	int datasize;
+	int size;
 	uint32_t crc;
 	uint32_t bits;
 	uint8_t *dst;
@@ -26,40 +27,52 @@ static bool nextBit(UnpackCtx *uc) {
 	return carry;
 }
 
-static uint16_t getBits(UnpackCtx *uc, int bitsCount) {
-	uint16_t c = 0;
-	for (int i = 0; i < bitsCount; ++i) {
-		c <<= 1;
+static int getBits(UnpackCtx *uc, int count) {
+	int bits = 0;
+	for (int i = 0; i < count; ++i) {
+		bits <<= 1;
 		if (nextBit(uc)) {
-			c |= 1;
+			bits |= 1;
 		}
 	}
-	return c;
+	return bits;
 }
 
 static void copyLiteral(UnpackCtx *uc, int bitsCount, int len) {
-	const int count = getBits(uc, bitsCount) + len + 1;
-	for (int i = 0; i < count; ++i) {
-		*uc->dst = (uint8_t)getBits(uc, 8);
-		--uc->dst;
+	int count = getBits(uc, bitsCount) + len + 1;
+	uc->size -= count;
+	if (uc->size < 0) {
+		count += uc->size;
+		uc->size = 0;
 	}
-	uc->datasize -= count;
+	for (int i = 0; i < count; ++i) {
+		*(uc->dst - i) = (uint8_t)getBits(uc, 8);
+	}
+	uc->dst -= count;
 }
 
 static void copyReference(UnpackCtx *uc, int bitsCount, int count) {
-	const uint16_t offset = getBits(uc, bitsCount);
-	for (int i = 0; i < count; ++i) {
-		*uc->dst = *(uc->dst + offset);
-		--uc->dst;
+	uc->size -= count;
+	if (uc->size < 0) {
+		count += uc->size;
+		uc->size = 0;
 	}
-	uc->datasize -= count;
+	const int offset = getBits(uc, bitsCount);
+	for (int i = 0; i < count; ++i) {
+		*(uc->dst - i) = *(uc->dst - i + offset);
+	}
+	uc->dst -= count;
 }
 
-bool delphine_unpack(uint8_t *dst, const uint8_t *src, int len) {
+bool delphine_unpack(uint8_t *dst, int dstSize, const uint8_t *src, int srcSize) {
 	UnpackCtx uc;
-	uc.src = src + len - 4;
-	uc.datasize = READ_BE_UINT32(uc.src); uc.src -= 4;
-	uc.dst = dst + uc.datasize - 1;
+	uc.src = src + srcSize - 4;
+	uc.size = READ_BE_UINT32(uc.src); uc.src -= 4;
+	if (uc.size > dstSize) {
+		warning("Unexpected unpack size %d, buffer size %d", uc.size, dstSize);
+		return false;
+	}
+	uc.dst = dst + uc.size - 1;
 	uc.crc = READ_BE_UINT32(uc.src); uc.src -= 4;
 	uc.bits = READ_BE_UINT32(uc.src); uc.src -= 4;
 	uc.crc ^= uc.bits;
@@ -87,6 +100,7 @@ bool delphine_unpack(uint8_t *dst, const uint8_t *src, int len) {
 				break;
 			}
 		}
-	} while (uc.datasize > 0);
+	} while (uc.size > 0);
+	assert(uc.size == 0);
 	return uc.crc == 0;
 }

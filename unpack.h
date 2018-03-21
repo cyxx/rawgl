@@ -9,6 +9,6 @@
 
 #include "intern.h"
 
-extern bool delphine_unpack(uint8_t *dst, const uint8_t *src, int len);
+extern bool delphine_unpack(uint8_t *dst, int dstSize, const uint8_t *src, int srcSize);
 
 #endif // UNPACK_H__

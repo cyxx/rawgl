@@ -43,7 +43,7 @@ bool Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 		const size_t count = f.read(dstBuf, me->packedSize);
 		ret = (count == me->packedSize);
 		if (ret && me->packedSize != me->unpackedSize) {
-			ret = delphine_unpack(dstBuf, dstBuf, me->packedSize);
+			ret = delphine_unpack(dstBuf, me->unpackedSize, dstBuf, me->packedSize);
 		}
 	}
 	return ret;
