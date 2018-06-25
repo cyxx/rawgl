@@ -95,6 +95,10 @@ void Engine::processInput() {
 		_log._fastMode = !_log._fastMode;
 		_stub->_pi.fastMode = false;
 	}
+	if (_stub->_pi.screenshot) {
+		_vid.captureDisplay();
+		_stub->_pi.screenshot = false;
+	}
 }
 
 void Engine::saveGameState(uint8_t slot, const char *desc) {

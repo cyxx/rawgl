@@ -24,6 +24,7 @@ struct SystemStub_SDL : SystemStub {
 	SDL_Texture *_texture;
 	SDL_Joystick *_joystick;
 	SDL_GameController *_controller;
+	int _screenshot;
 
 	SystemStub_SDL();
 	virtual ~SystemStub_SDL() {}
@@ -92,6 +93,7 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 			_joystick = SDL_JoystickOpen(kJoystickIndex);
 		}
 	}
+	_screenshot = 1;
 }
 
 void SystemStub_SDL::fini() {
@@ -185,6 +187,9 @@ void SystemStub_SDL::processEvents() {
 			case SDLK_SPACE:
 			case SDLK_RETURN:
 				_pi.button = false;
+				break;
+			case SDLK_s:
+				_pi.screenshot = true;
 				break;
 			default:
 				break;

@@ -539,3 +539,7 @@ void Video::updateDisplay(uint8_t page, SystemStub *stub) {
 	}
 	_graphics->drawBuffer(_buffers[1], stub);
 }
+
+void Video::captureDisplay() {
+	_graphics->_screenshot = true;
+}

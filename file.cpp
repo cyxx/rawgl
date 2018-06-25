@@ -117,6 +117,11 @@ bool File::open(const char *filename, const char *path) {
 	return false;
 }
 
+bool File::openForWriting(const char *filepath) {
+	_impl->close();
+	return _impl->open(filepath, "wb");
+}
+
 void File::close() {
 	_impl->close();
 }

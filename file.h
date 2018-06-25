@@ -20,6 +20,7 @@ struct File {
 
 	bool open(const char *filepath);
 	bool open(const char *filename, const char *path);
+	bool openForWriting(const char *filepath);
 	void close();
 	bool ioErr() const;
 	uint32_t size();

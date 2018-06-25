@@ -37,10 +37,11 @@ struct Graphics {
 	static bool _use565; // use 16bits graphics buffer (for 3DO)
 
 	int _fixUpPalette;
+	bool _screenshot;
 
 	virtual ~Graphics() {};
 
-	virtual void init() {}
+	virtual void init() { _screenshot = false; }
 	virtual void fini() {}
 
 	virtual void setFont(const uint8_t *src, int w, int h) = 0;

@@ -24,6 +24,7 @@ struct PlayerInput {
 	bool quit;
 	char lastChar;
 	bool fastMode;
+	bool screenshot;
 };
 
 struct DisplayMode {

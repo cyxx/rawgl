@@ -7,6 +7,7 @@
 #include <math.h>
 #include "graphics.h"
 #include "util.h"
+#include "screenshot.h"
 #include "systemstub.h"
 
 
@@ -25,6 +26,7 @@ struct GraphicsSoft: Graphics {
 	int _byteDepth;
 	Color _pal[16];
 	uint16_t *_colorBuffer;
+	int _screenshotNum;
 
 	GraphicsSoft();
 	~GraphicsSoft();
@@ -61,6 +63,7 @@ GraphicsSoft::GraphicsSoft() {
 	memset(_pal, 0, sizeof(_pal));
 	const int byteDepth = _use565 ? 2 : 1;
 	setSize(GFX_W, GFX_H, byteDepth);
+	_screenshotNum = 1;
 }
 
 GraphicsSoft::~GraphicsSoft() {
@@ -355,16 +358,52 @@ void GraphicsSoft::copyBuffer(int dst, int src, int vscroll) {
 	}
 }
 
+static void dumpBuffer565(const uint16_t *src, int w, int h, int num) {
+	char name[32];
+	snprintf(name, sizeof(name), "screenshot-%d.tga", num);
+	saveTGA(name, src, w, h);
+	debug(DBG_INFO, "Written '%s'", name);
+}
+
+static void dumpPalette555(uint16_t *dst, int w, const Color *pal) {
+	static const int SZ = 16;
+	for (int color = 0; color < 16; ++color) {
+		uint16_t *p = dst + (color & 7) * SZ;
+		for (int y = 0; y < SZ; ++y) {
+			for (int x = 0; x < SZ; ++x) {
+				p[x] = pal[color].rgb565();
+			}
+			p += w;
+		}
+		if (color == 7) {
+			dst += SZ * w;
+		}
+	}
+}
+
 void GraphicsSoft::drawBuffer(int num, SystemStub *stub) {
 	if (_byteDepth == 1) {
 		const uint8_t *src = getPagePtr(num);
 		for (int i = 0; i < _w * _h; ++i) {
 			_colorBuffer[i] = _pal[src[i]].rgb565();
 		}
+		if (0) {
+			dumpPalette555(_colorBuffer, _w, _pal);
+		}
 		stub->setScreenPixels565(_colorBuffer, _w, _h);
+		if (_screenshot) {
+			dumpBuffer565(_colorBuffer, _w, _h, _screenshotNum);
+			++_screenshotNum;
+			_screenshot = false;
+		}
 	} else if (_byteDepth == 2) {
 		const uint16_t *src = (uint16_t *)getPagePtr(num);
 		stub->setScreenPixels565(src, _w, _h);
+		if (_screenshot) {
+			dumpBuffer565(src, _w, _h, _screenshotNum);
+			++_screenshotNum;
+			_screenshot = false;
+		}
 	}
 	stub->updateScreen();
 }
