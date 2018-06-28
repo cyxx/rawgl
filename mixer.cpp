@@ -172,8 +172,8 @@ struct Mixer_impl {
 
 	static void mixSfxPlayer(void *data, uint8_t *s16buf, int len) {
 		len /= 2;
-		int8_t s8buf[len];
-		memset(s8buf, 0, sizeof(s8buf));
+		int8_t *s8buf = (int8_t *)alloca(len);
+		memset(s8buf, 0, len);
 		((SfxPlayer *)data)->readSamples(s8buf, len / 2);
 		for (int i = 0; i < len; ++i) {
 			*(int16_t *)&s16buf[i * 2] = 256 * (int16_t)s8buf[i];

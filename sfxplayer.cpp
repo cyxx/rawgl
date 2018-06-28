@@ -143,7 +143,7 @@ void SfxPlayer::readSamples(int8_t *buf, int len) {
 	if (_delay == 0) {
 		memset(buf, 0, len * 2);
 	} else {
-		int8_t bufin[len * 2];
+		int8_t *bufin = (int8_t *)alloca(len * 2);
 		mixSamples(bufin, len);
 		nr(bufin, len, buf);
 	}
