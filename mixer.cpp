@@ -5,6 +5,7 @@
  */
 
 #include <SDL.h>
+#define MIX_INIT_FLUIDSYNTH MIX_INIT_MID // renamed with SDL2_mixer >= 2.0.2
 #include <SDL_mixer.h>
 #include "aifcplayer.h"
 #include "file.h"
