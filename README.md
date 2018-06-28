@@ -1,34 +1,49 @@
 
-# rawgl README
+# raw(gl) - Another World Interpreter
 
 ## About
 
-rawgl is a re-implementation of the engine used in the game Another World.  
+rawgl is a re-implementation of the engine used in the game Another World.
+
+![Screenshot Intro Amiga](docs/screenshot-intro-amiga.png) ![Screenshot Intro 3DO](docs/screenshot-intro-3do.png)
 
 ## Supported Versions
 
-- Amiga and PC DOS releases (Bank*)
-- 15th anniversary edition (Pak01.pak)
+The program requires the original data files.
+
+- Amiga (Bank*)
+- DOS (Bank*, memlist.bin)
+- DOS demo (Demo*, memlist.bin)
+- 15th anniversary edition (Pak01.pak, Intro2004.wav, End2004.wav)
 - 20th anniversary edition (game/*)
-- Windows 3.1 release (Bank)
-- 3DO release (GameData/*)
+- Windows 3.1 (Bank, *mid)
+- 3DO (GameData/*)
+- Macintosh (File*, *pict)
 
 ## Running
 
-You will need the original files.
+By default, the engine tries to load the game data files from the current
+directory. This can be changed with command line switches.
 
-To start the game, you can either :  
-- put the game's datafiles in the same directory as the executable  
-- use the --datapath command line option to specify the datafiles directory  
+```
+  Usage: rawgl [OPTIONS]...
+    --datapath=PATH   Path to data files (default '.')
+    --language=LANG   Language (fr,us,de,es,it)
+    --part=NUM        Game part to start from (0-35 or 16001-16009)
+    --render=NAME     Renderer (original,software,gl)
+    --window=WxH      Windowed displayed size (default '640x480')
+    --fullscreen      Fullscreen display (stretched)
+    --fullscreen-ar   Fullscreen display (4:3 aspect ratio)
+```
 
 In game hotkeys :
 
-    Arrow Keys      move Lester
-    Enter/Space     run/shoot
-    C               enter a code to jump at a specific level
-    P               pause the game 
-    Alt X           exit the game 
-    Ctrl F          toggle fast mode 
+- Arrow Keys      move Lester
+- Enter/Space     run/shoot
+- C               enter a code to start at a specific position
+- P               pause the game
+- Alt X           exit the game
+- Ctrl F          toggle fast mode
 
 ## Credits
 
