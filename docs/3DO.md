@@ -10,9 +10,9 @@ The bits of assembly game code were generated using the "disasm" tool.
 
 ## Assets
 
-Type     | Amiga/PC | 3DO
--------- | -------- | ---
-Music    | 4 channels tracker with raw signed 8bits samples (3 files) | AIFF SQR2 compressed audio (30 files)
+Type     | Amiga/DOS | 3DO
+-------- | --------- | ---
+Music    | 4 channels tracker with raw signed 8bits samples (3 files) | AIFF SDX2 compressed audio (30 files)
 Sound    | raw signed 8bits mono (103 files)                          | AIFF signed 16 bits (92 files)
 Bitmap   | 4 bits depth paletted 320x200 (8 files)                    | True-color RGB555 320x200 (139 files)
 Bytecode | Big-endian (Motorola 68000)                                | Little-endian (ARMv3)
@@ -48,9 +48,9 @@ This is basically what the password screen does, it looks up the entered code an
 02FF: updateResources(res=16002)
 ```
 
-## Game protection
+## Game Copy Protection
 
-With the original Amiga/PC version, the player has to lookup the associated symbols in the manual based on a random code.
+With the original Amiga/DOS version, the player has to lookup the associated symbols in the manual based on a random code.
 
 ![Screenshot Code](screenshot-protection.png)
 
@@ -96,7 +96,7 @@ The game engine is based on a virtual machine with 30 opcodes.
 
 ### Opcodes
 
-The game was developed on an Amiga. As the Motorola 68000 CPU was big endian, this is the byte order found in the bytecode on the original Amiga/PC versions.
+The game was developed on an Amiga. As the Motorola 68000 CPU was big endian, this is the byte order found in the bytecode on the original Amiga/DOS versions.
 Most of the opcodes operand size is 2 bytes, matching the register size of the target 68000 CPU.
 
 * ALU
@@ -107,7 +107,7 @@ Num | Name | Parameters | Description
 1   | op_mov      | var(dst): byte, var(src): byte   | dst := src
 2   | op_add      | var(dst): byte, var(src): byte   | dst += src
 3   | op_addConst | var: byte; value: word           | var += value
-19  | op_sub      | var(dst) : byte, var(src): byte  | var -= src
+19  | op_sub      | var(dst): byte, var(src): byte   | var -= src
 20  | op_and      | var: byte, value: word           | var &= value
 21  | op_or       | var: byte, value: word           | var |= value
 22  | op_shl      | var: byte, count: word           | var <<= count
@@ -175,11 +175,12 @@ Num | Name | Parameters | Description
 As any 3DO game, the data-files are read from an OperaFS CD-ROM.
 
 Inside the GameData/ directory
-* The game data-files are numbered from 1 to 340 (File%d).
-* The song files (AIFF-C) are numbered from 1 to 30 (song%d).
+* The game data-files are numbered from 1 to 340 (File%d)
+* The song files (AIFF-C) are numbered from 1 to 30 (song%d)
+* Three cinematics files : Logo.Cine, Spintitle.Cine, ootw2.cine
 
-The files are stored uncompressed, the only exception being the background bitmaps.
-The decompression code can be found in the DOOM 3DO source code - https://github.com/Olde-Skuul/doom3do/blob/master/lib/burger/dlzss.s
+The files are stored uncompressed at the exception of the background bitmaps.
+The decompression code can be found in the DOOM 3DO source code - [dlzss.s](https://github.com/Olde-Skuul/doom3do/blob/master/lib/burger/dlzss.s)
 
 ## Rendering
 
@@ -189,7 +190,7 @@ The engine can display semi-transparent shapes such as the car lights in the int
 
 ![Screenshot Intro Amiga](screenshot-intro-amiga.png) ![Screenshot Intro 3DO](screenshot-intro-3do.png)
 
-The original Amiga/PC game used a palette of 16 colors. The semi-transparency is achieved by allocating the upper half of the palette to the transparent colors.
+The original Amiga/DOS game used a palette of 16 colors. The semi-transparency is achieved by allocating the upper half of the palette to the transparent colors.
 The palette indexes 0 to 7 hold the scene colors, indexes 8 to 15 the blended colors.
 
 ![Palette Intro Amiga](palette-intro-amiga.png)
@@ -203,7 +204,7 @@ The 3DO engine leverages the console capabilities to render an alpha blended sha
 
 ### Background Bitmaps
 
-While the original Amiga/PC game relied on polygons for most of its graphics, the game engine supports using a raster bitmap to be used as the background.
+While the original Amiga/DOS game relied on polygons for most of its graphics, the game engine supports using a raster bitmap to be used as the background.
 In the original game version, this is only used for 8 different screens.
 
 ![file067](file067.png) ![file068](file068.png) ![file069](file069.png) ![file070](file070.png)
@@ -216,3 +217,16 @@ The 3DO version uses the feature for all the screens of the game. For comparison
 
 ![File221](File221.png) ![File220](File220.png) ![File306](File306.png) ![File302](File302.png)
 
+### Drawing Primitives
+
+The original Amiga/DOS used only one primitive for all its drawing : a quad (4 vertices).
+
+The 3DO reworked that format, probably to optimize shapes made of single pixels or straight lines.
+The upper nibble of the shape color byte specifies the primitive to draw.
+
+```
+0x00 : nested/composite shape
+0x20 : rectangle
+0x40 : pixel
+0xC0 : polygon/quad
+```

@@ -17,7 +17,7 @@ The program requires the original data files.
 - 15th anniversary edition (Pak01.pak, Intro2004.wav, End2004.wav)
 - 20th anniversary edition (game/*)
 - Windows 3.1 (Bank, *mid)
-- 3DO (GameData/*)
+- [3DO](docs/3DO.md) (GameData/*)
 - Macintosh (File*, *pict)
 
 ## Running
@@ -38,12 +38,14 @@ directory. This can be changed with command line switches.
 
 In game hotkeys :
 
+```
 - Arrow Keys      move Lester
 - Enter/Space     run/shoot
 - C               enter a code to start at a specific position
 - P               pause the game
 - Alt X           exit the game
 - Ctrl F          toggle fast mode
+```
 
 ## Credits
 
