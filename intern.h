@@ -14,12 +14,20 @@
 #include <stdint.h>
 #include <sys/param.h>
 
-#undef MAX
-#define MAX(x,y) ((x)>(y)?(x):(y))
-#undef MIN
-#define MIN(x,y) ((x)<(y)?(x):(y))
 #undef ARRAYSIZE
 #define ARRAYSIZE(a) (sizeof(a)/sizeof(a[0]))
+
+#undef MIN
+template<typename T>
+inline T MIN(T v1, T v2) {
+	return (v1 < v2) ? v1 : v2;
+}
+
+#undef MAX
+template<typename T>
+inline T MAX(T v1, T v2) {
+	return (v1 > v2) ? v1 : v2;
+}
 
 template<typename T>
 inline void SWAP(T &a, T &b) {
