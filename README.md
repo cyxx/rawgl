@@ -1,8 +1,6 @@
 
 # raw(gl) - Another World Interpreter
 
-## About
-
 rawgl is a re-implementation of the engine used in the game Another World.
 
 ![Screenshot Intro Amiga](docs/screenshot-intro-amiga.png) ![Screenshot Intro 3DO](docs/screenshot-intro-3do.png)
@@ -39,19 +37,10 @@ directory. This can be changed with command line switches.
 In game hotkeys :
 
 ```
-- Arrow Keys      move Lester
-- Enter/Space     run/shoot
-- C               enter a code to start at a specific position
-- P               pause the game
-- Alt X           exit the game
-- Ctrl F          toggle fast mode
+  Arrow Keys      move Lester
+  Enter/Space     run/shoot
+  C               enter a code to start at a specific position
+  P               pause the game
+  Alt X           exit the game
+  Ctrl F          toggle fast mode
 ```
-
-## Credits
-
-Eric Chahi, obviously, for making this great game.
-
-## Contact
-
-Gregory Montoir, cyx@users.sourceforge.net
-
