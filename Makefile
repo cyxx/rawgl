@@ -8,7 +8,7 @@ CXXFLAGS := -g -O -MMD -Wall -Wpedantic $(SDL_CFLAGS) $(DEFINES)
 
 SRCS = aifcplayer.cpp bitmap.cpp file.cpp engine.cpp graphics_gl.cpp graphics_soft.cpp \
 	script.cpp mixer.cpp pak.cpp resource.cpp resource_mac.cpp resource_nth.cpp \
-	resource_win31.cpp resource_3do.cpp screenshot.cpp systemstub_sdl.cpp sfxplayer.cpp \
+	resource_win31.cpp resource_3do.cpp scaler.cpp screenshot.cpp systemstub_sdl.cpp sfxplayer.cpp \
 	staticres.cpp unpack.cpp util.cpp video.cpp main.cpp
 
 OBJS = $(SRCS:.cpp=.o)

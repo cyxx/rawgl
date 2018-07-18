@@ -35,7 +35,7 @@ struct Engine {
 	const char *getGameTitle(Language lang) const { return _res.getGameTitle(lang); }
 
 	void run();
-	void setup(Language lang);
+	void setup(Language lang, const char *scalerName, int scalerFactor);
 	void finish();
 	void processInput();
 

@@ -70,7 +70,7 @@ struct Texture {
 	void uploadDataRGB(const void *data, int srcPitch, int w, int h, int fmt, int type);
 	void draw(int w, int h);
 	void clear();
-	void readRaw16(const uint8_t *src, const Color *pal, int w = 320, int h = 200);
+	void readRaw16(const uint8_t *src, const Color *pal, int w, int h);
 	void readFont(const uint8_t *src);
 };
 
@@ -486,7 +486,7 @@ void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int 
 	_backgroundTex._fmt = fmt;
 	switch (fmt) {
 	case FMT_CLUT:
-		_backgroundTex.readRaw16(data, _pal);
+		_backgroundTex.readRaw16(data, _pal, w, h);
 		break;
 	case FMT_RGB:
 		_backgroundTex.clear();

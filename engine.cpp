@@ -42,13 +42,16 @@ void Engine::run() {
 	_mix.update();
 }
 
-void Engine::setup(Language lang) {
+void Engine::setup(Language lang, const char *scalerName, int scalerFactor) {
 	_vid._graphics = _graphics;
 	_graphics->init();
 	if (_res.getDataType() != Resource::DT_3DO) {
 		_vid._graphics->_fixUpPalette = FIXUP_PALETTE_REDRAW;
 	}
 	_vid.init();
+	if (scalerFactor > 1) {
+		_vid.setScaler(scalerName, scalerFactor);
+	}
 	_res.allocMemBlock();
 	_res.readEntries();
 	_res.dumpEntries();
@@ -148,7 +151,7 @@ void Engine::titlePage() {
 		_stub->processEvents();
 		if (_stub->_pi.dirMask & PlayerInput::DIR_DOWN) {
 			_stub->_pi.dirMask &= ~PlayerInput::DIR_DOWN;
-			_partNum = kPartPassword;
+			_partNum = kPartNewGame;
 			y = 1;
 		}
 		if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {

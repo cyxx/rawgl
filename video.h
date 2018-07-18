@@ -16,9 +16,15 @@ struct StrEntry {
 
 struct Graphics;
 struct Resource;
+struct Scaler;
 struct SystemStub;
 
 struct Video {
+
+	enum {
+		BITMAP_W = 320,
+		BITMAP_H = 200
+	};
 
 	static const StrEntry _stringsTableFr[];
 	static const StrEntry _stringsTableEng[];
@@ -42,10 +48,15 @@ struct Video {
 	const StrEntry *_stringsTable;
 	uint8_t _tempBitmap[320 * 200];
 	uint16_t _bitmap565[320 * 200];
+	const Scaler *_scaler;
+	int _scalerFactor;
+	uint8_t *_scalerBuffer;
 
 	Video(Resource *res);
+	~Video();
 	void init();
 
+	void setScaler(const char *name, int factor);
 	void setDefaultFont();
 	void setFont(const uint8_t *font);
 	void setHeads(const uint8_t *src);
@@ -60,6 +71,7 @@ struct Video {
 	void setWorkPagePtr(uint8_t page);
 	void fillPage(uint8_t page, uint8_t color);
 	void copyPage(uint8_t src, uint8_t dst, int16_t vscroll);
+	void scaleBitmap(const uint8_t *src, int fmt);
 	void copyBitmapPtr(const uint8_t *src, uint32_t size = 0);
 	void changePal(uint8_t pal);
 	void updateDisplay(uint8_t page, SystemStub *stub);

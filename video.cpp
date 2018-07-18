@@ -7,6 +7,7 @@
 #include "bitmap.h"
 #include "graphics.h"
 #include "resource.h"
+#include "scaler.h"
 #include "systemstub.h"
 #include "util.h"
 
@@ -15,12 +16,39 @@ Video::Video(Resource *res)
 	: _res(res), _graphics(0), _hasHeadSprites(false), _displayHead(true) {
 }
 
+Video::~Video() {
+	free(_scalerBuffer);
+}
+
 void Video::init() {
 	_nextPal = _currentPal = 0xFF;
 	_buffers[2] = getPagePtr(1);
 	_buffers[1] = getPagePtr(2);
 	setWorkPagePtr(0xFE);
 	_pData.byteSwap = (_res->getDataType() == Resource::DT_3DO);
+	_scaler = 0;
+	_scalerBuffer = 0;
+}
+
+void Video::setScaler(const char *name, int factor) {
+	_scaler = findScaler(name);
+	if (!_scaler) {
+		warning("Scaler '%s' not found", name);
+	} else  {
+		const int byteDepth = (_res->getDataType() == Resource::DT_3DO) ? 2 : 1;
+		if ((_scaler->bpp & (byteDepth * 8)) == 0) {
+			warning("Scaler '%s' does not support %d bits per pixel", name, (byteDepth << 8));
+			_scaler = 0;
+		} else {
+			if (factor < _scaler->factorMin) {
+				factor = _scaler->factorMin;
+			} else if (factor > _scaler->factorMax) {
+				factor = _scaler->factorMax;
+			}
+			_scalerFactor = factor;
+			_scalerBuffer = (uint8_t *)malloc((BITMAP_W * _scalerFactor) * (BITMAP_H * _scalerFactor) * byteDepth);
+		}
+	}
 }
 
 void Video::setDefaultFont() {
@@ -440,26 +468,38 @@ static void decode_pict(const uint8_t *src, uint8_t *dst) {
 	warning("decode_pict() size %d w %d h %d", size, w, h);
 }
 
+void Video::scaleBitmap(const uint8_t *src, int fmt) {
+	if (_scaler) {
+		const int w = BITMAP_W * _scalerFactor;
+		const int h = BITMAP_H * _scalerFactor;
+		const int depth = (fmt == FMT_CLUT) ? 1 : 2;
+		_scaler->scale(_scalerFactor, depth, _scalerBuffer, w * depth, src, BITMAP_W * depth, BITMAP_W, BITMAP_H);
+		_graphics->drawBitmap(0, _scalerBuffer, w, h, fmt);
+	} else {
+		_graphics->drawBitmap(0, src, BITMAP_W, BITMAP_H, fmt);
+	}
+}
+
 void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
 		decode_amiga(src, _tempBitmap);
-		_graphics->drawBitmap(0, _tempBitmap, 320, 200, FMT_CLUT);
+		scaleBitmap(_tempBitmap, FMT_CLUT);
 	} else if (_res->getDataType() == Resource::DT_WIN31) {
-		yflip(src, 320, 200, _tempBitmap);
-		_graphics->drawBitmap(0, _tempBitmap, 320, 200, FMT_CLUT);
+		yflip(src, BITMAP_W, BITMAP_H, _tempBitmap);
+		scaleBitmap(_tempBitmap, FMT_CLUT);
 	} else if (_res->getDataType() == Resource::DT_3DO) {
-		deinterlace555(src, 320, 200, _bitmap565);
-		_graphics->drawBitmap(0, (uint8_t *)_bitmap565, 320, 200, FMT_RGB565);
+		deinterlace555(src, BITMAP_W, BITMAP_H, _bitmap565);
+		scaleBitmap((const uint8_t *)_bitmap565, FMT_RGB565);
 	} else if (_res->getDataType() == Resource::DT_MAC) {
 		decode_pict(src, _tempBitmap);
 	} else { // .BMP
 		if (Graphics::_is1991) {
 			const int w = READ_LE_UINT32(src + 0x12);
 			const int h = READ_LE_UINT32(src + 0x16);
-			if (w == 320 && h == 200) {
+			if (w == BITMAP_W && h == BITMAP_H) {
 				const uint8_t *data = src + READ_LE_UINT32(src + 0xA);
 				yflip(data, w, h, _tempBitmap);
-				_graphics->drawBitmap(0, _tempBitmap, w, h, FMT_CLUT);
+				scaleBitmap(_tempBitmap, FMT_CLUT);
 			}
 		} else {
 			int w, h;
