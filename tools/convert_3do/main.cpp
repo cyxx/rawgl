@@ -238,6 +238,15 @@ static void decodeBitmap(FILE *fp, int num) {
 			} else {
 				fprintf(stderr, "Unexpected decoded size %d\n", decodedSize);
 			}
+		} else if (dataSize == 320 * 200 * sizeof(uint16_t)) {
+			char name[64];
+			snprintf(name, sizeof(name), "%s/File%03d.bmp", OUT, num);
+			FILE *fp = fopen(name, "wb");
+			if (fp) {
+				deinterlace555(data, 320, 200, _bitmapDei555);
+				writeBitmap555(fp, _bitmapDei555, 320, 200);
+				fclose(fp);
+			}
 		} else {
 			fprintf(stderr, "Unexpected header %x%x%x%x\n", data[0], data[1], data[2], data[3]);
 		}
