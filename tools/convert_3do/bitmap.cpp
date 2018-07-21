@@ -25,7 +25,7 @@ static uint32_t TO_ARGB(const uint16_t rgb555) {
 void writeBitmap555(FILE *fp, const uint16_t *src, int w, int h) {
 	static const int FILE_HEADER_SIZE = 14;
 	static const int INFO_HEADER_SIZE = 40;
-	const int alignedWidth = ((w + 3) & ~3) * 4;
+	const int alignedWidth = w * sizeof(uint32_t);
 	const int imageSize = alignedWidth * h;
 	const int bufferSize = FILE_HEADER_SIZE + INFO_HEADER_SIZE + imageSize;
 	uint8_t *buffer = (uint8_t *)calloc(bufferSize, 1);
