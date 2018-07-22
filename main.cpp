@@ -171,7 +171,11 @@ int main(int argc, char *argv[]) {
 	SystemStub *stub = SystemStub_SDL_create();
 	stub->init(e->getGameTitle(lang), &dm);
 	e->setSystemStub(stub, graphics);
-	e->run(lang);
+	e->setup(lang);
+	while (!stub->_pi.quit) {
+		e->run();
+	}
+	e->finish();
 	delete e;
 	stub->fini();
 	delete stub;

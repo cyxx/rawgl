@@ -34,36 +34,15 @@ void Engine::setSystemStub(SystemStub *stub, Graphics *graphics) {
 	_graphics = graphics;
 }
 
-void Engine::run(Language lang) {
-	setup();
-	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA || _res.getDataType() == Resource::DT_MAC) {
-		switch (lang) {
-		case LANG_FR:
-			_vid._stringsTable = Video::_stringsTableFr;
-			break;
-		case LANG_US:
-		default:
-			_vid._stringsTable = Video::_stringsTableEng;
-			break;
-		}
-	}
-	const int num = _partNum;
-	if (num < 36) {
-		_log.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
-	} else {
-		_log.restartAt(num);
-	}
-	while (!_stub->_pi.quit) {
-		_log.setupScripts();
-		_log.inp_updatePlayer();
-		processInput();
-		_log.runScripts();
-		_mix.update();
-	}
-	finish();
+void Engine::run() {
+	_log.setupScripts();
+	_log.inp_updatePlayer();
+	processInput();
+	_log.runScripts();
+	_mix.update();
 }
 
-void Engine::setup() {
+void Engine::setup(Language lang) {
 	_vid._graphics = _graphics;
 	_graphics->init();
 	if (_res.getDataType() != Resource::DT_3DO) {
@@ -81,6 +60,23 @@ void Engine::setup() {
 	}
 	_log.init();
 	_mix.init();
+	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA || _res.getDataType() == Resource::DT_MAC) {
+		switch (lang) {
+		case LANG_FR:
+			_vid._stringsTable = Video::_stringsTableFr;
+			break;
+		case LANG_US:
+		default:
+			_vid._stringsTable = Video::_stringsTableEng;
+			break;
+		}
+	}
+	const int num = _partNum;
+	if (num < 36) {
+		_log.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
+	} else {
+		_log.restartAt(num);
+	}
 }
 
 void Engine::finish() {
