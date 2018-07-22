@@ -12,7 +12,7 @@
 
 
 Engine::Engine(const char *dataDir, int partNum)
-	: _graphics(0), _stub(0), _log(&_mix, &_res, &_ply, &_vid), _mix(&_ply), _res(&_vid, dataDir),
+	: _graphics(0), _stub(0), _script(&_mix, &_res, &_ply, &_vid), _mix(&_ply), _res(&_vid, dataDir),
 	_ply(&_res), _vid(&_res), _partNum(partNum) {
 	_res.detectVersion();
 }
@@ -30,15 +30,15 @@ static const int _restartPos[36 * 2] = {
 
 void Engine::setSystemStub(SystemStub *stub, Graphics *graphics) {
 	_stub = stub;
-	_log._stub = stub;
+	_script._stub = stub;
 	_graphics = graphics;
 }
 
 void Engine::run() {
-	_log.setupScripts();
-	_log.inp_updatePlayer();
+	_script.setupTasks();
+	_script.updateInput();
 	processInput();
-	_log.runScripts();
+	_script.runTasks();
 	_mix.update();
 }
 
@@ -58,7 +58,7 @@ void Engine::setup(Language lang) {
 	} else {
 		_vid.setDefaultFont();
 	}
-	_log.init();
+	_script.init();
 	_mix.init();
 	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA || _res.getDataType() == Resource::DT_MAC) {
 		switch (lang) {
@@ -73,9 +73,9 @@ void Engine::setup(Language lang) {
 	}
 	const int num = _partNum;
 	if (num < 36) {
-		_log.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
+		_script.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
 	} else {
-		_log.restartAt(num);
+		_script.restartAt(num);
 	}
 }
 
@@ -88,7 +88,7 @@ void Engine::finish() {
 
 void Engine::processInput() {
 	if (_stub->_pi.fastMode) {
-		_log._fastMode = !_log._fastMode;
+		_script._fastMode = !_script._fastMode;
 		_stub->_pi.fastMode = false;
 	}
 	if (_stub->_pi.screenshot) {

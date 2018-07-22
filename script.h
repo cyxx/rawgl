@@ -47,13 +47,13 @@ struct Script {
 	Video *_vid;
 	SystemStub *_stub;
 
-	int16_t _scriptVars[0x100];
-	uint16_t _scriptStackCalls[0x40];
-	uint16_t _scriptTasks[2][0x40];
-	uint8_t _scriptPaused[2][0x40];
+	int16_t _scriptVars[256];
+	uint16_t _scriptStackCalls[64];
+	uint16_t _scriptTasks[2][64];
+	uint8_t _scriptStates[2][64];
 	Ptr _scriptPtr;
 	uint8_t _stackPtr;
-	bool _scriptHalted;
+	bool _scriptPaused;
 	bool _fastMode;
 	int _screenNum;
 	bool _is3DO;
@@ -92,11 +92,11 @@ struct Script {
 
 	void restartAt(int part, int pos = -1);
 	void setupPart(int num);
-	void setupScripts();
-	void runScripts();
-	void executeScript();
+	void setupTasks();
+	void runTasks();
+	void executeTask();
 
-	void inp_updatePlayer();
+	void updateInput();
 	void inp_handleSpecialKeys();
 	
 	void snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel);

@@ -21,7 +21,7 @@ struct Engine {
 
 	Graphics *_graphics;
 	SystemStub *_stub;
-	Script _log;
+	Script _script;
 	Mixer _mix;
 	Resource _res;
 	SfxPlayer _ply;
