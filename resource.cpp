@@ -220,8 +220,8 @@ void Resource::dumpEntries() {
 					char name[16];
 					snprintf(name, sizeof(name), "data_%02x_%d", i, _memList[i].type);
 					dumpFile(name, p, _memList[i].unpackedSize);
-					free(p);
 				}
+				free(p);
 			}
 		}
 	}
