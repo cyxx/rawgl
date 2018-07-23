@@ -5,15 +5,18 @@
 #include "intern.h"
 #include "file.h"
 
+struct OperaIso;
+
 struct Resource3do {
 
 	const char *_dataPath;
 	char _musicPath[32];
+	OperaIso *_iso;
 
 	Resource3do(const char *dataPath);
 	~Resource3do();
 
-	void readEntries();
+	bool readEntries();
 
 	uint8_t *loadFile(int num, uint8_t *dst, uint32_t *size);
 	const char *getMusicName(int num);

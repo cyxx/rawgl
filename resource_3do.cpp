@@ -1,7 +1,93 @@
 
+#include <sys/stat.h>
+#include <unistd.h>
 #include "resource_3do.h"
 #include "util.h"
 
+static const int ISO_BLOCK_SIZE = 2048;
+
+struct OperaIsoEntry {
+	char name[16];
+	uint32_t offset;
+	uint32_t size;
+};
+
+static int compareOperaIsoEntry(const void *a, const void *b) {
+	const OperaIsoEntry *entry1 = (const OperaIsoEntry *)a;
+	const OperaIsoEntry *entry2 = (const OperaIsoEntry *)b;
+	return strcmp(entry1->name, entry2->name);
+}
+
+static int compareOperaIsoEntryName(const void *name, const void *p) {
+	const OperaIsoEntry *entry = (const OperaIsoEntry *)p;
+	return strcmp((const char *)name, entry->name);
+}
+
+struct OperaIso {
+	File _f;
+	OperaIsoEntry *_entries;
+	int _entriesCount;
+
+	OperaIso(const char *filePath)
+		: _entries(0), _entriesCount(0) {
+		_f.open(filePath);
+	}
+	~OperaIso() {
+		free(_entries);
+	}
+	void readToc() {
+		uint8_t buf[128];
+		const int count = _f.read(buf, sizeof(buf));
+		if (count != sizeof(buf)) {
+			warning("Failed to read %d bytes", count);
+			return;
+		}
+		if (buf[0] != 1 || memcmp(buf + 40, "CD-ROM", 6) != 0) {
+			warning("Unexpected Opera ISO signature");
+			return;
+		}
+		const int block = READ_BE_UINT32(buf + 100);
+		readTocEntry(block);
+		qsort(_entries, _entriesCount, sizeof(OperaIsoEntry), compareOperaIsoEntry);
+	}
+	void readTocEntry(int block) {
+		uint32_t attr = 0;
+		do {
+			_f.seek(block * ISO_BLOCK_SIZE + 20, SEEK_SET);
+			do {
+				uint8_t buf[72];
+				_f.read(buf, sizeof(buf));
+				attr = READ_BE_UINT32(buf);
+				const char *name = (const char *)buf + 32;
+				const uint32_t count = READ_BE_UINT32(buf + 64);
+				const uint32_t offset = READ_BE_UINT32(buf + 68);
+				_f.seek(count * 4, SEEK_CUR);
+				switch (attr & 255) {
+				case 2:
+					_entries = (OperaIsoEntry *)realloc(_entries, (_entriesCount + 1) * sizeof(OperaIsoEntry));
+					if (_entries) {
+						OperaIsoEntry *e = &_entries[_entriesCount];
+						strncpy(e->name, name, sizeof(e->name) - 1);
+						e->name[sizeof(e->name) - 1] = 0;
+						e->offset = offset * ISO_BLOCK_SIZE;
+						e->size = READ_BE_UINT32(buf + 16);
+						++_entriesCount;
+					}
+					break;
+				case 7:
+					if (strcmp(name, "GameData") == 0) {
+						readTocEntry(offset);
+					}
+					break;
+				}
+			} while (attr < 256);
+			++block;
+		} while ((attr >> 24) == 0x40);
+	}
+	const OperaIsoEntry *find(const char *name) const {
+		return (const OperaIsoEntry *)bsearch(name, _entries, _entriesCount, sizeof(OperaIsoEntry), compareOperaIsoEntryName);
+	}
+};
 
 static int decodeLzss(const uint8_t *src, uint32_t len, uint8_t *dst) {
 	uint32_t rd = 0, wr = 0;
@@ -30,17 +116,48 @@ static int decodeLzss(const uint8_t *src, uint32_t len, uint8_t *dst) {
 
 Resource3do::Resource3do(const char *dataPath)
 	: _dataPath(dataPath) {
+	struct stat st;
+	if (stat(dataPath, &st) == 0 && S_ISREG(st.st_mode)) {
+		_iso = new OperaIso(dataPath);
+	} else {
+		_iso = 0;
+	}
 }
 
 Resource3do::~Resource3do() {
+	delete _iso;
 }
 
-void Resource3do::readEntries() {
+bool Resource3do::readEntries() {
+	if (_iso) {
+		_iso->readToc();
+		return _iso->_entriesCount != 0;
+	}
+	return true;
 }
 
 uint8_t *Resource3do::loadFile(int num, uint8_t *dst, uint32_t *size) {
 	uint8_t *in = dst;
-	if (1) {
+	if (_iso) {
+		char name[16];
+		snprintf(name, sizeof(name), "File%d", num);
+		const OperaIsoEntry *e = _iso->find(name);
+		if (e) {
+			if (!dst) {
+				dst = (uint8_t *)malloc(e->size);
+				if (!dst) {
+					warning("Unable to allocate %d bytes", e->size);
+					return 0;
+				}
+			}
+			*size = e->size;
+			_iso->_f.seek(e->offset);
+			_iso->_f.read(dst, e->size);
+		} else {
+			warning("Failed to load '%s'", name);
+			return 0;
+		}
+	} else {
 		char path[MAXPATHLEN];
 		snprintf(path, sizeof(path), "%s/GameData/File%d", _dataPath, num);
 		File f;

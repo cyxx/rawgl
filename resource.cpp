@@ -62,6 +62,10 @@ static bool check20th(File &f, const char *dataDir) {
 }
 
 static bool check3DO(File &f, const char *dataDir) {
+	const char *ext = strrchr(dataDir, '.');
+	if (ext && strcasecmp(ext, ".iso") == 0) {
+		return f.open(dataDir);
+	}
 	char path[MAXPATHLEN];
 	snprintf(path, sizeof(path), "%s/GameData", dataDir);
 	return f.open("File340", path);
@@ -177,8 +181,9 @@ void Resource::readEntries() {
 	} else if (_dataType == DT_3DO) {
 		_numMemList = ENTRIES_COUNT;
 		_3do = new Resource3do(_dataDir);
-		_3do->readEntries();
-		return;
+		if (_3do->readEntries()) {
+			return;
+		}
 	} else if (_dataType == DT_MAC) {
 		_numMemList = ENTRIES_COUNT;
 		_mac = new ResourceMac(_dataDir);
