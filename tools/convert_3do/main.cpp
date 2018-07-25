@@ -337,51 +337,27 @@ static void decodeSong(FILE *fp, int num) {
 	}
 }
 
-static uint16_t ccbGetBits(const uint8_t *&dataPtr, uint8_t bitCount, int &dataBitsLeft) {
-	uint8_t bitsLeft = bitCount;
-	uint16_t result = 0;
-	while (bitsLeft) {
-		if (bitsLeft < dataBitsLeft) {
-			const uint16_t mask = (1 << bitsLeft) - 1;
-			result |= (*dataPtr >> (dataBitsLeft - bitsLeft)) & mask;
-			dataBitsLeft -= bitsLeft;
-			bitsLeft = 0;
-		} else {
-			bitsLeft -= dataBitsLeft;
-			const uint16_t mask = (1 << dataBitsLeft) - 1;
-			result |= (*dataPtr & mask) << bitsLeft;
-			++dataPtr;
-			dataBitsLeft = 8;
-		}
-	}
-	return result;
-}
-
-static void decodeCcb(int frameWidth, int frameHeight, const uint8_t *dataPtr, uint32_t dataSize, uint8_t bitsPerPixel, uint16_t *dest) {
-
-        int w = frameWidth;
+static void decodeCcb16(int frameWidth, int frameHeight, const uint8_t *dataPtr, uint32_t dataSize, uint16_t *dest) {
 
 	const uint8_t *scanlineStart = dataPtr;
 
-	for (int h = frameHeight; h > 0; --h) {
-		w = frameWidth;
+	for (; frameHeight > 0; --frameHeight) {
 
-		assert(bitsPerPixel >= 8);
 		const int lineDWordSize = readUint16BE(scanlineStart) + 2;
 		const uint8_t *scanlineData = scanlineStart + 2;
 
-		int scanlineDataBitsLeft = 8;
-
+		int w = frameWidth;
 		while (w > 0) {
-			const int code = ccbGetBits(scanlineData, 2, scanlineDataBitsLeft);
-			const int count = ccbGetBits(scanlineData, 6, scanlineDataBitsLeft) + 1;
+			uint8_t code = *scanlineData++;
+			const int count = (code & 63) + 1;
+			code >>= 6;
 			if (code == 0) {
 				break;
 			}
 			switch (code) {
 			case 1:
 				for (int i = 0; i < count; ++i) {
-					*dest++ = ccbGetBits(scanlineData, bitsPerPixel, scanlineDataBitsLeft);
+					*dest++ = readUint16BE(scanlineData); scanlineData += 2;
 				}
 				break;
 			case 2:
@@ -389,7 +365,7 @@ static void decodeCcb(int frameWidth, int frameHeight, const uint8_t *dataPtr, u
 				dest += count;
 				break;
 			case 3: {
-					const uint16_t color = ccbGetBits(scanlineData, bitsPerPixel, scanlineDataBitsLeft);
+					const uint16_t color = readUint16BE(scanlineData); scanlineData += 2;
 					for (int i = 0; i < count; ++i) {
 						*dest++ = color;
 					}
@@ -436,8 +412,9 @@ static void decodeShapeCcb(FILE *fp, const char *shape) {
 		const int bpp = _ccbBitsPerPixelTable[ccb_PRE0 & 7];
 		const uint32_t ccbPRE0_height = ((ccb_PRE0 >> 6) & 0x3FF) + 1;
 		const uint32_t ccbPRE1_width  = (ccb_PRE1 & 0x3FF) + 1;
+		assert(bpp == 16);
 
-		decodeCcb(ccbPRE1_width, ccbPRE0_height, data + offset, dataSize - offset, bpp, _bitmapDei555);
+		decodeCcb16(ccbPRE1_width, ccbPRE0_height, data + offset, dataSize - offset, _bitmapDei555);
 
 		char name[64];
 		snprintf(name, sizeof(name), "%s/%s.bmp", OUT, shape);
