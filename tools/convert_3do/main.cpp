@@ -77,17 +77,17 @@ struct OutputBuffer {
 	uint32_t _bufSize;
 };
 
-static uint32_t readInt(FILE *fp) {
+static uint32_t freadUint32BE(FILE *fp) {
 	uint8_t buf[4];
 	fread(buf, sizeof(buf), 1, fp);
-	return readUint32BE(buf);
+	return READ_BE_UINT32(buf);
 }
 
-static uint32_t readTag(FILE *fp, char *type) {
+static uint32_t freadTag(FILE *fp, char *type) {
 	fread(type, 4, 1, fp);
 	uint8_t buf[4];
 	fread(buf, sizeof(buf), 1, fp);
-	return readUint32BE(buf);
+	return READ_BE_UINT32(buf);
 }
 
 static void decodeCine(FILE *fp, const char *name) {
@@ -101,7 +101,7 @@ static void decodeCine(FILE *fp, const char *name) {
 	while (1) {
 		const uint32_t pos = ftell(fp);
 		char tag[4];
-		const uint32_t size = readTag(fp, tag);
+		const uint32_t size = freadTag(fp, tag);
 		if (feof(fp)) {
 			break;
 		}
@@ -113,12 +113,12 @@ static void decodeCine(FILE *fp, const char *name) {
 				fseek(fp, 4, SEEK_CUR);
 				char compression[4];
 				fread(compression, 4, 1, fp);
-				uint32_t height = readInt(fp);
-				uint32_t width = readInt(fp);
+				uint32_t height = freadUint32BE(fp);
+				uint32_t width = freadUint32BE(fp);
 				out.setup(width, height, &decoder);
 			} else if (memcmp(type, "FRME", 4) == 0) {
-				uint32_t duration = readInt(fp);
-				uint32_t frameSize = readInt(fp);
+				uint32_t duration = freadUint32BE(fp);
+				uint32_t frameSize = freadUint32BE(fp);
 				uint8_t *frameBuf = (uint8_t *)malloc(frameSize);
 				if (frameBuf) {
 					fread(frameBuf, 1, frameSize, fp);
@@ -267,12 +267,12 @@ static void decodeSong(FILE *fp, int num) {
 
 	count = fread(buf, 1, 12, fp);
 	if (count == 12 && memcmp(buf, "FORM", 4) == 0 && memcmp(buf + 8, "AIFC", 4) == 0) {
-		formSize = readUint32BE(buf + 4);
+		formSize = READ_BE_UINT32(buf + 4);
 		for (offset = 12; offset < formSize; offset += dataSize + 8) {
 			fseek(fp, offset, SEEK_SET);
 
 			count = fread(buf, 1, 8, fp);
-			dataSize = readUint32BE(buf + 4);
+			dataSize = READ_BE_UINT32(buf + 4);
 
 			if (memcmp(buf, "FVER", 4) == 0) {
 				continue;
@@ -281,13 +281,13 @@ static void decodeSong(FILE *fp, int num) {
 				assert(dataSize < (int)sizeof(buf));
 				count = fread(buf, 1, dataSize, fp);
 
-				const int channels = readUint16BE(buf);
-				const int samplesPerFrame = readUint32BE(buf + 2);
-				const int bits = readUint16BE(buf + 6);
+				const int channels = READ_BE_UINT16(buf);
+				const int samplesPerFrame = READ_BE_UINT32(buf + 2);
+				const int bits = READ_BE_UINT16(buf + 6);
 				int rate = 0;
 				{
 					const uint8_t *ieee754 = buf + 8;
-					const uint32_t m = readUint32BE(ieee754 + 2);
+					const uint32_t m = READ_BE_UINT32(ieee754 + 2);
 					const int e = 30 - ieee754[1];
 					rate = (m >> e);
 				}
@@ -343,7 +343,7 @@ static void decodeCcb16(int frameWidth, int frameHeight, const uint8_t *dataPtr,
 
 	for (; frameHeight > 0; --frameHeight) {
 
-		const int lineDWordSize = readUint16BE(scanlineStart) + 2;
+		const int lineDWordSize = READ_BE_UINT16(scanlineStart) + 2;
 		const uint8_t *scanlineData = scanlineStart + 2;
 
 		int w = frameWidth;
@@ -357,7 +357,7 @@ static void decodeCcb16(int frameWidth, int frameHeight, const uint8_t *dataPtr,
 			switch (code) {
 			case 1:
 				for (int i = 0; i < count; ++i) {
-					*dest++ = readUint16BE(scanlineData); scanlineData += 2;
+					*dest++ = READ_BE_UINT16(scanlineData); scanlineData += 2;
 				}
 				break;
 			case 2:
@@ -365,7 +365,7 @@ static void decodeCcb16(int frameWidth, int frameHeight, const uint8_t *dataPtr,
 				dest += count;
 				break;
 			case 3: {
-					const uint16_t color = readUint16BE(scanlineData); scanlineData += 2;
+					const uint16_t color = READ_BE_UINT16(scanlineData); scanlineData += 2;
 					for (int i = 0; i < count; ++i) {
 						*dest++ = color;
 					}
@@ -392,9 +392,9 @@ static void decodeShapeCcb(FILE *fp, const char *shape) {
 	if (data) {
 		int offset = 0;
 
-		uint32_t ccb_Flags = readUint32BE(data + offset); offset += 4;
+		uint32_t ccb_Flags = READ_BE_UINT32(data + offset); offset += 4;
 		offset += 4; // ccb_NextPtr
-		uint32_t ccb_CelData = readUint32BE(data + offset); offset += 4; // ccb_CelData
+		uint32_t ccb_CelData = READ_BE_UINT32(data + offset); offset += 4; // ccb_CelData
 		offset += 4; // ccb_PLUTPtr
 		offset += 4; // ccb_X
 		offset += 4; // ccb_Y
@@ -405,8 +405,8 @@ static void decodeShapeCcb(FILE *fp, const char *shape) {
 		offset += 4; // ccb_ddx
 		offset += 4; // ccb_ddy
 		offset += 4; // ccb_PPMPC;
-		const uint32_t ccb_PRE0 = readUint32BE(data + offset); offset += 4;
-		const uint32_t ccb_PRE1 = readUint32BE(data + offset); offset += 4;
+		const uint32_t ccb_PRE0 = READ_BE_UINT32(data + offset); offset += 4;
+		const uint32_t ccb_PRE1 = READ_BE_UINT32(data + offset); offset += 4;
 		assert(ccb_CelData == 0x30);
 		assert(ccb_Flags & (1 << 9));
 		const int bpp = _ccbBitsPerPixelTable[ccb_PRE0 & 7];

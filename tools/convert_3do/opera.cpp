@@ -31,16 +31,16 @@ static void readIso(FILE *fp, int block, int flags) {
 		do {
 			uint8_t buf[72];
 			fread(buf, sizeof(buf), 1, fp);
-			attr = readUint32BE(buf);
+			attr = READ_BE_UINT32(buf);
 			const char *name = (const char *)buf + 32;
-			const uint32_t count = readUint32BE(buf + 64);
-			const uint32_t offset = readUint32BE(buf + 68);
+			const uint32_t count = READ_BE_UINT32(buf + 64);
+			const uint32_t offset = READ_BE_UINT32(buf + 68);
 			fseek(fp, count * 4, SEEK_CUR);
 			switch (attr & 255) {
 			case 2:
 				if (flags & 1) {
 					const int pos = ftell(fp);
-					dumpGameData(name, fp, offset * BLOCK_SIZE, readUint32BE(buf + 16));
+					dumpGameData(name, fp, offset * BLOCK_SIZE, READ_BE_UINT32(buf + 16));
 					fseek(fp, pos, SEEK_SET);
 				}
 				break;
@@ -66,7 +66,7 @@ int extractOperaIso(FILE *fp) {
 		fprintf(stderr, "Unexpected Opera ISO signature\n");
 		return -1;
 	}
-	const int offset = readUint32BE(buf + 100);
+	const int offset = READ_BE_UINT32(buf + 100);
 	readIso(fp, offset, 0);
 	return 0;
 }
