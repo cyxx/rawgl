@@ -2,7 +2,7 @@
 SDL_CFLAGS = `sdl2-config --cflags`
 SDL_LIBS = `sdl2-config --libs` -lSDL2_mixer -lGL
 
-DEFINES = -DBYPASS_PROTECTION
+DEFINES = -DBYPASS_PROTECTION -DUSE_GL
 
 CXXFLAGS := -g -O -MMD -Wall -Wpedantic $(SDL_CFLAGS) $(DEFINES)
 

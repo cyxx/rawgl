@@ -60,7 +60,9 @@ static Graphics *createGraphics(int type) {
 		return GraphicsSoft_create();
 	case GRAPHICS_GL:
 		debug(DBG_INFO, "Using GL graphics");
+#ifdef USE_GL
 		return GraphicsGL_create();
+#endif
 	}
 	return 0;
 }
