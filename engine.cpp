@@ -71,6 +71,9 @@ void Engine::setup(Language lang) {
 			break;
 		}
 	}
+	if (_res.getDataType() == Resource::DT_3DO) {
+		titlePage();
+	}
 	const int num = _partNum;
 	if (num < 36) {
 		_script.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
@@ -94,6 +97,35 @@ void Engine::processInput() {
 	if (_stub->_pi.screenshot) {
 		_vid.captureDisplay();
 		_stub->_pi.screenshot = false;
+	}
+}
+
+void Engine::titlePage() {
+	// doThreeScreens();
+	// scrollText(0, 380, Video::_noteText3DO);
+	// playCpak("GameData/Logo.Cine");
+	// playCpak("GameData/SpinTitle.Cine");
+	_res.loadBmp(70);
+	_vid.updateDisplay(0, _stub);
+	enum {
+		kPartNewGame  = 16002,
+		kPartPassword = 16008
+	};
+	while (!_stub->_pi.quit) {
+		_stub->processEvents();
+		if (_stub->_pi.dirMask & PlayerInput::DIR_DOWN) {
+			_stub->_pi.dirMask &= ~PlayerInput::DIR_DOWN;
+			_partNum = kPartPassword;
+		}
+		if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
+			_stub->_pi.dirMask &= ~PlayerInput::DIR_UP;
+			_partNum = kPartNewGame;
+		}
+		if (_stub->_pi.button) {
+			_stub->_pi.button = false;
+			break;
+		}
+		_stub->sleep(50);
 	}
 }
 

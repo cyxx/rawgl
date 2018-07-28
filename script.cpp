@@ -605,7 +605,7 @@ void Script::updateInput() {
 	// The password selection screen in the 3DO version accepts both 'action'
 	// and 'jump' buttons. As 'up' is also mapped to 'jump', pressing it selects
 	// the highlighted letter instead of moving the cursor. We zero the jump code.
-	if (_is3DO && _res->_currentPart == 16009) {
+	if (_is3DO && (_res->_currentPart == 16008 || _res->_currentPart == 16009)) {
 		ud = 0;
 	}
 

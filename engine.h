@@ -38,6 +38,7 @@ struct Engine {
 	void setup(Language lang);
 	void finish();
 	void processInput();
+	void titlePage();
 	
 	void saveGameState(uint8_t slot, const char *desc);
 	void loadGameState(uint8_t slot);
