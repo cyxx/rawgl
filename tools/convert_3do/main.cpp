@@ -492,8 +492,8 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			if (doDecodeBitmap) {
-				for (int i = 200; i <= 340; ++i) {
-					snprintf(path, sizeof(path), "%s/File%3d", argv[optind], i);
+				for (int i = 1; i <= 340; ++i) {
+					snprintf(path, sizeof(path), "%s/File%d", argv[optind], i);
 					FILE *fp = fopen(path, "rb");
 					if (fp) {
 						decodeBitmap(fp, i);
