@@ -300,6 +300,7 @@ struct GraphicsGL : Graphics {
 	virtual void clearBuffer(int listNum, uint8_t color);
 	virtual void copyBuffer(int dstListNum, int srcListNum, int vscroll = 0);
 	virtual void drawBuffer(int listNum, SystemStub *stub);
+	virtual void drawRect(int num, uint8_t color, const Point *pt, int w, int h);
 
 	bool initFbo();
 	void drawVerticesFlat(int count, const Point *vertices);
@@ -761,6 +762,31 @@ void GraphicsGL::drawBuffer(int listNum, SystemStub *stub) {
 
 	glPopMatrix();
 	stub->updateScreen();
+}
+
+void GraphicsGL::drawRect(int num, uint8_t color, const Point *pt, int w, int h) {
+
+	// ignore 'num' target framebuffer as this is only used for the title screen with the 3DO version
+	assert(color < 16);
+	glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
+
+	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+	const int x1 = pt->x;
+	const int y1 = pt->y;
+	const int x2 = x1 + w - 1;
+	const int y2 = y1 + h - 1;
+	glBegin(GL_LINES);
+		// horizontal
+		glVertex2i(x1, y1);
+		glVertex2i(x2, y1);
+		glVertex2i(x1, y2);
+		glVertex2i(x2, y2);
+		// vertical
+		glVertex2i(x1, y1);
+		glVertex2i(x1, y2);
+		glVertex2i(x2, y1);
+		glVertex2i(x2, y2);
+	glEnd();
 }
 
 Graphics *GraphicsGL_create() {

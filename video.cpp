@@ -543,3 +543,18 @@ void Video::updateDisplay(uint8_t page, SystemStub *stub) {
 void Video::captureDisplay() {
 	_graphics->_screenshot = true;
 }
+
+void Video::setPaletteColor(uint8_t color, int r, int g, int b) {
+	Color c;
+	c.r = r;
+	c.g = g;
+	c.b = b;
+	_graphics->setPalette(&c, 1);
+}
+
+void Video::drawRect(uint8_t page, uint8_t color, int x1, int y1, int x2, int y2) {
+	Point pt;
+	pt.x = x1;
+	pt.y = y1;
+	_graphics->drawRect(page, color, &pt, x2 - x1, y2 - y1);
+}

@@ -106,25 +106,36 @@ void Engine::titlePage() {
 	// playCpak("GameData/Logo.Cine");
 	// playCpak("GameData/SpinTitle.Cine");
 	_res.loadBmp(70);
-	_vid.updateDisplay(0, _stub);
+	static const int kCursorColor = 0;
+	_vid.setPaletteColor(kCursorColor, 255, 0, 0);
 	enum {
 		kPartNewGame  = 16002,
 		kPartPassword = 16008
 	};
+	static const int yPos[] = {
+		 97, 123,
+		123, 149
+	};
+	int y = 0;
 	while (!_stub->_pi.quit) {
+		_vid.copyPage(0, 1, 0);
+		_vid.drawRect(1, kCursorColor, 97, yPos[y * 2], 210, yPos[y * 2 + 1]);
 		_stub->processEvents();
 		if (_stub->_pi.dirMask & PlayerInput::DIR_DOWN) {
 			_stub->_pi.dirMask &= ~PlayerInput::DIR_DOWN;
 			_partNum = kPartPassword;
+			y = 1;
 		}
 		if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
 			_stub->_pi.dirMask &= ~PlayerInput::DIR_UP;
 			_partNum = kPartNewGame;
+			y = 0;
 		}
 		if (_stub->_pi.button) {
 			_stub->_pi.button = false;
 			break;
 		}
+		_vid.updateDisplay(1, _stub);
 		_stub->sleep(50);
 	}
 }

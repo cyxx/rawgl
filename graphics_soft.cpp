@@ -53,6 +53,7 @@ struct GraphicsSoft: Graphics {
 	virtual void clearBuffer(int num, uint8_t color);
 	virtual void copyBuffer(int dst, int src, int vscroll = 0);
 	virtual void drawBuffer(int num, SystemStub *stub);
+	virtual void drawRect(int num, uint8_t color, const Point *pt, int w, int h);
 };
 
 
@@ -406,6 +407,26 @@ void GraphicsSoft::drawBuffer(int num, SystemStub *stub) {
 		}
 	}
 	stub->updateScreen();
+}
+
+void GraphicsSoft::drawRect(int num, uint8_t color, const Point *pt, int w, int h) {
+	assert(_byteDepth == 2);
+	setWorkPagePtr(num);
+	const uint16_t rgbColor = _pal[color].rgb565();
+	const int x1 = pt->x;
+	const int y1 = pt->y;
+	const int x2 = x1 + w - 1;
+	const int y2 = y1 + h - 1;
+	// horizontal
+	for (int x = x1; x <= x2; ++x) {
+		*(uint16_t *)(_drawPagePtr + (y1 * _w + x) * _byteDepth) = rgbColor;
+		*(uint16_t *)(_drawPagePtr + (y2 * _w + x) * _byteDepth) = rgbColor;
+	}
+	// vertical
+	for (int y = y1; y <= y2; ++y) {
+		*(uint16_t *)(_drawPagePtr + (y * _w + x1) * _byteDepth) = rgbColor;
+		*(uint16_t *)(_drawPagePtr + (y * _w + x2) * _byteDepth) = rgbColor;
+	}
 }
 
 Graphics *GraphicsSoft_create() {
