@@ -38,6 +38,12 @@ struct Engine {
 	void setup(Language lang);
 	void finish();
 	void processInput();
+
+	// 3DO
+	void doThreeScreens();
+	void doEndCredits();
+	void playCpak(const char *name);
+	void scrollText(int a, int b, const char *text);
 	void titlePage();
 	
 	void saveGameState(uint8_t slot, const char *desc);

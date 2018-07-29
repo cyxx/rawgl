@@ -100,11 +100,23 @@ void Engine::processInput() {
 	}
 }
 
+void Engine::doThreeScreens() {
+}
+
+void Engine::doEndCredits() {
+}
+
+void Engine::playCpak(const char *name) {
+}
+
+void Engine::scrollText(int a, int b, const char *text) {
+}
+
 void Engine::titlePage() {
-	// doThreeScreens();
-	// scrollText(0, 380, Video::_noteText3DO);
-	// playCpak("GameData/Logo.Cine");
-	// playCpak("GameData/SpinTitle.Cine");
+	doThreeScreens();
+	scrollText(0, 380, Video::_noteText3DO);
+	playCpak("Logo.Cine");
+	playCpak("Spintitle.Cine");
 	_res.loadBmp(70);
 	static const int kCursorColor = 0;
 	_vid.setPaletteColor(kCursorColor, 255, 0, 0);
