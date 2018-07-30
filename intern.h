@@ -17,6 +17,12 @@
 #undef ARRAYSIZE
 #define ARRAYSIZE(a) (sizeof(a)/sizeof(a[0]))
 
+#undef ABS
+template<typename T>
+inline T ABS(T v) {
+	return (v < 0) ? -v : v;
+}
+
 #undef MIN
 template<typename T>
 inline T MIN(T v1, T v2) {
@@ -124,6 +130,11 @@ struct Frac {
 	static const int MASK = (1 << BITS) - 1;
 	uint32_t inc;
 	uint64_t offset;
+
+	void reset(int n, int d) {
+		inc = (n << BITS) / d;
+		offset = 0;
+	}
 
 	uint32_t getInt() const {
 		return offset >> BITS;
