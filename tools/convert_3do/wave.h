@@ -4,6 +4,6 @@
 
 #include "util.h"
 
-int writeWav_stereoS16(FILE *fp, const int16_t *samples, int count);
+int writeWav_stereoS16(FILE *fp, const int16_t *samples, int count, int frequency);
 
 #endif

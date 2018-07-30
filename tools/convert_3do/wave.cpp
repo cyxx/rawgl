@@ -19,7 +19,7 @@ static void TO_BE32(uint8_t *dst, uint32_t value) {
 	}
 }
 
-int writeWav_stereoS16(FILE *fp, const int16_t *samples, int count) {
+int writeWav_stereoS16(FILE *fp, const int16_t *samples, int count, int frequency) {
 	static const int FMT_CHUNK_SIZE = 16;
 	int bufferSize = 4 + (8 + FMT_CHUNK_SIZE) + (8 + count * sizeof(int16_t));
 	uint8_t *buffer = (uint8_t *)calloc(8 + bufferSize, 1);
@@ -34,8 +34,8 @@ int writeWav_stereoS16(FILE *fp, const int16_t *samples, int count) {
 		TO_LE32(buffer + offset, FMT_CHUNK_SIZE); offset += 4;
 		TO_LE16(buffer + offset, 1); offset += 2; // audio_format
 		TO_LE16(buffer + offset, 2); offset += 2; // num_channels
-		TO_LE32(buffer + offset, 44100); offset += 4; // sample_rate
-		TO_LE32(buffer + offset, 44100 * 2 * sizeof(int16_t)); offset += 4; // byte_rate
+		TO_LE32(buffer + offset, frequency); offset += 4; // sample_rate
+		TO_LE32(buffer + offset, frequency * 2 * sizeof(int16_t)); offset += 4; // byte_rate
 		TO_LE16(buffer + offset, 2 * sizeof(int16_t)); offset += 2; // block_align
 		TO_LE16(buffer + offset, 16); offset += 2; // bits_per_sample
 

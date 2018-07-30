@@ -263,7 +263,7 @@ static const char *kSDX = "SDX22:1 Squareroot-Delta-Exact compression";
 
 static void decodeSong(FILE *fp, int num) {
 	uint8_t buf[64];
-	int count, offset, formSize, dataSize;
+	int count, offset, formSize, dataSize, rate = 0;
 
 	count = fread(buf, 1, 12, fp);
 	if (count == 12 && memcmp(buf, "FORM", 4) == 0 && memcmp(buf + 8, "AIFC", 4) == 0) {
@@ -284,7 +284,6 @@ static void decodeSong(FILE *fp, int num) {
 				const int channels = READ_BE_UINT16(buf);
 				const int samplesPerFrame = READ_BE_UINT32(buf + 2);
 				const int bits = READ_BE_UINT16(buf + 6);
-				int rate = 0;
 				{
 					const uint8_t *ieee754 = buf + 8;
 					const uint32_t m = READ_BE_UINT32(ieee754 + 2);
@@ -322,7 +321,7 @@ static void decodeSong(FILE *fp, int num) {
 					snprintf(path, sizeof(path), "%s/song%d.wav", OUT, num);
 					FILE *fp = fopen(path, "wb");
 					if (fp) {
-						writeWav_stereoS16(fp, samples, dataSize);
+						writeWav_stereoS16(fp, samples, dataSize, rate);
 						fclose(fp);
 					}
 					free(samples);
