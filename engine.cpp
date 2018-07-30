@@ -71,7 +71,7 @@ void Engine::setup(Language lang) {
 			break;
 		}
 	}
-	if (_res.getDataType() == Resource::DT_3DO) {
+	if (_res.getDataType() == Resource::DT_3DO && _partNum == 16001) {
 		titlePage();
 	}
 	const int num = _partNum;
@@ -101,6 +101,19 @@ void Engine::processInput() {
 }
 
 void Engine::doThreeScreens() {
+	static const int bitmaps[] = { 67, 68, 69, -1 };
+	for (int i = 0; bitmaps[i] != -1 && !_stub->_pi.quit; ++i) {
+		_res.loadBmp(bitmaps[i]);
+		_vid.updateDisplay(0, _stub);
+		while (!_stub->_pi.quit) {
+			_stub->processEvents();
+			if (_stub->_pi.button) {
+				_stub->_pi.button = false;
+				break;
+			}
+			_stub->sleep(50);
+		}
+	}
 }
 
 void Engine::doEndCredits() {
