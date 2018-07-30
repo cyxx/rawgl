@@ -4,6 +4,7 @@
  * Copyright (C) 2004-2005 Gregory Montoir (cyx@users.sourceforge.net)
  */
 
+#include <SDL.h>
 #include <getopt.h>
 #include <sys/stat.h>
 #include "engine.h"
@@ -81,7 +82,6 @@ static int getGraphicsType(Resource::DataType type) {
 static const int DEFAULT_WINDOW_W = 640;
 static const int DEFAULT_WINDOW_H = 400;
 
-#undef main
 int main(int argc, char *argv[]) {
 	char *dataPath = 0;
 	int part = 16001;
