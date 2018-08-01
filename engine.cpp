@@ -119,6 +119,7 @@ void Engine::processInput() {
 }
 
 void Engine::doThreeScreens() {
+	_script.snd_playMusic(1, 0, 0);
 	static const int bitmaps[] = { 67, 68, 69, -1 };
 	for (int i = 0; bitmaps[i] != -1 && !_stub->_pi.quit; ++i) {
 		_res.loadBmp(bitmaps[i]);
@@ -136,6 +137,9 @@ void Engine::doThreeScreens() {
 }
 
 void Engine::doEndCredits() {
+	scrollText(0, 380, Video::_endText3DO);
+	_script.snd_playMusic(0, 0, 0);
+	playCinepak("ootw2.cine");
 }
 
 void Engine::playCinepak(const char *name) {
