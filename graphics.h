@@ -28,6 +28,11 @@ enum {
 	GRAPHICS_GL
 };
 
+enum {
+	GFX_W = 320,
+	GFX_H = 200
+};
+
 struct SystemStub;
 
 struct Graphics {
@@ -41,7 +46,7 @@ struct Graphics {
 
 	virtual ~Graphics() {};
 
-	virtual void init() { _screenshot = false; }
+	virtual void init(int targetW, int targetH) { _screenshot = false; }
 	virtual void fini() {}
 
 	virtual void setFont(const uint8_t *src, int w, int h) = 0;

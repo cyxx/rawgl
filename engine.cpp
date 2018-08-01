@@ -57,7 +57,7 @@ void Engine::run() {
 
 void Engine::setup(Language lang, const char *scalerName, int scalerFactor) {
 	_vid._graphics = _graphics;
-	_graphics->init();
+	_graphics->init(GFX_W * scalerFactor, GFX_H * scalerFactor);
 	if (_res.getDataType() != Resource::DT_3DO) {
 		_vid._graphics->_fixUpPalette = FIXUP_PALETTE_REDRAW;
 	}

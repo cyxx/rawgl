@@ -52,6 +52,7 @@ SystemStub_SDL::SystemStub_SDL()
 void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 	SDL_ShowCursor(SDL_DISABLE);
+	// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 
 	int windowW = 0;
 	int windowH = 0;

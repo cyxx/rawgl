@@ -288,7 +288,7 @@ struct GraphicsGL : Graphics {
 	GraphicsGL();
 	virtual ~GraphicsGL() {}
 
-	virtual void init();
+	virtual void init(int targetW, int targetH);
 	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, int count);
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
@@ -316,7 +316,8 @@ GraphicsGL::GraphicsGL() {
 	_sprite.num = -1;
 }
 
-void GraphicsGL::init() {
+void GraphicsGL::init(int targetW, int targetH) {
+	Graphics::init(targetW, targetH);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
