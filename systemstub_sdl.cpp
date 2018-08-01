@@ -195,6 +195,18 @@ void SystemStub_SDL::processEvents() {
 			case SDLK_s:
 				_pi.screenshot = true;
 				break;
+			case SDLK_c:
+				_pi.code = true;
+				break;
+			case SDLK_p:
+				_pi.pause = true;
+				break;
+			case SDLK_AC_BACK:
+				_pi.back = true;
+				break;
+			case SDLK_AC_HOME:
+				_pi.quit = true;
+				break;
 			default:
 				break;
 			}
@@ -229,12 +241,6 @@ void SystemStub_SDL::processEvents() {
 			case SDLK_SPACE:
 			case SDLK_RETURN:
 				_pi.button = true;
-				break;
-			case SDLK_c:
-				_pi.code = true;
-				break;
-			case SDLK_p:
-				_pi.pause = true;
 				break;
 			default:
 				break;
@@ -323,7 +329,7 @@ void SystemStub_SDL::processEvents() {
 				const bool pressed = (ev.cbutton.state == SDL_PRESSED);
 				switch (ev.cbutton.button) {
 				case SDL_CONTROLLER_BUTTON_BACK:
-					_pi.quit = pressed;
+					_pi.back = pressed;
 					break;
 				case SDL_CONTROLLER_BUTTON_GUIDE:
 					_pi.code = pressed;
