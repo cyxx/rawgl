@@ -390,6 +390,9 @@ static void dumpPalette555(uint16_t *dst, int w, const Color *pal) {
 }
 
 void GraphicsSoft::drawBuffer(int num, SystemStub *stub) {
+	int w, h;
+	float ar[4];
+	stub->prepareScreen(w, h, ar);
 	if (_byteDepth == 1) {
 		const uint8_t *src = getPagePtr(num);
 		for (int i = 0; i < _w * _h; ++i) {

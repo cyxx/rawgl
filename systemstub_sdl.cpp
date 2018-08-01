@@ -125,6 +125,9 @@ void SystemStub_SDL::prepareScreen(int &w, int &h, float ar[4]) {
 	ar[1] = _aspectRatio[1];
 	ar[2] = _aspectRatio[2];
 	ar[3] = _aspectRatio[3];
+	if (_renderer) {
+		SDL_RenderClear(_renderer);
+	}
 }
 
 void SystemStub_SDL::updateScreen() {
