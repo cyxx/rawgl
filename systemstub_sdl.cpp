@@ -316,7 +316,52 @@ void SystemStub_SDL::processEvents() {
 		case SDL_CONTROLLERBUTTONDOWN:
 		case SDL_CONTROLLERBUTTONUP:
 			if (_controller) {
-				_pi.button = (ev.jbutton.state == SDL_PRESSED);
+				const bool pressed = (ev.cbutton.state == SDL_PRESSED);
+				switch (ev.cbutton.button) {
+				case SDL_CONTROLLER_BUTTON_BACK:
+					_pi.quit = pressed;
+					break;
+				case SDL_CONTROLLER_BUTTON_GUIDE:
+					_pi.code = pressed;
+					break;
+				case SDL_CONTROLLER_BUTTON_START:
+					_pi.pause = pressed;
+					break;
+				case SDL_CONTROLLER_BUTTON_DPAD_UP:
+					if (pressed) {
+						_pi.dirMask |= PlayerInput::DIR_UP;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_UP;
+					}
+					break;
+				case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+					if (pressed) {
+						_pi.dirMask |= PlayerInput::DIR_DOWN;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_DOWN;
+					}
+					break;
+				case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+					if (pressed) {
+						_pi.dirMask |= PlayerInput::DIR_LEFT;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_LEFT;
+					}
+					break;
+				case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+					if (pressed) {
+						_pi.dirMask |= PlayerInput::DIR_RIGHT;
+					} else {
+						_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
+					}
+					break;
+				case SDL_CONTROLLER_BUTTON_A:
+				case SDL_CONTROLLER_BUTTON_B:
+				case SDL_CONTROLLER_BUTTON_X:
+				case SDL_CONTROLLER_BUTTON_Y:
+					_pi.button = pressed;
+					break;
+				}
 			}
 			break;
 		default:
