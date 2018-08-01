@@ -35,11 +35,24 @@ void Engine::setSystemStub(SystemStub *stub, Graphics *graphics) {
 }
 
 void Engine::run() {
-	_script.setupTasks();
-	_script.updateInput();
-	processInput();
-	_script.runTasks();
-	_mix.update();
+	switch (_state) {
+	case kStateLogo3DO:
+		doThreeScreens();
+		scrollText(0, 380, Video::_noteText3DO);
+		playCinepak("Logo.Cine");
+		playCinepak("Spintitle.Cine");
+		break;
+	case kStateTitle3DO:
+		titlePage();
+		break;
+	case kStateGame:
+		_script.setupTasks();
+		_script.updateInput();
+		processInput();
+		_script.runTasks();
+		_mix.update();
+		break;
+	}
 }
 
 void Engine::setup(Language lang, const char *scalerName, int scalerFactor) {
@@ -75,13 +88,15 @@ void Engine::setup(Language lang, const char *scalerName, int scalerFactor) {
 		}
 	}
 	if (_res.getDataType() == Resource::DT_3DO && _partNum == 16001) {
-		titlePage();
-	}
-	const int num = _partNum;
-	if (num < 36) {
-		_script.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
+		_state = kStateLogo3DO;
 	} else {
-		_script.restartAt(num);
+		_state = kStateGame;
+		const int num = _partNum;
+		if (num < 36) {
+			_script.restartAt(_restartPos[num * 2], _restartPos[num * 2 + 1]);
+		} else {
+			_script.restartAt(num);
+		}
 	}
 }
 
@@ -117,22 +132,19 @@ void Engine::doThreeScreens() {
 			_stub->sleep(50);
 		}
 	}
+	_state = kStateTitle3DO;
 }
 
 void Engine::doEndCredits() {
 }
 
-void Engine::playCpak(const char *name) {
+void Engine::playCinepak(const char *name) {
 }
 
 void Engine::scrollText(int a, int b, const char *text) {
 }
 
 void Engine::titlePage() {
-	doThreeScreens();
-	scrollText(0, 380, Video::_noteText3DO);
-	playCpak("Logo.Cine");
-	playCpak("Spintitle.Cine");
 	_res.loadBmp(70);
 	static const int kCursorColor = 0;
 	_vid.setPaletteColor(kCursorColor, 255, 0, 0);
@@ -157,11 +169,13 @@ void Engine::titlePage() {
 		}
 		if (_stub->_pi.button) {
 			_stub->_pi.button = false;
+			_script.restartAt(_partNum);
 			break;
 		}
 		_vid.updateDisplay(1, _stub);
 		_stub->sleep(50);
 	}
+	_state = kStateGame;
 }
 
 void Engine::saveGameState(uint8_t slot, const char *desc) {

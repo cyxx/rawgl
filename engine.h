@@ -19,6 +19,13 @@ struct SystemStub;
 
 struct Engine {
 
+	enum {
+		kStateLogo3DO,
+		kStateTitle3DO,
+		kStateGame
+	};
+
+	int _state;
 	Graphics *_graphics;
 	SystemStub *_stub;
 	Script _script;
@@ -42,7 +49,7 @@ struct Engine {
 	// 3DO
 	void doThreeScreens();
 	void doEndCredits();
-	void playCpak(const char *name);
+	void playCinepak(const char *name);
 	void scrollText(int a, int b, const char *text);
 	void titlePage();
 	
