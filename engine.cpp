@@ -136,10 +136,6 @@ void Engine::titlePage() {
 	_res.loadBmp(70);
 	static const int kCursorColor = 0;
 	_vid.setPaletteColor(kCursorColor, 255, 0, 0);
-	enum {
-		kPartNewGame  = 16002,
-		kPartPassword = 16008
-	};
 	static const int yPos[] = {
 		 97, 123,
 		123, 149
@@ -151,12 +147,12 @@ void Engine::titlePage() {
 		_stub->processEvents();
 		if (_stub->_pi.dirMask & PlayerInput::DIR_DOWN) {
 			_stub->_pi.dirMask &= ~PlayerInput::DIR_DOWN;
-			_partNum = kPartNewGame;
+			_partNum = kPartPassword;
 			y = 1;
 		}
 		if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
 			_stub->_pi.dirMask &= ~PlayerInput::DIR_UP;
-			_partNum = kPartNewGame;
+			_partNum = kPartIntro;
 			y = 0;
 		}
 		if (_stub->_pi.button) {
