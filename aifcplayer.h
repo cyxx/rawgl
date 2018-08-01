@@ -16,7 +16,7 @@ struct AifcPlayer {
 
 	AifcPlayer();
 
-	bool play(int mixRate, const char *path);
+	bool play(int mixRate, const char *path, uint32_t offset);
 	void stop();
 
 	int8_t readSampleData();

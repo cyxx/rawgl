@@ -11,15 +11,16 @@ static uint32_t READ_IEEE754(const uint8_t *p) {
 AifcPlayer::AifcPlayer() {
 }
 
-bool AifcPlayer::play(int mixRate, const char *path) {
+bool AifcPlayer::play(int mixRate, const char *path, uint32_t startOffset) {
 	_ssndSize = 0;
 	if (_f.open(path)) {
+		_f.seek(startOffset);
 		uint8_t buf[12];
 		_f.read(buf, sizeof(buf));
 		if (memcmp(buf, "FORM", 4) == 0 && memcmp(buf + 8, "AIFC", 4) == 0) {
 			const uint32_t size = READ_BE_UINT32(buf + 4);
 			for (uint32_t offset = 12; offset < size; ) {
-				_f.seek(offset);
+				_f.seek(startOffset + offset);
 				_f.read(buf, 8);
 				const uint32_t sz = READ_BE_UINT32(buf + 4);
 				if (memcmp(buf, "COMM", 4) == 0) {
@@ -42,7 +43,7 @@ bool AifcPlayer::play(int mixRate, const char *path) {
 				} else if (memcmp(buf, "SSND", 4) == 0) {
 					_f.readUint32BE(); // block offset
 					_f.readUint32BE(); // block size
-					_ssndOffset = offset + 8 + 8;
+					_ssndOffset = startOffset + offset + 8 + 8;
 					_ssndSize = sz;
 					debug(DBG_SND, "AIFF-C ssnd size %d", _ssndSize);
 					break;
@@ -67,7 +68,7 @@ bool AifcPlayer::play(int mixRate, const char *path) {
 						// pad ((len + 1) & 1)
 					}
 				} else {
-					warning("Unhandled AIFF-C tag '%c%c%c%c' size %d", buf[0], buf[1], buf[2], buf[3], sz);
+					warning("Unhandled AIFF-C tag '%c%c%c%c' size %d offset 0x%x", buf[0], buf[1], buf[2], buf[3], sz, offset);
 				}
 				offset += sz + 8;
 			}

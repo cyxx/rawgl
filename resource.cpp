@@ -490,14 +490,18 @@ const char *Resource::getString(int num) {
 	return 0;
 }
 
-const char *Resource::getMusicPath(int num, char *buf, int bufSize) {
+const char *Resource::getMusicPath(int num, char *buf, int bufSize, uint32_t *offset) {
 	const char *name = 0;
 	if (_nth) {
 		name = _nth->getMusicName(num);
 	} else if (_win31) {
 		name = _win31->getMusicName(num);
 	} else if (_3do) {
-		name = _3do->getMusicName(num);
+		assert(offset);
+		name = _3do->getMusicName(num, offset);
+		if (*offset != 0) {
+			return _dataDir; // playing music from .ISO
+		}
 	}
 	if (name) {
 		snprintf(buf, bufSize, "%s/%s", _dataDir, name);

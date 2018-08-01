@@ -700,10 +700,11 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		if (resNum == 0) {
 			_mix->stopAifcMusic();
 		} else {
+			uint32_t offset = 0;
 			char path[MAXPATHLEN];
-			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
+			const char *p = _res->getMusicPath(resNum, path, sizeof(path), &offset);
 			if (p) {
-				_mix->playAifcMusic(p);
+				_mix->playAifcMusic(p, offset);
 			}
 		}
 		break;

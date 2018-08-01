@@ -19,7 +19,7 @@ struct Resource3do {
 	bool readEntries();
 
 	uint8_t *loadFile(int num, uint8_t *dst, uint32_t *size);
-	const char *getMusicName(int num);
+	const char *getMusicName(int num, uint32_t *offset);
 };
 
 #endif

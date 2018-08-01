@@ -197,7 +197,17 @@ uint8_t *Resource3do::loadFile(int num, uint8_t *dst, uint32_t *size) {
 	return dst;
 }
 
-const char *Resource3do::getMusicName(int num) {
+const char *Resource3do::getMusicName(int num, uint32_t *offset) {
+	*offset = 0;
+	if (_iso) {
+		char name[16];
+		snprintf(name, sizeof(name), "song%d", num);
+		const OperaIsoEntry *e = _iso->find(name);
+		if (e) {
+			*offset = e->offset;
+		}
+		return 0;
+	}
 	snprintf(_musicPath, sizeof(_musicPath), "GameData/song%d", num);
 	return _musicPath;
 }

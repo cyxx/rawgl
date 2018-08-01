@@ -107,7 +107,7 @@ struct Resource {
 	void loadHeads();
 	uint8_t *loadWav(int num);
 	const char *getString(int num);
-	const char *getMusicPath(int num, char *buf, int bufSize);
+	const char *getMusicPath(int num, char *buf, int bufSize, uint32_t *offset = 0);
 	void setupPart(int part);
 	void allocMemBlock();
 	void freeMemBlock();

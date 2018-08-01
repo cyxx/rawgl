@@ -30,7 +30,7 @@ struct Mixer {
 	void setChannelVolume(uint8_t channel, uint8_t volume);
 	void playMusic(const char *path);
 	void stopMusic();
-	void playAifcMusic(const char *path);
+	void playAifcMusic(const char *path, uint32_t offset);
 	void stopAifcMusic();
 	void playSfxMusic(int num);
 	void stopSfxMusic();
