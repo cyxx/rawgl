@@ -516,7 +516,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			if (doDecodeShape) {
-				static const char *names[] = { "EndShape1", "EndShape2", "PauseShape", 0 };
+				static const char *names[] = { "EndShape1", "EndShape2", "PauseShape", "Logo3do", 0 };
 				for (int i = 0; names[i]; ++i) {
 					snprintf(path, sizeof(path), "%s/%s", argv[optind], names[i]);
 					FILE *fp = fopen(path, "rb");

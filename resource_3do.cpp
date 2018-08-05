@@ -80,7 +80,7 @@ struct OperaIso {
 					}
 					break;
 				}
-			} while (attr < 256);
+			} while (attr != 0 && attr < 256);
 			++block;
 		} while ((attr >> 24) == 0x40);
 	}

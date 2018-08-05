@@ -50,14 +50,14 @@ static void readIso(FILE *fp, int block, int flags) {
 				}
 				break;
 			}
-		} while (attr < 256);
+		} while (attr != 0 && attr < 256);
 		++block;
 	} while ((attr >> 24) == 0x40);
 }
 
 int extractOperaIso(FILE *fp) {
 	uint8_t buf[128];
-	const int count = fread(buf, sizeof(buf), 1, fp);
+	const int count = fread(buf, 1, sizeof(buf), fp);
 	if (count != sizeof(buf)) {
 		fprintf(stderr, "Failed to read %d bytes, ret %d\n", (int)sizeof(buf), count);
 		return -1;
