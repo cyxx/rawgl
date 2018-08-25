@@ -1,4 +1,6 @@
 
+CXXFLAGS := -Wall -Wpedantic
+
 convert_3do: bitmap.o cinepak.o main.o opera.o util.o wave.o
 	$(CXX) -o $@ $^
 

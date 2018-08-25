@@ -83,10 +83,10 @@ void CinepakDecoder::decode(const uint8_t *data, int dataSize) {
 
 		readWord();
 		int size = readWord();
-		const int stripTopY = readWord();
-		const int stripTopX = readWord();
+		/* const int stripTopY = */ readWord();
+		/* const int stripTopX = */ readWord();
 		const int stripBottomY = readWord();
-		const int stripBottomX = readWord();
+		/* const int stripBottomX = */ readWord();
 
 		size -= 12;
 		_xPos = 0;

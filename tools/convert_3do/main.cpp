@@ -55,24 +55,23 @@ struct OutputBuffer {
 		_bufSize = w * h * sizeof(uint16_t);
 		_buf = (uint8_t *)malloc(_bufSize);
 		decoder->_yuvFrame = _buf;
-		decoder->_yuvW = w;
-		decoder->_yuvH = h;
+		decoder->_yuvW = _w = w;
+		decoder->_yuvH = _h = h;
 		decoder->_yuvPitch = w * sizeof(uint16_t);
 	}
 	void dump(const char *path, int num) {
-		static const int W = 320;
-		static const int H = 200;
 		char name[MAXPATHLEN];
 		snprintf(name, sizeof(name), "%s/%04d.bmp", path, num);
 		FILE *fp = fopen(name, "wb");
 		if (fp) {
-			const int size = W * H * sizeof(uint16_t);
+			const int size = _w * _h * sizeof(uint16_t);
 			uyvy_to_rgb555(_buf, size, _cineBitmap555);
-			writeBitmap555(fp, _cineBitmap555, W, H);
+			writeBitmap555(fp, _cineBitmap555, _w, _h);
 			fclose(fp);
 		}
 	}
 
+	int _w, _h;
 	uint8_t *_buf;
 	uint32_t _bufSize;
 };
@@ -113,12 +112,14 @@ static void decodeCine(FILE *fp, const char *name) {
 				fseek(fp, 4, SEEK_CUR);
 				char compression[4];
 				fread(compression, 4, 1, fp);
-				uint32_t height = freadUint32BE(fp);
-				uint32_t width = freadUint32BE(fp);
+				assert(memcmp(compression, "cvid", 4) == 0);
+				const int height = freadUint32BE(fp);
+				const int width = freadUint32BE(fp);
+				fprintf(stdout, "FHDR width %d height %d compression %s", width, height, compression);
 				out.setup(width, height, &decoder);
 			} else if (memcmp(type, "FRME", 4) == 0) {
-				uint32_t duration = freadUint32BE(fp);
-				uint32_t frameSize = freadUint32BE(fp);
+				const int duration = freadUint32BE(fp);
+				const int frameSize = freadUint32BE(fp);
 				uint8_t *frameBuf = (uint8_t *)malloc(frameSize);
 				if (frameBuf) {
 					fread(frameBuf, 1, frameSize, fp);
@@ -129,7 +130,7 @@ static void decodeCine(FILE *fp, const char *name) {
 				}
 				++frmeCounter;
 			} else {
-				fprintf(stdout, "Unhandled FILM chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
+				fprintf(stderr, "Unhandled FILM chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
 				break;
 			}
 		} else if (memcmp(tag, "SNDS", 4) == 0) {
@@ -137,16 +138,21 @@ static void decodeCine(FILE *fp, const char *name) {
 			char type[4];
 			fread(type, 4, 1, fp);
 			if (memcmp(type, "SHDR", 4) == 0) {
-
+				fseek(fp, 24, SEEK_CUR);
+				const int rate = freadUint32BE(fp);
+				const int channels = freadUint32BE(fp);
+				char compression[5];
+				fread(compression, 4, 1, fp);
+				compression[4] = 0;
+				fprintf(stdout, "SHDR rate %d channels %d compression %s\n", rate, channels, compression);
 			} else if (memcmp(type, "SSMP", 4) == 0) {
-
+				// decodeSampleSDX
 			} else {
-				fprintf(stdout, "Unhandled SNDS chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
+				fprintf(stderr, "Unhandled SNDS chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
 				break;
 			}
-		} else if (memcmp(tag, "SHDR", 4) == 0) { // ignore
-		} else if (memcmp(tag, "FILL", 4) == 0) { // ignore
-		} else if (memcmp(tag, "CTRL", 4) == 0) { // ignore
+		} else if (memcmp(tag, "SHDR", 4) == 0 || memcmp(tag, "FILL", 4) == 0 || memcmp(tag, "CTRL", 4) == 0) {
+			// ignore
 		} else {
 			fprintf(stdout, "Unhandled tag '%c%c%c%c' size %d\n", tag[0], tag[1], tag[2], tag[3], size);
 			break;
@@ -155,7 +161,7 @@ static void decodeCine(FILE *fp, const char *name) {
 	}
 }
 
-static int decodeLzss(const uint8_t *src, int len, uint8_t *dst) {
+static int decodeLzss(const uint8_t *src, uint32_t len, uint8_t *dst) {
 	uint32_t rd = 0, wr = 0;
 	int code = 0x100 | src[rd++];
 	while (rd < len) {
