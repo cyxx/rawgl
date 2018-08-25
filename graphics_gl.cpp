@@ -302,7 +302,7 @@ struct GraphicsGL : Graphics {
 	virtual void drawBuffer(int listNum, SystemStub *stub);
 	virtual void drawRect(int num, uint8_t color, const Point *pt, int w, int h);
 
-	bool initFbo();
+	void initFbo();
 	void drawVerticesFlat(int count, const Point *vertices);
 	void drawVerticesTex(int count, const Point *vertices);
 	void drawVerticesToFb(uint8_t color, int count, const Point *vertices);
@@ -333,19 +333,19 @@ void GraphicsGL::init(int targetW, int targetH) {
 	_spritesTex._npotTex = npotTex;
 	if (hasFbo) {
 		setupFboFuncs();
-		const bool err = initFbo();
-		if (err) {
-			_fptr.glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		}
+		initFbo();
+		_fptr.glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	} else {
+		error("GL_ARB_framebuffer_object is not supported");
 	}
 }
 
-bool GraphicsGL::initFbo() {
+void GraphicsGL::initFbo() {
 	GLint buffersCount;
 	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &buffersCount);
 	if (buffersCount < NUM_LISTS) {
-		warning("GL_MAX_COLOR_ATTACHMENTS is %d", buffersCount);
-		return false;
+		error("GL_MAX_COLOR_ATTACHMENTS is %d", buffersCount);
+		return;
 	}
 
 	_fptr.glGenFramebuffers(1, &_fbPage0);
@@ -361,8 +361,8 @@ bool GraphicsGL::initFbo() {
 		_fptr.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, _pageTex[i], 0);
 		int status = _fptr.glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (status != GL_FRAMEBUFFER_COMPLETE) {
-			warning("glCheckFramebufferStatus failed, ret %d", status);
-			return false;
+			error("glCheckFramebufferStatus failed, ret %d", status);
+			return;
 		}
 	}
 
@@ -371,8 +371,6 @@ bool GraphicsGL::initFbo() {
 	const float r = (float)FB_W / SCREEN_W;
 	glLineWidth(r);
 	glPointSize(r);
-
-	return true;
 }
 
 void GraphicsGL::setFont(const uint8_t *src, int w, int h) {
