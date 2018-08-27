@@ -1,7 +1,5 @@
 
-CXXFLAGS:= -g -O -Wall -Wuninitialized -Wno-unknown-pragmas -Wshadow
-CXXFLAGS+= -Wundef -Wreorder -Wwrite-strings -Wnon-virtual-dtor -Wno-multichar
-CXXFLAGS+= -DSYS_LITTLE_ENDIAN
+CXXFLAGS += -g -O -Wall -Wpedantic
 
 SRCS = disasm.cpp
 
@@ -15,6 +13,6 @@ disasm: $(OBJS)
 	$(CXX) $(CXXFLAGS) -MMD -c $< -o $*.o
 
 clean:
-	rm -f *.o *.d
+	rm -f $(OBJS) $(DEPS) disasm
 
 -include $(DEPS)

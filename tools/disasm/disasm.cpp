@@ -9,9 +9,11 @@
 enum {
 	MAX_TASKS = 64,
 	MAX_FILESIZE = 0x10000,
+	MAX_SYMBOLS = 0x10000,
 };
 
 static uint8_t _fileBuf[MAX_FILESIZE];
+static char _symbolsTable[MAX_SYMBOLS][7];
 
 static bool _is3DO = false;
 static bool _isAmiga = false;
@@ -23,6 +25,16 @@ static uint16_t readWord(const uint8_t *p) {
 		return (p[1] << 8) | p[0]; // LE
 	} else {
 		return (p[0] << 8) | p[1]; // BE
+	}
+}
+
+static void readSymbols(const uint8_t *buf, uint32_t size) {
+	uint32_t offset = 0;
+	while (offset < size) {
+		const uint16_t addr = readWord(buf + offset); offset += 2;
+		assert(addr < MAX_SYMBOLS);
+		memcpy(_symbolsTable[addr], buf + offset, 6); offset += 6;
+		fprintf(stdout, "Symbol '%s' at 0x%x\n", _symbolsTable[addr], addr);
 	}
 }
 
@@ -138,6 +150,7 @@ static void checkOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 }
 
 static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
+	// const char *name = _symbolsTable[addr];
 	if (_addr[addr] & ADDR_FUNC) {
 		fprintf(_out, "\n%04X: // func_%04X\n", addr, addr);
 	}
@@ -496,6 +509,7 @@ static int readFile(const char *path) {
 		fseek(fp, 0, SEEK_END);
 		size = ftell(fp);
 		fseek(fp, 0, SEEK_SET);
+		assert(size <= MAX_FILESIZE);
 		read = fread(_fileBuf, 1, size, fp);
 		if (read != size) {
 			fprintf(stderr, "Failed to read %d bytes (%d)\n", size, read);
@@ -522,6 +536,15 @@ int main(int argc, char *argv[]) {
 		char path[MAXPATHLEN];
 		struct stat st;
 		if (stat(argv[1], &st) == 0 && S_ISREG(st.st_mode)) {
+			strcpy(path, argv[1]);
+			char *ext = strrchr(path, '.');
+			if (ext) {
+				strcpy(ext, ".nom");
+				const int size = readFile(path);
+				if (size != 0) {
+					readSymbols(_fileBuf, size);
+				}
+			}
 			const int size = readFile(argv[1]);
 			if (size != 0) {
 				visitOpcode = checkOpcode;
@@ -553,7 +576,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	} else {
-		fprintf(stdout, "Usage: %s [-3do] /path/to/File%%d\n", argv[0]);
+		fprintf(stdout, "Usage: %s [-3do|-amiga] /path/to/File%%d\n", argv[0]);
 	}
 	return 0;
 }
