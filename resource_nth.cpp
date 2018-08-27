@@ -149,11 +149,13 @@ struct Resource20th: ResourceNth {
 	const char *_stringsTable[192];
 	char _musicName[64];
 	uint8_t _musicType;
+	char _datName[32];
 
 	Resource20th(const char *dataPath)
 		: _dataPath(dataPath), _textBuf(0) {
 		memset(_stringsTable, 0, sizeof(_stringsTable));
 		_musicType = 0;
+		_datName[0] = 0;
 		srand(time(NULL));
 	}
 
@@ -198,11 +200,40 @@ struct Resource20th: ResourceNth {
 		return inflateGzip(path);
 	}
 
+	void preloadDat(int part, int type, int num) {
+		static const char *names[] = {
+			"INTRO", "EAU", "PRI", "CITE", "arene", "LUXE", "FINAL", 0
+		};
+		static const char *exts[] = {
+			"pal", "mac", "mat", 0
+		};
+		if (part > 0 && part < 8) {
+			if (type == 3) {
+				assert(num == 0x11);
+				strcpy(_datName, "BANK2.MAT");
+			} else {
+				snprintf(_datName, sizeof(_datName), "%s2011.%s", names[part - 1], exts[type]);
+			}
+			debug(DBG_RESOURCE, "Loading '%s'", _datName);
+		} else {
+			_datName[0] = 0;
+		}
+        }
+
 	virtual uint8_t *loadDat(int num, uint8_t *dst, uint32_t *size) {
+		bool datOpen = false;
 		char path[MAXPATHLEN];
-		snprintf(path, sizeof(path), "%s/game/DAT/FILE%03d.DAT", _dataPath, num);
 		File f;
-		if (f.open(path)) {
+		if (_datName[0]) {
+			snprintf(path, sizeof(path), "%s/game/DAT/%s", _dataPath, _datName);
+			datOpen = f.open(path);
+			_datName[0] = 0;
+		}
+		if (!datOpen) {
+			snprintf(path, sizeof(path), "%s/game/DAT/FILE%03d.DAT", _dataPath, num);
+			datOpen = f.open(path);
+		}
+		if (datOpen) {
 			const uint32_t dataSize = f.size();
 			const uint32_t count = f.read(dst, dataSize);
 			if (count != dataSize) {

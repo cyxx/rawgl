@@ -510,25 +510,6 @@ const char *Resource::getMusicPath(int num, char *buf, int bufSize, uint32_t *of
 	return 0;
 }
 
-static void preloadDat(int part, int type, int num) {
-	static const char *names[] = {
-		"intro", "eau", "pri", "cite", "arene", "luxe", "final", 0
-	};
-	static const char *exts[] = {
-		"pal", "mac", "mat", 0
-	};
-	if (part > 0 && part < 8) {
-		char name[16];
-		if (type == 3) {
-			assert(num == 0x11);
-			strcpy(name, "bank2.mat");
-		} else {
-			snprintf(name, sizeof(name), "%s2011.%s", names[part - 1], exts[type]);
-		}
-		debug(DBG_RESOURCE, "Loading '%s'", name);
-	}
-}
-
 static const uint8_t _memListParts[][4] = {
 	{ 0x14, 0x15, 0x16, 0x00 }, // protection screens
 	{ 0x17, 0x18, 0x19, 0x00 }, // introduction
@@ -550,7 +531,9 @@ void Resource::setupPart(int ptrId) {
 			for (int i = 0; i < 4; ++i) {
 				const int num = _memListParts[ptrId - 16000][i];
 				if (num != 0) {
-					preloadDat(ptrId - 16000, i, num);
+					if (_dataType == DT_20TH_EDITION) {
+						_nth->preloadDat(ptrId - 16000, i, num);
+					}
 					*segments[i] = loadDat(num);
 				}
 			}
