@@ -12,10 +12,10 @@ The program requires the original data files.
 - Amiga (Bank*)
 - DOS (Bank*, memlist.bin)
 - DOS demo (Demo*, memlist.bin)
-- 15th anniversary edition (Pak01.pak, Intro2004.wav, End2004.wav)
-- 20th anniversary edition (game/*)
+- 15th Anniversary Edition (Pak01.pak, Intro2004.wav, End2004.wav)
+- 20th Anniversary Edition (game/*)
 - Windows 3.1 (Bank, *mid)
-- [3DO](docs/3DO.md) (GameData/*)
+- 3DO (GameData/*)
 - Macintosh (File*, *pict)
 
 ## Running
@@ -44,3 +44,8 @@ In game hotkeys :
   Alt X           exit the game
   Ctrl F          toggle fast mode
 ```
+
+## Technical Details
+
+- [3DO](docs/3DO.md)
+- [WiiU](docs/WiiU.md)
