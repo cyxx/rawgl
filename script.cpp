@@ -436,7 +436,7 @@ void Script::executeTask() {
 	while (!_scriptPaused) {
 		uint8_t opcode = _scriptPtr.fetchByte();
 		if (opcode & 0x80) {
-			uint16_t off = ((opcode << 8) | _scriptPtr.fetchByte()) * 2;
+			const uint16_t off = ((opcode << 8) | _scriptPtr.fetchByte()) << 1;
 			_res->_useSegVideo2 = false;
 			Point pt;
 			pt.x = _scriptPtr.fetchByte();
@@ -455,7 +455,8 @@ void Script::executeTask() {
 			}
 		} else if (opcode & 0x40) {
 			Point pt;
-			uint16_t off = ((_scriptPtr.pc[0] << 8) | _scriptPtr.pc[1]) * 2; _scriptPtr.pc += 2;
+			const uint8_t offsetHi = _scriptPtr.fetchByte();
+			const uint16_t off = ((offsetHi << 8) | _scriptPtr.fetchByte()) << 1;
 			pt.x = _scriptPtr.fetchByte();
 			_res->_useSegVideo2 = false;
 			if (!(opcode & 0x20)) {

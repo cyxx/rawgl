@@ -150,7 +150,6 @@ static void checkOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 }
 
 static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
-	// const char *name = _symbolsTable[addr];
 	if (_addr[addr] & ADDR_FUNC) {
 		fprintf(_out, "\n%04X: // func_%04X\n", addr, addr);
 	}
@@ -304,7 +303,12 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		break;
 	default:
 		if (opcode & 0xC0) {
-			fprintf(_out, "GFX_0x%02X", opcode);
+			const uint16_t offset = args[0] << 1;
+			fprintf(_out, "GFX_0x%02X offset=0x%04x", opcode, offset);
+			const char *name = _symbolsTable[offset];
+			if (name[0]) {
+				fprintf(_out, " name=%s", name);
+			}
 		}
 		break;
 	}
@@ -320,14 +324,15 @@ static int parse(const uint8_t *buf, uint32_t size) {
 		int a, b, c, d;
 		const uint8_t op = *p++;
 		if (op & 0x80) {
-			a = *p++;
-			b = *p++;
-			c = *p++;
-			visitOpcode(addr, op, 0);
+			a = *p++; // offset_lo
+			b = *p++; // x
+			c = *p++; // y
+			int args[3] = { ((op << 8) | a), b, c };
+			visitOpcode(addr, op, args);
 			continue;
 		}
 		if (op & 0x40) {
-			a = readWord(p); p += 2;
+			a = readWord(p); p += 2; // offset
 			b = *p++;
 			if (!(op & 0x20) && !(op & 0x10)) {
 				p++;
@@ -340,7 +345,9 @@ static int parse(const uint8_t *buf, uint32_t size) {
 			if ((!(op & 2) && !(op & 1)) || ((op & 2) && (op & 1))) {
 				p--;
 			}
-			visitOpcode(addr, op, 0);
+			// (op&3)==3 use bank2.mat
+			int args[3] = { a, b, c };
+			visitOpcode(addr, op, args);
 			continue;
 		}
 		a = b = c = d = 0;
