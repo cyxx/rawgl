@@ -38,11 +38,11 @@ struct Resource {
 	enum ResType {
 		RT_SOUND  = 0,
 		RT_MUSIC  = 1,
-		RT_BITMAP = 2, // full screen video buffer, size=0x7D00
-		RT_PAL    = 3, // palette (1024=vga + 1024=ega), size=2048
-		RT_SCRIPT = 4,
-		RT_VERTICES = 5,
-		RT_UNK    = 6,
+		RT_BITMAP = 2, // full screen 4bpp video buffer, size=200*320/2
+		RT_PALETTE = 3, // palette (1024=vga + 1024=ega), size=2048
+		RT_BYTECODE = 4,
+		RT_SHAPE = 5,
+		RT_BANK = 6, // common part shapes (bank2.mat)
 	};
 
 	enum DataType {
