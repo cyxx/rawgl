@@ -19,6 +19,7 @@
 Resource::Resource(Video *vid, const char *dataDir) 
 	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0), _mac(0) {
 	_bankPrefix = "bank";
+	_hasPasswordScreen = true;
 	memset(_memList, 0, sizeof(_memList));
 	_numMemList = 0;
 	if (!_dataDir) {
@@ -149,6 +150,7 @@ void Resource::readEntries() {
 			}
 		}
 	} else if (_dataType == DT_DOS) {
+		_hasPasswordScreen = false; // DOS demo versions do not have the resources
 		File f;
 		if (f.open("demo01", _dataDir)) {
 			_bankPrefix = "demo";
@@ -167,6 +169,9 @@ void Resource::readEntries() {
 				me->unpackedSize = f.readUint32BE();
 				if (me->status == 0xFF) {
 					return;
+				}
+				if (me->type == _memListParts[8][1]) { // 16008 bytecode
+					_hasPasswordScreen = true;
 				}
 				++_numMemList;
 				++me;
@@ -510,7 +515,7 @@ const char *Resource::getMusicPath(int num, char *buf, int bufSize, uint32_t *of
 	return 0;
 }
 
-static const uint8_t _memListParts[][4] = {
+const uint8_t Resource::_memListParts[][4] = {
 	{ 0x14, 0x15, 0x16, 0x00 }, // 16000 - protection screens
 	{ 0x17, 0x18, 0x19, 0x00 }, // 16001 - introduction
 	{ 0x1A, 0x1B, 0x1C, 0x11 }, // 16002 - water

@@ -68,6 +68,7 @@ struct Resource {
 
 	static const AmigaMemEntry _memListAmigaFR[ENTRIES_COUNT];
 	static const AmigaMemEntry _memListAmigaEN[ENTRIES_COUNT];
+	static const uint8_t _memListParts[][4];
 
 	Video *_vid;
 	const char *_dataDir;
@@ -81,6 +82,7 @@ struct Resource {
 	uint8_t *_segVideo1;
 	uint8_t *_segVideo2;
 	const char *_bankPrefix;
+	bool _hasPasswordScreen;
 	DataType _dataType;
 	ResourceNth *_nth;
 	ResourceWin31 *_win31;

@@ -635,8 +635,10 @@ void Script::inp_handleSpecialKeys() {
 	}
 	if (_stub->_pi.code) {
 		_stub->_pi.code = false;
-		if (_res->_currentPart != 16009 && _res->_currentPart != 16000) {
-			_res->_nextPart = 16009;
+		if (_res->_hasPasswordScreen) {
+			if (_res->_currentPart != 16009 && _res->_currentPart != 16000) {
+				_res->_nextPart = 16009;
+			}
 		}
 	}
 	if (_scriptVars[0xC9] == 1) {
