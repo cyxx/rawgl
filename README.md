@@ -32,6 +32,7 @@ directory. This can be changed with command line switches.
     --window=WxH      Windowed displayed size (default '640x480')
     --fullscreen      Fullscreen display (stretched)
     --fullscreen-ar   Fullscreen display (4:3 aspect ratio)
+    --ega-palette     Use EGA palette with DOS version
 ```
 
 In game hotkeys :

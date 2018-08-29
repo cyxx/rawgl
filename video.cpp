@@ -536,6 +536,27 @@ static void readPalette3DO(const uint8_t *buf, int num, Color pal[16]) {
 	}
 }
 
+static void readPaletteEGA(const uint8_t *buf, int num, Color pal[16]) {
+	const uint8_t *p = buf + num * 16 * sizeof(uint16_t);
+	p += 1024; // EGA colors are stored after VGA (Amiga)
+	for (int i = 0; i < 16; ++i) {
+		const uint16_t color = READ_BE_UINT16(p); p += 2;
+		if (1) {
+			const uint8_t *ega = &Video::_paletteEGA[3 * ((color >> 12) & 15)];
+			pal[i].r = ega[0];
+			pal[i].g = ega[1];
+			pal[i].b = ega[2];
+		} else { // lower 12 bits hold other colors
+			const uint8_t r = (color >> 8) & 0xF;
+			const uint8_t g = (color >> 4) & 0xF;
+			const uint8_t b =  color       & 0xF;
+			pal[i].r = (r << 4) | r;
+			pal[i].g = (g << 4) | g;
+			pal[i].b = (b << 4) | b;
+		}
+	}
+}
+
 static void readPaletteAmiga(const uint8_t *buf, int num, Color pal[16]) {
 	const uint8_t *p = buf + num * 16 * sizeof(uint16_t);
 	for (int i = 0; i < 16; ++i) {
@@ -556,6 +577,8 @@ void Video::changePal(uint8_t palNum) {
 			readPaletteWin31(_res->_segVideoPal, palNum, pal);
 		} else if (_res->getDataType() == Resource::DT_3DO) {
 			readPalette3DO(_res->_segVideoPal, palNum, pal);
+		} else if (_res->getDataType() == Resource::DT_DOS && _useEGA) {
+			readPaletteEGA(_res->_segVideoPal, palNum, pal);
 		} else {
 			readPaletteAmiga(_res->_segVideoPal, palNum, pal);
 		}

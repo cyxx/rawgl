@@ -35,6 +35,9 @@ struct Video {
 	static const char *_noteText3DO;
 	static const char *_endText3DO;
 	static const uint8_t *_vertices3DO[201];
+	static const uint8_t _paletteEGA[];
+
+	static bool _useEGA;
 
 	Resource *_res;
 	Graphics *_graphics;

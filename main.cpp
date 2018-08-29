@@ -24,6 +24,7 @@ static const char *USAGE =
 	"  --window=WxH      Windowed displayed size (default '640x480')\n"
 	"  --fullscreen      Fullscreen display (stretched)\n"
 	"  --fullscreen-ar   Fullscreen display (4:3 aspect ratio)\n"
+	"  --ega-palette     Use EGA palette with DOS version\n"
 	;
 
 static const struct {
@@ -50,6 +51,7 @@ static const struct {
 
 bool Graphics::_is1991 = false;
 bool Graphics::_use565 = false;
+bool Video::_useEGA = false;
 
 static Graphics *createGraphics(int type) {
 	switch (type) {
@@ -130,6 +132,7 @@ int main(int argc, char *argv[]) {
 			{ "fullscreen", no_argument,     0, 'f' },
 			{ "fullscreen-ar", no_argument,  0, 'a' },
 			{ "scaler",   required_argument, 0, 's' },
+			{ "ega-palette", no_argument,    0, 'e' },
 			{ "help",       no_argument,     0, 'h' },
 			{ 0, 0, 0, 0 }
 		};
@@ -174,6 +177,9 @@ int main(int argc, char *argv[]) {
 			break;
 		case 's':
 			parseScaler(optarg, &scaler);
+			break;
+		case 'e':
+			Video::_useEGA = true;
 			break;
 		case 'h':
 			// fall-through
