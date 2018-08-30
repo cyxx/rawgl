@@ -24,8 +24,8 @@ The game code is split in 9 different sections.
 ```
 16000.asm - protection screen
 16001_intro.asm
-16002_eau.asm
-16003_pri.asm
+16002_eau.asm - water
+16003_pri.asm - jail
 16004_cite.asm
 16005_arene.asm
 16006_luxe.asm
@@ -37,7 +37,7 @@ Each section can be used as a starting point by the engine, with _vars[0] set to
 
 ![Screenshot Code](screenshot-code.png)
 
-This is basically what the password screen does, it looks up the entered code and sets the section and starting position.
+The password screen bytecode contains series of checks such as below to lookup the code entered.
 
 ```
 02E3: jmpIf(VAR(0x07) != 10, @0303)
@@ -48,9 +48,15 @@ This is basically what the password screen does, it looks up the entered code an
 02FF: updateResources(res=16002)
 ```
 
+The 4 variables (var7..varA) hold the index of the letter selected.
+
+```
+alphabet = [ 'B', 'C', 'D', 'F', 'G', 'H', '?', '?', 'J', 'K', 'L', 'R', 'T', 'X' ]
+```
+
 ## Game Copy Protection
 
-With the original Amiga/DOS version, the player has to lookup the associated symbols in the manual based on a random code.
+With the original Amiga/DOS version, the player has to lookup some symbols from a code wheel provided with the game.
 
 ![Screenshot Code](screenshot-protection.png)
 
@@ -61,10 +67,10 @@ This was probably added to defeat game cracks that would simply bypass the game 
 For reference, the game code expects these values :
 
 ```
-    _scriptVars[0xBC] = 16;
-    _scriptVars[0xC6] = 128;
-    _scriptVars[0xF2] = _isAmiga ? 6000 : 4000;
-    _scriptVars[0xDC] = 33;
+_scriptVars[0xBC] = 16;
+_scriptVars[0xC6] = 128;
+_scriptVars[0xF2] = _isAmiga ? 6000 : 4000;
+_scriptVars[0xDC] = 33;
 ```
 
 The 3DO does not have any game protection screen, but interestingly the game code still contain checks related to the protection code.
@@ -80,15 +86,13 @@ The 3DO does not have any game protection screen, but interestingly the game cod
 16006_luxe.asm: 1359: jmpIf(VAR(0xDB) == 0, @6E8A)
 ```
 
-The engine sets the expected values on start :
+The original 3DO engine sets the expected values on start :
 
 ```
-if (_is3DO) {
-    _scriptVars[0xDB] = 1;
-    _scriptVars[0xE2] = 1;
-    _scriptVars[0xF2] = 6000;
+  _scriptVars[0xDB] = 1;
+  _scriptVars[0xE2] = 1;
+  _scriptVars[0xF2] = 6000;
 ```
-
 
 ## Bytecode
 
@@ -230,3 +234,34 @@ The upper nibble of the shape color byte specifies the primitive to draw.
 0x40 : pixel
 0xC0 : polygon/quad
 ```
+
+## Game Passwords
+
+Game passwords extracted from the 16008 part bytecode.
+
+Code | Part  | Checkpoint | Notes
+---- | ----- | ---------- | -----
+LDKD | 16002 | 10 |
+HTDC | 16003 | 20 |
+CLLD | 16004 | 30 |
+FXLC | 16004 | 35 |
+KRFK | 16004 | 37 |
+XDDJ | 16004 | 33 |
+LBKG | 16004 | 31 |
+KLFB | 16004 | 39 |
+TTCT | 16004 | 41 |
+DDRX | 16004 | 42 |
+TBHK | 16004 | 43 |
+BRTD | 16004 | 49 |
+CKJL | 16005 | 50 |
+LFCK | 16006 | 60 |
+BFLX | 16004 | 44 |
+XJRT | 16004 | 45 |
+HRTB | 16004 | 46 |
+HBHK | 16004 | 47 |
+JCGB | 16004 | 48 |
+HHFL | 16006 | 62 |
+TFBB | 16006 | 64 |
+TXHF | 16006 | 66 |
+KRTD | 16007 | 70 |
+BRGR | 16010 | -1 | Stalactites

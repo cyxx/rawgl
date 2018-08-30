@@ -18,8 +18,11 @@ content/
 ```
 
 The file archive.bin contains the game data files.
+
 The offset to the entries table and the number of entries are stored at the end of the file as 32 bits
-big endian integers (BE32)
+big endian integers (BE32).
+
+Resource table entries format.
 
 Field | Type | Details
 ----- | ---- | -------
@@ -29,7 +32,7 @@ File size              | BE32 | File size in the resource bundle
 Data offset            | BE32 | File data offset in the resource bundle
 Flags                  | BE32 | Either 0 or 1
 
-Data is compressed with [LZ4](https://github/lz4/lz4) and can be decompressed with LZ4_decompress_fast().
+Data is compressed with [LZ4](https://github/lz4/lz4).
 
 ## Data Files
 
@@ -44,7 +47,7 @@ game/txt/*txt           | strings ('Good evening professor.')
 game/wgz_mixed/*wav     | sound files
 
 The 20th anniversary editions of Another World on consoles use higher resolution graphics than
-the PC/Mac/Linux releases (1080p vs 800p).
+the Linux/Mac/Windows releases (1080p vs 800p).
 
 ## Textures
 
