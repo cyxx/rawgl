@@ -67,31 +67,10 @@ This was probably added to defeat game cracks that would simply bypass the game 
 For reference, the game code expects these values :
 
 ```
-_scriptVars[0xBC] = 16;
-_scriptVars[0xC6] = 128;
-_scriptVars[0xF2] = _isAmiga ? 6000 : 4000;
-_scriptVars[0xDC] = 33;
-```
-
-The 3DO does not have any game protection screen, but interestingly the game code still contain checks related to the protection code.
-
-```
-16002_eau.asm:  00A4: jmpIf(VAR(0xE2) == 0, @479F)
-16002_eau.asm:  17A8: jmpIf(VAR(0xDB) == 0, @17B3)
-16002_eau.asm:  2787: jmpIf(VAR(0xE2) == 1, @479F)
-16003_pri.asm:  2CE1: jmpIf(VAR(0xE2) != 1, @4B2E)
-16003_pri.asm:  6D74: jmpIf(VAR(0xE2) == 0, @6D7C)
-16003_pri.asm:  6DA6: jmpIf(VAR(0xE2) == 0, @6DAE)
-16004_cite.asm: 0145: jmpIf(VAR(0xDB) == 0, @7952)
-16006_luxe.asm: 1359: jmpIf(VAR(0xDB) == 0, @6E8A)
-```
-
-The original 3DO engine sets the expected values on start :
-
-```
-  _scriptVars[0xDB] = 1;
-  _scriptVars[0xE2] = 1;
-  _scriptVars[0xF2] = 6000;
+VAR(0xBC) = 16
+VAR(0xC6) = 128
+VAR(0xF2) = 6000 (4000 for DOS)
+VAR(0xDC) = 33
 ```
 
 ## Bytecode

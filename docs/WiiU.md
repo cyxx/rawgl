@@ -52,7 +52,7 @@ the Linux/Mac/Windows releases (1080p vs 800p).
 ## Textures
 
 The .awt (Another World Texture ?) files are the background pictures.
-The image pixels are stored as uncompressed RGBA uncompressed (4 bytes) followed by a 12 bytes footer.
+The image pixels are stored as uncompressed RGBA (4 bytes). The file has a 12 bytes footer.
 Image dimensions are stored as 16 bits big endian integers (BE16).
 
 ```
