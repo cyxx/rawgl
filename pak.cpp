@@ -2,8 +2,9 @@
 #include "pak.h"
 #include "util.h"
 
-
+// static const uint32_t XOR_KEY1 = 0x31111612;
 static const uint32_t XOR_KEY2 = 0x22683297;
+static const uint32_t CHECKSUM = 0x20202020;
 
 static uint8_t *decode_toodc(uint8_t *p, int count) {
 	uint32_t key = XOR_KEY2;
@@ -73,6 +74,19 @@ void Pak::readEntries() {
 		e->offset = READ_LE_UINT32(buf + 0x38);
 		e->size = READ_LE_UINT32(buf + 0x3C);
 		debug(DBG_PAK, "Pak::readEntries() buf '%s' size %d", e->name, e->size);
+	}
+	// the original executable descrambles the (ke)y.txt file and check the last 4 bytes.
+	// this has been disabled in later re-releases and a key is bundled in the data files
+	if (0) {
+		uint8_t buf[128];
+		const PakEntry *e = find("check.txt");
+		if (e && e->size <= sizeof(buf)) {
+			uint32_t size = 0;
+			loadData(e, buf, &size);
+			assert(size >= 4);
+			const uint32_t num = READ_LE_UINT32(buf + size - 4);
+			assert(num == CHECKSUM);
+		}
 	}
 }
 
