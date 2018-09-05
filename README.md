@@ -43,7 +43,6 @@ In game hotkeys :
   C               enter a code to start at a specific position
   P               pause the game
   Alt X           exit the game
-  Ctrl F          toggle fast mode
 ```
 
 ## Technical Details
