@@ -264,13 +264,14 @@ struct DrawList {
 static const int SCREEN_W = 320;
 static const int SCREEN_H = 200;
 
-static const int FB_W = 1280;
-static const int FB_H = 800;
+static const int DEFAULT_FB_W = 1280;
+static const int DEFAULT_FB_H = 800;
 
 static const int NUM_LISTS = 4;
 
 struct GraphicsGL : Graphics {
 	int _w, _h;
+	int _fbW, _fbH;
 	Color _pal[16];
 	Color *_alphaColor;
 	Texture _backgroundTex;
@@ -318,6 +319,8 @@ GraphicsGL::GraphicsGL() {
 
 void GraphicsGL::init(int targetW, int targetH) {
 	Graphics::init(targetW, targetH);
+	_fbW = (targetW <= 0) ? DEFAULT_FB_W : targetW;
+	_fbH = (targetH <= 0) ? DEFAULT_FB_H : targetH;
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
@@ -356,7 +359,7 @@ void GraphicsGL::initFbo() {
 		glBindTexture(GL_TEXTURE_2D, _pageTex[i]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FB_W, FB_H, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _fbW, _fbH, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		_fptr.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, _pageTex[i], 0);
 		int status = _fptr.glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -366,9 +369,9 @@ void GraphicsGL::initFbo() {
 		}
 	}
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
-	const float r = (float)FB_W / SCREEN_W;
+	const float r = (float)_fbW / SCREEN_W;
 	glLineWidth(r);
 	glPointSize(r);
 }
@@ -393,7 +396,7 @@ void GraphicsGL::setPalette(const Color *colors, int n) {
 
 			glMatrixMode(GL_PROJECTION);
 			glLoadIdentity();
-			glOrtho(0, FB_W, 0, FB_H, 0, 1);
+			glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
 			const int color = _drawLists[i].fillColor;
 			if (color != COL_BMP) {
@@ -402,7 +405,7 @@ void GraphicsGL::setPalette(const Color *colors, int n) {
 				glClear(GL_COLOR_BUFFER_BIT);
 			}
 
-			glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+			glScalef((float)_fbW / SCREEN_W, (float)_fbH / SCREEN_H, 1);
 
 			DrawList::Entries::const_iterator it = _drawLists[i].entries.begin();
 			for (; it != _drawLists[i].entries.end(); ++it) {
@@ -466,13 +469,13 @@ void GraphicsGL::drawSprite(int listNum, int num, const Point *pt) {
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+	glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
-	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+	glScalef((float)_fbW / SCREEN_W, (float)_fbH / SCREEN_H, 1);
 
 	drawSpriteHelper(pt, num, _spritesSizeX, _spritesSizeY, _spritesTex._id);
 
@@ -499,19 +502,19 @@ void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int 
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+	glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
-	_backgroundTex.draw(FB_W, FB_H);
+	_backgroundTex.draw(_fbW, _fbH);
 
 	_drawLists[listNum].clear(COL_BMP);
 }
 
 void GraphicsGL::drawVerticesToFb(uint8_t color, int count, const Point *vertices) {
-	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+	glScalef((float)_fbW / SCREEN_W, (float)_fbH / SCREEN_H, 1);
 
 	if (color == COL_PAGE) {
 		glEnable(GL_TEXTURE_2D);
@@ -538,11 +541,11 @@ void GraphicsGL::drawPoint(int listNum, uint8_t color, const Point *pt) {
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+	glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
 	drawVerticesToFb(color, 1, pt);
 	if (_fixUpPalette != FIXUP_PALETTE_NONE) {
@@ -555,11 +558,11 @@ void GraphicsGL::drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs) 
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+	glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
 	drawVerticesToFb(color, qs->numVertices, qs->vertices);
 	if (_fixUpPalette != FIXUP_PALETTE_NONE) {
@@ -572,13 +575,13 @@ void GraphicsGL::drawStringChar(int listNum, uint8_t color, char c, const Point 
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+	glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
-	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+	glScalef((float)_fbW / SCREEN_W, (float)_fbH / SCREEN_H, 1);
 
 	glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
 	if (_fontTex._h == 8) {
@@ -671,11 +674,11 @@ void GraphicsGL::clearBuffer(int listNum, uint8_t color) {
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+	glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
 	assert(color < 16);
 	glClearColor(_pal[color].r / 255.f, _pal[color].g / 255.f, _pal[color].b / 255.f, 1.f);
@@ -703,14 +706,14 @@ void GraphicsGL::copyBuffer(int dstListNum, int srcListNum, int vscroll) {
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + dstListNum);
 
-	glViewport(0, 0, FB_W, FB_H);
+	glViewport(0, 0, _fbW, _fbH);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, FB_W, 0, FB_H, 0, 1);
+	glOrtho(0, _fbW, 0, _fbH, 0, 1);
 
-	const int yoffset = vscroll * FB_H / (SCREEN_H - 1);
-	drawTextureFb(_pageTex[srcListNum], FB_W, FB_H, yoffset);
+	const int yoffset = vscroll * _fbH / (SCREEN_H - 1);
+	drawTextureFb(_pageTex[srcListNum], _fbW, _fbH, yoffset);
 
 	_drawLists[dstListNum] = _drawLists[srcListNum];
 	_drawLists[dstListNum].yOffset = vscroll;
@@ -769,7 +772,7 @@ void GraphicsGL::drawRect(int num, uint8_t color, const Point *pt, int w, int h)
 	assert(color < 16);
 	glColor4ub(_pal[color].r, _pal[color].g, _pal[color].b, 255);
 
-	glScalef((float)FB_W / SCREEN_W, (float)FB_H / SCREEN_H, 1);
+	glScalef((float)_fbW / SCREEN_W, (float)_fbH / SCREEN_H, 1);
 	const int x1 = pt->x;
 	const int y1 = pt->y;
 	const int x2 = x1 + w - 1;

@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
 	SystemStub *stub = SystemStub_SDL_create();
 	stub->init(e->getGameTitle(lang), &dm);
 	e->setSystemStub(stub, graphics);
-	e->setup(lang, scaler.name, scaler.factor);
+	e->setup(lang, graphicsType, scaler.name, scaler.factor);
 	while (!stub->_pi.quit) {
 		e->run();
 	}

@@ -97,6 +97,11 @@ struct Resource15th: ResourceNth {
 		}
 		return path;
 	}
+
+	virtual void getBitmapSize(int *w, int *h) {
+		*w = 1280;
+		*h = 800;
+	}
 };
 
 static uint8_t *inflateGzip(const char *filepath) {
@@ -150,6 +155,7 @@ struct Resource20th: ResourceNth {
 	char _musicName[64];
 	uint8_t _musicType;
 	char _datName[32];
+	const char *_bitmapSize;
 
 	Resource20th(const char *dataPath)
 		: _dataPath(dataPath), _textBuf(0) {
@@ -174,6 +180,26 @@ struct Resource20th: ResourceNth {
 				return false;
 			}
 		}
+		static const char *bmps[] = {
+			"1280x800",
+			"1152x720",
+			"960x600",
+			"864x540",
+			"768x480",
+			"480x300",
+			"320x200",
+			0
+		};
+		_bitmapSize = 0;
+		for (int i = 0; bmps[i]; ++i) {
+			char path[MAXPATHLEN];
+			snprintf(path, sizeof(path), "%s/game/BGZ/data%s", _dataPath, bmps[i]);
+			struct stat s;
+			if (stat(path, &s) == 0 && S_ISDIR(s.st_mode)) {
+				_bitmapSize = bmps[i];
+				break;
+			}
+		}
 		return true;
 	}
 
@@ -192,8 +218,8 @@ struct Resource20th: ResourceNth {
 
 	virtual uint8_t *loadBmp(int num) {
 		char path[MAXPATHLEN];
-		if (num >= 3000) {
-			snprintf(path, sizeof(path), "%s/game/BGZ/data1280x800/1280x800_e%04d.bgz", _dataPath, num);
+		if (num >= 3000 && _bitmapSize) {
+			snprintf(path, sizeof(path), "%s/game/BGZ/data%s/%s_e%04d.bgz", _dataPath, _bitmapSize, _bitmapSize, num);
 		} else {
 			snprintf(path, sizeof(path), "%s/game/BGZ/file%03d.bgz", _dataPath, num);
 		}
@@ -390,6 +416,14 @@ struct Resource20th: ResourceNth {
 			}
 		}
 		return _musicName;
+	}
+
+	virtual void getBitmapSize(int *w, int *h) {
+		if (_bitmapSize && sscanf(_bitmapSize, "%dx%d", w, h) == 2) {
+			return;
+		}
+		*w = 0;
+		*h = 0;
 	}
 };
 

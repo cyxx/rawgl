@@ -7,6 +7,7 @@
 #include "engine.h"
 #include "file.h"
 #include "graphics.h"
+#include "resource_nth.h"
 #include "systemstub.h"
 #include "util.h"
 
@@ -55,9 +56,10 @@ void Engine::run() {
 	}
 }
 
-void Engine::setup(Language lang, const char *scalerName, int scalerFactor) {
+void Engine::setup(Language lang, int graphicsType, const char *scalerName, int scalerFactor) {
 	_vid._graphics = _graphics;
-	_graphics->init(GFX_W * scalerFactor, GFX_H * scalerFactor);
+	int w = GFX_W * scalerFactor;
+	int h = GFX_H * scalerFactor;
 	if (_res.getDataType() != Resource::DT_3DO) {
 		_vid._graphics->_fixUpPalette = FIXUP_PALETTE_REDRAW;
 	}
@@ -71,9 +73,12 @@ void Engine::setup(Language lang, const char *scalerName, int scalerFactor) {
 	if (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION) {
 		_res.loadFont();
 		_res.loadHeads();
+		// get HD background bitmaps resolution
+		_res._nth->getBitmapSize(&w, &h);
 	} else {
 		_vid.setDefaultFont();
 	}
+	_graphics->init(w, h);
 	_script.init();
 	_mix.init();
 	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA || _res.getDataType() == Resource::DT_MAC) {
