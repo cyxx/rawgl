@@ -181,6 +181,7 @@ struct Resource20th: ResourceNth {
 			}
 		}
 		static const char *bmps[] = {
+			"1728x1080",
 			"1280x800",
 			"1152x720",
 			"960x600",
