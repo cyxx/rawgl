@@ -32,7 +32,7 @@ File size              | BE32 | File size in the resource bundle
 Data offset            | BE32 | File data offset in the resource bundle
 Flags                  | BE32 | Either 0 or 1
 
-Data is compressed with [LZ4](https://github/lz4/lz4).
+Data is compressed with [LZ4](https://github.com/lz4/lz4).
 
 ## Data Files
 
