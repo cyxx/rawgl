@@ -18,7 +18,7 @@ struct UnpackCtx {
 static bool nextBit(UnpackCtx *uc) {
 	bool carry = (uc->bits & 1) != 0;
 	uc->bits >>= 1;
-	if (uc->bits == 0) {
+	if (uc->bits == 0) { // getnextlwd
 		uc->bits = READ_BE_UINT32(uc->src); uc->src -= 4;
 		uc->crc ^= uc->bits;
 		carry = (uc->bits & 1) != 0;
@@ -27,7 +27,7 @@ static bool nextBit(UnpackCtx *uc) {
 	return carry;
 }
 
-static int getBits(UnpackCtx *uc, int count) {
+static int getBits(UnpackCtx *uc, int count) { // rdd1bits
 	int bits = 0;
 	for (int i = 0; i < count; ++i) {
 		bits <<= 1;
@@ -38,7 +38,7 @@ static int getBits(UnpackCtx *uc, int count) {
 	return bits;
 }
 
-static void copyLiteral(UnpackCtx *uc, int bitsCount, int len) {
+static void copyLiteral(UnpackCtx *uc, int bitsCount, int len) { // getd3chr
 	int count = getBits(uc, bitsCount) + len + 1;
 	uc->size -= count;
 	if (uc->size < 0) {
@@ -51,7 +51,7 @@ static void copyLiteral(UnpackCtx *uc, int bitsCount, int len) {
 	uc->dst -= count;
 }
 
-static void copyReference(UnpackCtx *uc, int bitsCount, int count) {
+static void copyReference(UnpackCtx *uc, int bitsCount, int count) { // copyd3bytes
 	uc->size -= count;
 	if (uc->size < 0) {
 		count += uc->size;
@@ -64,7 +64,7 @@ static void copyReference(UnpackCtx *uc, int bitsCount, int count) {
 	uc->dst -= count;
 }
 
-bool delphine_unpack(uint8_t *dst, int dstSize, const uint8_t *src, int srcSize) {
+bool bytekiller_unpack(uint8_t *dst, int dstSize, const uint8_t *src, int srcSize) {
 	UnpackCtx uc;
 	uc.src = src + srcSize - 4;
 	uc.size = READ_BE_UINT32(uc.src); uc.src -= 4;
