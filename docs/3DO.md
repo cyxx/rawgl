@@ -86,53 +86,53 @@ Most of the opcodes operand size is 2 bytes, matching the register size of the t
 
 Num | Name | Parameters | Description
 --- | ---- | ---------- | ---
-0   | op_movConst | var: byte, value: word           | var := value
-1   | op_mov      | var(dst): byte, var(src): byte   | dst := src
-2   | op_add      | var(dst): byte, var(src): byte   | dst += src
-3   | op_addConst | var: byte; value: word           | var += value
-19  | op_sub      | var(dst): byte, var(src): byte   | var -= src
-20  | op_and      | var: byte, value: word           | var &= value
-21  | op_or       | var: byte, value: word           | var |= value
-22  | op_shl      | var: byte, count: word           | var <<= count
-23  | op_shr      | var: byte, count: word           | var >>= count
+0   | movConst | var: byte, value: word           | var := value
+1   | mov      | var(dst): byte, var(src): byte   | dst := src
+2   | add      | var(dst): byte, var(src): byte   | dst += src
+3   | addConst | var: byte; value: word           | var += value
+19  | sub      | var(dst): byte, var(src): byte   | var -= src
+20  | and      | var: byte, value: word           | var &= value
+21  | or       | var: byte, value: word           | var |= value
+22  | shl      | var: byte, count: word           | var <<= count
+23  | shr      | var: byte, count: word           | var >>= count
 
 * Control flow
 
 Num | Name | Parameters | Description
 --- | ---- | ---------- | ---
-4   | op_call     | offset: word            | function call
-5   | op_ret      |                         | return from function call
-7   | op_jmp      | offset: word            | pc = offset
-9   | op_jmpIfVar | var: byte, offset: word | --var != 0: pc = offset (dbra)
-10  | op_condJmp  | operator: byte, var(operand1): byte, operand2: byte/word, offset: word | cmp op1, op2: pc = offset
+4   | call     | offset: word            | function call
+5   | ret      |                         | return from function call
+7   | jmp      | offset: word            | pc = offset
+9   | jmpIfVar | var: byte, offset: word | --var != 0: pc = offset (dbra)
+10  | condJmp  | operator: byte, var(operand1): byte, operand2: byte/word, offset: word | cmp op1, op2: pc = offset
 
 * Coroutines
 
 Num | Name | Parameters | Description
 --- | ---- | ---------- | ---
-8   | op_installTask      | num: byte, offset: word            | setup a coroutine, pc = offset
-6   | op_yieldTask        |                                    | pause current coroutine
-12  | op_changeTasksState | num1: byte, num2: byte, state:byte | change coroutines num1..num2 state
-17  | op_removeTask       |                                    | abort current coroutine
+8   | installTask      | num: byte, offset: word            | setup a coroutine, pc = offset
+6   | yieldTask        |                                    | pause current coroutine
+12  | changeTasksState | num1: byte, num2: byte, state:byte | change coroutines num1..num2 state
+17  | removeTask       |                                    | abort current coroutine
 
 * Display
 
 Num | Name | Parameters | Description
 --- | ---- | ---------- | ---
-11  | op_setPalette    | num: word                                        | set palette (16 colors)
-13  | op_selectPage    | num: byte                                        | set current drawing page
-14  | op_fillPage      | num: byte, color: byte                           | fill page with color
-15  | op_copyPage      | num(dst): byte, num(src): byte                   | copy page content
-16  | op_updateDisplay | num: byte                                        | present page to screen
-18  | op_drawString    | num: word, x(/8): byte, y(/8): byte, color: byte | draw string
+11  | setPalette    | num: word                                        | set palette (16 colors)
+13  | selectPage    | num: byte                                        | set current drawing page
+14  | fillPage      | num: byte, color: byte                           | fill page with color
+15  | copyPage      | num(dst): byte, num(src): byte                   | copy page content
+16  | updateDisplay | num: byte                                        | present page to screen
+18  | drawString    | num: word, x(/8): byte, y(/8): byte, color: byte | draw string
 
 * Assets
 
 Num | Name | Parameters | Description
 --- | ---- | ---------- | ---
-24  | op_playSound       | num: word, frequency: byte, volume: byte, channel: byte | play sound
-25  | op_updateResources | num: word                                               | load asset resource or section
-26  | op_playMusic       | num: word, pitch: word, position: byte                  | play music
+24  | playSound       | num: word, frequency: byte, volume: byte, channel: byte | play sound
+25  | updateResources | num: word                                               | load asset resource or section
+26  | playMusic       | num: word, pitch: word, position: byte                  | play music
 
 ### 3DO Specific Opcodes
 
