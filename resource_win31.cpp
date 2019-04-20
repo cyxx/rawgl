@@ -24,12 +24,10 @@ static const uint8_t _shuffleTable[256] = {
 
 static uint16_t decode(uint8_t *p, int size, uint16_t key) {
 	for (int i = 0; i < size; ++i) {
-		uint8_t dl = (key >> 8) & 255;
-		uint8_t dh = (key & 255);
-		++dl;
-		const uint8_t acc = _shuffleTable[dl];
-		dh ^= acc;
-		p[i] ^= acc;
+		const uint8_t dl = 1 + (key >> 8);
+		const uint8_t al = _shuffleTable[dl];
+		const uint8_t dh = al ^ (key & 255);
+		p[i] ^= al;
 		key = (dh << 8) | dl;
 	}
 	return key;
@@ -47,7 +45,7 @@ struct Bitstream {
 	}
 
 	bool refill() {
-		while (_len <= 8) {
+		while (_len < 8) {
 			if (eos()) {
 				return false;
 			}
@@ -59,240 +57,175 @@ struct Bitstream {
 		return true;
 	}
 	uint8_t readByte() {
-		assert(_len >= 8);
+		if (_len < 8) {
+			assert(refill());
+		}
 		const uint8_t b = _value >> 8;
 		_value <<= 8;
 		_len -= 8;
 		return b;
 	}
-	bool readBit() {
-		assert(_len > 0);
-		const bool carry = (_value & 0x8000) != 0;
+	int readBit() {
+		if(_len <= 0) {
+			assert(refill());
+		}
+		const int carry = ((_value & 0x8000) != 0) ? 1 : 0;
 		_value <<= 1;
 		--_len;
 		return carry;
 	}
 };
 
-struct Buffer {
-	uint16_t _buf[0x894];
+struct LzHuffman {
 
-	Buffer() {
-		memset(_buf, 0, sizeof(_buf));
+	enum {
+		kCharsCount = 314,
+		kTableSize = kCharsCount * 2 - 1,
+		kHuffmanRoot = kTableSize - 1,
+		kMaxFreq = 0x8000
+	};
+
+	Bitstream _stream;
+	int _child[kTableSize];
+	int _freq[628];
+	int _parent[943];
+	unsigned char _historyBuffer[4096];
+
+	LzHuffman() {
+		memset(_child, 0, sizeof(_child));
+		memset(_freq, 0, sizeof(_freq));
+		memset(_parent, 0, sizeof(_parent));
 	}
 
-	int fixAddr(int addr) {
-		assert((addr & 1) == 0);
-		addr /= 2;
-		assert(addr >= 0x4A30 && addr < 0x52C4);
-		return addr - 0x4A30;
-	}
-	int getWord(uint16_t addr) {
-		return _buf[fixAddr(addr)];
-	}
-	void setWord(uint16_t addr, int value) {
-		_buf[fixAddr(addr)] = value;
-	}
-};
-
-struct OotwmmDll {
-
-	Bitstream _bs;
-	Buffer _mem;
-	uint8_t _window[0x1000];
-	uint8_t _windowCodeOffsets[0x100];
-
-	void buildDecodeTable1();
-	void buildDecodeTable2();
-	int readWindowOffset();
-	void updateCode0x8000();
-	void updateCodesTable(int num);
-	bool decompressEntry(File &f, const Win31BankEntry *e, uint8_t *dst);
-};
-
-static const uint8_t _windowCodeLengths[0x10] = { 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6 };
-
-void OotwmmDll::buildDecodeTable1() {
-	static const uint8_t byte_9E2[] = { 1, 3, 8, 0xC, 0x18, 0x10 };
-	int count = 0;
-	int val = 0;
-	int mask = 0x20;
-	uint8_t *p = _windowCodeOffsets;
-	do {
-		assert(count < 6);
-		for (int i = 0; i < byte_9E2[count]; ++i) {
-			memset(p, val, mask);
-			p += mask;
-			++val;
+	void resetHuffTables() {
+		for (int i = 0; i < kCharsCount; ++i) {
+			_freq[i] = 1;
+			_child[i] = kTableSize + i;
+			_parent[kTableSize + i] = i;
 		}
-		++count;
-		mask >>= 1;
-	} while (mask != 0);
-}
-
-void OotwmmDll::buildDecodeTable2() {
-	for (int i = 0; i < 314; ++i) {
-		_mem.setWord(i * 2 - 0x6BA0, 1);
-		_mem.setWord(i * 2 - 0x61D2, i);
-		_mem.setWord(i * 2 - 0x5F5E, 627 + i);
-	}
-	int _di = 0;
-	for (int i = 628; i < 1254; i += 2) {
-		_mem.setWord(i - 0x6BA0, _mem.getWord(_di - 0x6BA0) + _mem.getWord(_di - 0x6B9E));
-		_mem.setWord(i - 0x5F5E, _di >> 1);
-		_mem.setWord(_di - 0x66B8, i >> 1);
-		_mem.setWord(_di - 0x66B6, i >> 1);
-		_di += 4;
-	}
-	_mem.setWord(0x9946, 0xFFFF);
-	_mem.setWord(0x9E2C, 0);
-}
-
-int OotwmmDll::readWindowOffset() {
-	_bs.refill();
-	int val = _bs.readByte();
-	const int offset = _windowCodeOffsets[val] << 6;
-	const int count = _windowCodeLengths[val >> 4];
-	assert(count <= 6);
-	for (int i = 0; i < count; ++i) {
-		_bs.refill();
-		val <<= 1;
-		if (_bs.readBit()) {
-			val |= 1;
+		for (int i = 0, j = kCharsCount; j <= kHuffmanRoot; i += 2, ++j) {
+			_freq[j] = _freq[i] + _freq[i + 1];
+			_child[j] = i;
+			_parent[i] = _parent[i + 1] = j;
 		}
+		_freq[kTableSize] = 0xFFFF;
+		_parent[kHuffmanRoot] = 0;
 	}
-	return offset | (val & 0x3F);
-}
-
-void OotwmmDll::updateCode0x8000() {
-	int _si = 0xA0A2;
-	int ndx = 0;
-	for (int i = 0; i < 627; ++i) {
-		int code = _mem.getWord(_si); _si += 2;
-		if (code >= 627) {
-			int code2 = _mem.getWord(_si - 0xC44);
-			_mem.setWord(ndx - 0x6BA0, (code2 + 1) >> 1);
-			_mem.setWord(ndx - 0x5F5E, code);
-			ndx += 2;
+	int getHuffCode() {
+		static const int base[] = { 0, 1, 4, 12, 24, 48 };
+	        static const int count[] = { 0, 2, 5, 9, 12, 15 };
+		static const int length[] = { 0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5 };
+		int index = _stream.readByte();
+		const int len = length[index >> 4];
+		const int code = base[len] + (index - count[len] * 16) / (1 << (5 - len));
+		for (int i = 0; i <= len; ++i) {
+			index = (index << 1) | _stream.readBit();
 		}
+		return (index & 63) | (code << 6);
 	}
-	for (int i = 0; i < 313; ++i) {
-		int _di = i * 4;
-		int ndx = 628 + i * 2;
-		int _si = ndx;
-		int code = _mem.getWord(_di - 0x6B9E) + _mem.getWord(_di - 0x6BA0);
-		_mem.setWord(ndx - 0x6BA0, code);
+	int decodeChar() {
+		int i = _child[kHuffmanRoot];
+		while (i < kTableSize) {
+			i += _stream.readBit();
+			i = _child[i];
+		}
+		i -= kTableSize;
+		update(i);
+		return i;
+	}
+	void update(int num) {
+		if (_freq[kHuffmanRoot] == kMaxFreq) {
+			for (int j = 0, i = 0; j < kTableSize; ++j) {
+				if (_child[j] >= kTableSize) {
+					_freq[i] = (_freq[j] + 1) >> 1;
+					_child[i] = _child[j];
+					++i;
+				}
+			}
+			for (int j = 0, i = kCharsCount; i < kTableSize; j += 2, ++i) {
+				const int f = _freq[i] = _freq[j] + _freq[j + 1];
+				int index = i - 1;
+				while (_freq[index] > f) {
+					--index;
+				}
+				++index;
+				const int copySize = (i - index) * sizeof(int);
+				memmove(_freq + index + 1, _freq + index, copySize);
+				_freq[index] = f;
+				memmove(_child + index + 1, _child + index, copySize);
+				_child[index] = j;
+			}
+			for (int i = 0; i < kTableSize; ++i) {
+				const int j = _child[i];
+				if (j >= kTableSize) {
+					_parent[j] = i;
+				} else {
+					_parent[j] = _parent[j + 1] = i;
+				}
+			}
+		}
+		int p = _parent[kTableSize + num];
 		do {
-			ndx -= 2;
-		} while (code < _mem.getWord(ndx - 0x6BA0));
-		ndx += 2;
-		_si -= ndx;
-		if (_si > 0) {
-			do {
-				_mem.setWord(ndx + _si - 0x6BA0, _mem.getWord(ndx + _si - 0x6BA2));
-				_mem.setWord(ndx + _si - 0x5F5E, _mem.getWord(ndx + _si - 0x5F60));
-				_si -= 2;
-			} while (_si != 0);
-		}
-		_mem.setWord(ndx - 0x6BA0, code);
-		_mem.setWord(ndx - 0x5F5E, _di >> 1);
-	}
-	for (int i = 0; i < 627; ++i) {
-		int _di = _mem.getWord(i * 2 - 0x5F5E);
-		_di = 0x9948 + _di * 2;
-		assert(_di >= 0x9948);
-		_mem.setWord(_di, i);
-		_di += 2;
-		if (_di < 0x9E30) {
-			_mem.setWord(_di, i);
-		}
-	}
-}
-
-void OotwmmDll::updateCodesTable(int num) {
-	const int val = _mem.getWord(0x9944);
-	if (val == 0x8000) {
-		updateCode0x8000();
-	}
-	int ndx = _mem.getWord(num * 2 - 0x61D2);
-	do {
-		ndx *= 2;
-		_mem.setWord(ndx - 0x6BA0, _mem.getWord(ndx - 0x6BA0) + 1);
-		int code = _mem.getWord(ndx - 0x6BA0);
-		int _si = ndx + 2;
-		if (code > _mem.getWord(_si - 0x6BA0)) {
-			do {
-				_si += 2;
-			} while (code > _mem.getWord(_si - 0x6BA0));
-			_si -= 2;
-			_mem.setWord(ndx - 0x6BA0, _mem.getWord(_si - 0x6BA0));
-			_mem.setWord(_si - 0x6BA0, code);
-			int _di = _mem.getWord(ndx - 0x5F5E) * 2;
-			_mem.setWord(_di - 0x66B8, _si >> 1);
-			if (_di < 1254) {
-				_mem.setWord(_di - 0x66B6, _si >> 1);
+			++_freq[p];
+			const int i = _freq[p];
+			int index = p + 1;
+			if (_freq[index] < i) {
+				while (_freq[++index] < i) {}
+				--index;
+				_freq[p] = _freq[index];
+				_freq[index] = i;
+				const int k = _child[p];
+				_parent[k] = index;
+				if (k < kTableSize) {
+					_parent[k + 1] = index;
+				}
+				const int j = _child[index];
+				_child[index] = k;
+				_parent[j] = p;
+				if (j < kTableSize) {
+					_parent[j + 1] = p;
+				}
+				_child[p] = j;
+				p = index;
 			}
-			const int code2 = _di >> 1;
-			_di = _mem.getWord(_si - 0x5F5E) * 2;
-			_mem.setWord(_si - 0x5F5E, code2);
-			_mem.setWord(_di - 0x66B8, ndx >> 1);
-			if (_di < 1254) {
-				_mem.setWord(_di - 0x66B6, ndx >> 1);
-			}
-			_mem.setWord(ndx - 0x5F5E, _di >> 1);
-			ndx = _si;
-		}
-		ndx = _mem.getWord(ndx - 0x66B8);
-	} while (ndx != 0);
-}
-
-bool OotwmmDll::decompressEntry(File &f, const Win31BankEntry *e, uint8_t *out) {
-	f.seek(e->offset);
-	memset(&_bs, 0, sizeof(_bs));
-	_bs._f = &f;
-	_bs._size = e->packedSize;
-
-	memset(_window, 0x20, sizeof(_window));
-	int windowSize = 4078;
-	int decompressedSize = e->size;
-
-	buildDecodeTable1();
-	buildDecodeTable2();
-
-	int size = 0;
-	while (size < decompressedSize) {
-		int code = _mem.getWord(0xA586);
-		while (code < 627) {
-			_bs.refill();
-			if (_bs.readBit()) {
-				++code;
-			}
-			code <<= 1;
-			code = _mem.getWord(code - 0x5F5E);
-		}
-		code -= 627;
-		updateCodesTable(code);
-		int code2 = code;
-		if ((code2 >> 8) == 0) {
-			const uint8_t val = code2 & 255;
-			_window[windowSize] = val;
-			windowSize = (windowSize + 1) & 0xFFF;
-			out[size++] = val;
-		} else {
-			int count = code2 - 253;
-			const int offset = readWindowOffset();
-			code = (windowSize - offset - 1) & 0xFFF;
-			do {
-				const uint8_t val = _window[code];
-				code = (code + 1) & 0xFFF;
-				_window[windowSize] = val;
-				windowSize = (windowSize + 1) & 0xFFF;
-				out[size++] = val;
-			} while (--count != 0 && size < decompressedSize);
-                }
+			p = _parent[p];
+		} while (p != 0);
 	}
-	return size == decompressedSize;
-}
+	bool decode(uint8_t *out, int uncompressedSize) {
+		resetHuffTables();
+		memset(_historyBuffer, ' ', sizeof(_historyBuffer));
+		int offset = 4078;
+		int currentSize = 0;
+		while (currentSize < uncompressedSize) {
+			int chr = decodeChar();
+			if (chr < 256) {
+				*out++ = chr & 255;
+				_historyBuffer[offset++] = chr;
+				offset &= 0xFFF;
+				++currentSize;
+			} else {
+				const int baseOffset = (offset - getHuffCode() - 1) & 0xFFF;
+				const int size = chr - 253;
+				for (int i = 0; i < size; ++i) {
+					chr = _historyBuffer[(baseOffset + i) & 0xFFF];
+					*out++ = chr & 255;
+					_historyBuffer[offset++] = chr;
+					offset &= 0xFFF;
+					++currentSize;
+				}
+			}
+		}
+		return currentSize == uncompressedSize;
+	}
+
+	bool decompressEntry(File &f, const Win31BankEntry *e, uint8_t *out) {
+		f.seek(e->offset);
+		memset(&_stream, 0, sizeof(_stream));
+		_stream._f = &f;
+		_stream._size = e->packedSize;
+		return decode(out, e->size);
+	}
+};
 
 const char *ResourceWin31::FILENAME = "BANK";
 
@@ -301,13 +234,11 @@ ResourceWin31::ResourceWin31(const char *dataPath)
 	_f.open(FILENAME, dataPath);
 	_textBuf = 0;
 	memset(_stringsTable, 0, sizeof(_stringsTable));
-	_dll = new OotwmmDll;
 }
 
 ResourceWin31::~ResourceWin31() {
 	free(_entries);
 	free(_textBuf);
-	delete _dll;
 }
 
 bool ResourceWin31::readEntries() {
@@ -357,7 +288,8 @@ uint8_t *ResourceWin31::loadFile(int num, uint8_t *dst, uint32_t *size) {
 			f.read(dst, e->size);
 			return dst;
 		}
-		if (_dll->decompressEntry(_f, e, dst)) {
+		LzHuffman lzHuf;
+		if (lzHuf.decompressEntry(_f, e, dst)) {
 			return dst;
 		}
 	}
