@@ -225,7 +225,7 @@ void SfxPlayer::handlePattern(uint8_t channel, const uint8_t *data) {
 	}
 	if (pat.note_1 == 0xFFFD) {
 		debug(DBG_SND, "SfxPlayer::handlePattern() _scriptVars[0xF4] = 0x%X", pat.note_2);
-		*_markVar = pat.note_2;
+		*_syncVar = pat.note_2;
 	} else if (pat.note_1 != 0) {
 		if (pat.note_1 == 0xFFFE) {
 			_channels[channel].sampleLen = 0;

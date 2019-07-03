@@ -27,7 +27,7 @@ struct Script {
 
 		VAR_HERO_POS_UP_DOWN     = 0xE5,
 
-		VAR_MUS_MARK             = 0xF4,
+		VAR_MUSIC_SYNC           = 0xF4,
 
 		VAR_SCROLL_Y             = 0xF9,
 		VAR_HERO_ACTION          = 0xFA,

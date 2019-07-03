@@ -52,7 +52,7 @@ static const char *varName(uint8_t var) {
 		strcpy(name, "VAR_HERO_POS_UP_DOWN");
 		break;
 	case 0xF4:
-		strcpy(name, "VAR_MUSIC_MARK");
+		strcpy(name, "VAR_MUSIC_SYNC");
 		break;
 	case 0xF9:
 		strcpy(name, "VAR_SCROLL_Y");

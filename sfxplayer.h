@@ -55,7 +55,7 @@ struct SfxPlayer {
 	uint16_t _delay;
 	uint16_t _resNum;
 	SfxModule _sfxMod;
-	int16_t *_markVar;
+	int16_t *_syncVar;
 	bool _playing;
 	int _rate;
 	int _samplesLeft;
