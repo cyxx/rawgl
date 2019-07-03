@@ -14,30 +14,29 @@
 #include "systemstub.h"
 #include "util.h"
 
-static uint8_t *convertMono8ToWav(const uint8_t *data, int freq, int size, const uint8_t mask = 0) {
-	static const uint8_t kHeaderData[] = {
-		0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20, // RIFF$...WAVEfmt
-		0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x7d, 0x00, 0x00, 0x00, 0x7d, 0x00, 0x00, // .........}...}..
-		0x01, 0x00, 0x08, 0x00, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00                          // ....data....
-	};
+static uint8_t *convertMono8(SDL_AudioCVT *cvt, const uint8_t *data, int freq, int size, const uint8_t mask, int *cvtLen) {
 	static const int kHz = 11025;
-	uint8_t *out = (uint8_t *)malloc(sizeof(kHeaderData) + size * 4);
+	assert(kHz / freq <= 4);
+	uint8_t *out = (uint8_t *)malloc(size * 4 * cvt->len_mult);
 	if (out) {
-		memcpy(out, kHeaderData, sizeof(kHeaderData));
 		// point resampling
 		Frac pos;
 		pos.offset = 0;
 		pos.inc = (freq << Frac::BITS) / kHz;
-		int rsmp = 0;
+		int len = 0;
 		for (; int(pos.getInt()) < size; pos.offset += pos.inc) {
-			out[sizeof(kHeaderData) + rsmp] = data[pos.getInt()] ^ mask; // S8 to U8
-			++rsmp;
+			out[len] = data[pos.getInt()] ^ mask; // S8 to U8
+			++len;
 		}
-		// fixup .wav header
-		WRITE_LE_UINT32(out +  4, 36 + rsmp); // 'RIFF' size
-		WRITE_LE_UINT32(out + 24, kHz); // 'fmt ' sample rate
-		WRITE_LE_UINT32(out + 28, kHz); // 'fmt ' bytes per second
-		WRITE_LE_UINT32(out + 40, rsmp); // 'data' size
+		// convert to mixer format
+		cvt->len = len;
+		cvt->buf = out;
+		if (SDL_ConvertAudio(cvt) < 0) {
+			free(out);
+			return 0;
+		}
+		out = cvt->buf;
+		*cvtLen = cvt->len_cvt;
 	}
 	return out;
 }
@@ -48,18 +47,25 @@ struct Mixer_impl {
 	static const int kMixBufSize = 4096;
 	static const int kMixChannels = 4;
 
-	Mix_Chunk *_sounds[4];
+	Mix_Chunk *_sounds[kMixChannels];
 	Mix_Music *_music;
+	uint8_t *_samples[kMixChannels];
+	SDL_AudioCVT _cvt;
 
 	void init() {
 		memset(_sounds, 0, sizeof(_sounds));
 		_music = 0;
+		memset(_samples, 0, sizeof(_samples));
 
 		Mix_Init(MIX_INIT_OGG | MIX_INIT_FLUIDSYNTH);
 		if (Mix_OpenAudio(kMixFreq, AUDIO_S16SYS, 2, kMixBufSize) < 0) {
 			warning("Mix_OpenAudio failed: %s", Mix_GetError());
 		}
 		Mix_AllocateChannels(kMixChannels);
+		memset(&_cvt, 0, sizeof(_cvt));
+		if (SDL_BuildAudioCVT(&_cvt, AUDIO_U8, 1, 11025, AUDIO_S16SYS, 2, kMixFreq) < 0) {
+			warning("SDL_BuildAudioCVT failed: %s", SDL_GetError());
+		}
 	}
 	void quit() {
 		stopAll();
@@ -81,10 +87,12 @@ struct Mixer_impl {
 		if (loopLen != 0) {
 			len = loopLen;
 		}
-		uint8_t *sample = convertMono8ToWav(data + 8, freq, len, 0x80);
+		int sampleLen = 0;
+		uint8_t *sample = convertMono8(&_cvt, data + 8, freq, len, 0x80, &sampleLen);
 		if (sample) {
-			playSoundWav(channel, sample, 0, volume, (loopLen != 0) ? -1 : 0);
-			free(sample);
+			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, sampleLen);
+			playSound(channel, volume, chunk, (loopLen != 0) ? -1 : 0);
+			_samples[channel] = sample;
 		}
 	}
 	void playSoundWav(uint8_t channel, const uint8_t *data, int freq, uint8_t volume, int loops = 0) {
@@ -99,18 +107,6 @@ struct Mixer_impl {
 			if (isMixerFormat && (AUDIO_S16SYS == AUDIO_S16LSB)) {
 				Mix_Chunk *chunk = Mix_QuickLoad_WAV(const_cast<uint8_t *>(data));
 				playSound(channel, volume, chunk, loops);
-				return;
-			}
-			const bool doConvert = (format == 1 && channels == 1 && bits == 8 && (rate % 11025) != 0);
-			if (doConvert && freq != 0 && memcmp(data + 36, "data", 4) == 0) {
-				const int size = READ_LE_UINT32(data + 40);
-				uint8_t *sample = convertMono8ToWav(data + 44, freq, size);
-				if (sample) {
-					SDL_RWops *rw = SDL_RWFromConstMem(sample, READ_LE_UINT32(sample + 4) + 8);
-					Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
-					playSound(channel, volume, chunk, loops);
-					free(sample);
-				}
 				return;
 			}
                 }
@@ -140,6 +136,8 @@ struct Mixer_impl {
 	void freeSound(int channel) {
 		Mix_FreeChunk(_sounds[channel]);
 		_sounds[channel] = 0;
+		free(_samples[channel]);
+		_samples[channel] = 0;
 	}
 	void setChannelVolume(uint8_t channel, uint8_t volume) {
 		Mix_Volume(channel, volume * MIX_MAX_VOLUME / 63);
