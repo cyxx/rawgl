@@ -70,6 +70,7 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 	if (dm->opengl) {
 		_glcontext = SDL_GL_CreateContext(_window);
 	} else {
+		_glcontext = 0;
 		_renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED);
 		SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(_renderer);
@@ -117,7 +118,10 @@ void SystemStub_SDL::fini() {
 		SDL_DestroyRenderer(_renderer);
 		_renderer = 0;
 	}
-	SDL_GL_DeleteContext(_glcontext);
+	if (_glcontext) {
+		SDL_GL_DeleteContext(_glcontext);
+		_glcontext = 0;
+	}
 	SDL_DestroyWindow(_window);
 	SDL_Quit();
 }
