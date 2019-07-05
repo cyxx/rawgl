@@ -14,7 +14,7 @@
 #include "systemstub.h"
 #include "util.h"
 
-static uint8_t *convertMono8(SDL_AudioCVT *cvt, const uint8_t *data, int freq, int size, const uint8_t mask, int *cvtLen) {
+static uint8_t *convertMono8(SDL_AudioCVT *cvt, const uint8_t *data, int freq, int size, int *cvtLen) {
 	static const int kHz = 11025;
 	assert(kHz / freq <= 4);
 	uint8_t *out = (uint8_t *)malloc(size * 4 * cvt->len_mult);
@@ -25,7 +25,7 @@ static uint8_t *convertMono8(SDL_AudioCVT *cvt, const uint8_t *data, int freq, i
 		pos.inc = (freq << Frac::BITS) / kHz;
 		int len = 0;
 		for (; int(pos.getInt()) < size; pos.offset += pos.inc) {
-			out[len] = data[pos.getInt()] ^ mask; // S8 to U8
+			out[len] = data[pos.getInt()];
 			++len;
 		}
 		// convert to mixer format
@@ -63,7 +63,7 @@ struct Mixer_impl {
 		}
 		Mix_AllocateChannels(kMixChannels);
 		memset(&_cvt, 0, sizeof(_cvt));
-		if (SDL_BuildAudioCVT(&_cvt, AUDIO_U8, 1, 11025, AUDIO_S16SYS, 2, kMixFreq) < 0) {
+		if (SDL_BuildAudioCVT(&_cvt, AUDIO_S8, 1, 11025, AUDIO_S16SYS, 2, kMixFreq) < 0) {
 			warning("SDL_BuildAudioCVT failed: %s", SDL_GetError());
 		}
 	}
@@ -88,7 +88,7 @@ struct Mixer_impl {
 			len = loopLen;
 		}
 		int sampleLen = 0;
-		uint8_t *sample = convertMono8(&_cvt, data + 8, freq, len, 0x80, &sampleLen);
+		uint8_t *sample = convertMono8(&_cvt, data + 8, freq, len, &sampleLen);
 		if (sample) {
 			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, sampleLen);
 			playSound(channel, volume, chunk, (loopLen != 0) ? -1 : 0);
