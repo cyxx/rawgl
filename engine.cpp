@@ -70,15 +70,18 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	_res.allocMemBlock();
 	_res.readEntries();
 	_res.dumpEntries();
-	if (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION) {
-		_res.loadFont();
-		_res.loadHeads();
+	const bool isNth = (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION);
+	if (isNth) {
 		// get HD background bitmaps resolution
 		_res._nth->getBitmapSize(&w, &h);
+	}
+	_graphics->init(w, h);
+	if (isNth) {
+		_res.loadFont();
+		_res.loadHeads();
 	} else {
 		_vid.setDefaultFont();
 	}
-	_graphics->init(w, h);
 	_script.init();
 	_mix.init();
 	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA || _res.getDataType() == Resource::DT_MAC) {
