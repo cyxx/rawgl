@@ -72,6 +72,14 @@ static bool check3DO(File &f, const char *dataDir) {
 	return f.open("File340", path);
 }
 
+static bool checkMacintosh(File &f, const char *dataDir) {
+	const char *ext = strrchr(dataDir, '.');
+	if (ext && strcasecmp(ext, ".rsrc") == 0) {
+		return f.open(dataDir);
+	}
+	return false;
+}
+
 void Resource::detectVersion() {
 	File f;
 	if (check15th(f, _dataDir)) {
@@ -92,7 +100,7 @@ void Resource::detectVersion() {
 	} else if (check3DO(f, _dataDir)) {
 		_dataType = DT_3DO;
 		debug(DBG_INFO, "Using 3DO data files");
-	} else if (f.open(ResourceMac::FILE017, _dataDir)) {
+	} else if (checkMacintosh(f, _dataDir)) {
 		_dataType = DT_MAC;
 		debug(DBG_INFO, "Using Macintosh data files");
 	} else {
@@ -192,7 +200,9 @@ void Resource::readEntries() {
 	} else if (_dataType == DT_MAC) {
 		_numMemList = ENTRIES_COUNT;
 		_mac = new ResourceMac(_dataDir);
-		return;
+		if (_mac->load()) {
+			return;
+		}
 	}
 	error("No data files found in '%s'", _dataDir);
 }
@@ -477,6 +487,8 @@ uint8_t *Resource::loadWav(int num) {
 		p = _nth->loadWav(num, _scriptCurPtr, &size);
 	} else if (_win31) {
 		p = _win31->loadFile(num, _scriptCurPtr, &size);
+	} else if (_mac) {
+		p = _mac->loadFile(num, _scriptCurPtr, &size, true);
 	}
 	if (p && size != 0) {
 		_scriptCurPtr += size;
