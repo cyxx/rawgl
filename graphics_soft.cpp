@@ -312,17 +312,17 @@ void GraphicsSoft::drawSprite(int buffer, int num, const Point *pt) {
 }
 
 void GraphicsSoft::drawBitmap(int buffer, const uint8_t *data, int w, int h, int fmt) {
-	if (_is1991) {
-		if (_byteDepth == 1) {
-			if (fmt == FMT_CLUT && _w == w && _h == h) {
-				memcpy(getPagePtr(buffer), data, w * h);
-			}
+	switch (_byteDepth) {
+	case 1:
+		if (fmt == FMT_CLUT && _w == w && _h == h) {
+			memcpy(getPagePtr(buffer), data, w * h);
 		}
-	}
-	if (_byteDepth == 2) {
+		break;
+	case 2:
 		if (fmt == FMT_RGB565 && _w == w && _h == h) {
 			memcpy(getPagePtr(buffer), data, getPageSize());
 		}
+		break;
 	}
 }
 
