@@ -13,11 +13,11 @@ set_property(TARGET rawgl2 PROPERTY CXX_STANDARD 11)
 
 include(FindPkgConfig)
 
-pkg_search_module(SDL2 REQUIRED sdl2)
-pkg_search_module(SDL2MIXER REQUIRED SDL2_mixer)
+pkg_search_module(SDL2 REQUIRED IMPORTED_TARGET sdl2)
+pkg_search_module(SDL2MIXER REQUIRED IMPORTED_TARGET SDL2_mixer)
 
 find_library(GL OpenGL)
 find_library(ZLIB z)
 
-include_directories(${SDL2_INCLUDE_DIRS})
-target_link_libraries(rawgl2 ${SDL2_LIBRARIES} ${SDL2MIXER_LIBRARIES} ${GL} ${ZLIB})
+target_include_directories(rawgl2 PUBLIC PkgConfig::SDL2)
+target_link_libraries(rawgl2 PkgConfig::SDL2 PkgConfig::SDL2MIXER ${GL} ${ZLIB})
