@@ -568,8 +568,9 @@ void Script::executeTask() {
 					}
 					continue;
 				case 30: {
-						// _scriptVars[0xF7]
-						warning("Script::op30() unimplemented");
+						if (0) {
+							fprintf(stdout, "Time = %d", _scriptVars[0xF7]);
+						}
 					}
 					continue;
 				}

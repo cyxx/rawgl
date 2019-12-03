@@ -167,7 +167,7 @@ Num | Name | Parameters | Description
 27  | drawString    | num: byte, var(x): byte, var(y): byte, color: byte |
 28  | jmpIfVarFalse | var: byte, offset: word                            | if var == 0: pc = offset
 29  | jmpIfVarTrue  | var: byte, offset: word                            | if var != 0: pc = offset
-20  | sync?         |                                                    | this opcode is not referenced in the game code
+30  | printTime     |                                                    | output running time (via svc 65550, not referenced in game code)
 
 ## Resources
 
