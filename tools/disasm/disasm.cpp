@@ -172,7 +172,11 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		fprintf(_out, "VAR(0x%02X) = VAR(0x%02X)", args[0], args[1]);
 		break;
 	case op_addConst:
-		fprintf(_out, "VAR(0x%02X) += %d", args[0], args[1]);
+		if (args[1] < 0) {
+			fprintf(_out, "VAR(0x%02X) -= %d", args[0], -args[1]);
+		} else {
+			fprintf(_out, "VAR(0x%02X) += %d", args[0], args[1]);
+		}
 		break;
 	case op_add:
 		fprintf(_out, "VAR(0x%02X) += VAR(0x%02X)", args[0], args[1]);
