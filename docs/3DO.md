@@ -61,16 +61,32 @@ With the original Amiga/DOS version, the player has to lookup some symbols from 
 ![Screenshot Code](screenshot-protection.png)
 
 In addition to checking if the symbols entered are the correct ones, the game code is setting a few variables which are checked during gameplay.
-
 This was probably added to defeat game cracks that would simply bypass the game protection screen.
 
-For reference, the game code expects these values :
+The Amiga version bytecode checks 4 variables :
 
 ```
-VAR(0xBC) = 16
-VAR(0xC6) = 128
-VAR(0xF2) = 6000 (4000 for DOS)
-VAR(0xDC) = 33
+0091: VAR(0xBC) &= 16
+0095: VAR(0xC6) &= 128
+0099: jmpIf(VAR(0xBC) == 0, @00B3)
+009F: jmpIf(VAR(0xC6) == 0, @00B3)
+00A5: jmpIf(VAR(0xF2) != 6000, @00B3)
+00AC: jmpIf(VAR(0xDC) != 33, @00B3)
+```
+
+The DOS version bytecode checks 5 variables :
+
+```
+00B7: VAR(0xBC) &= 16
+00BB: VAR(0xF8) = VAR(0xC6)
+00BE: VAR(0xF8) &= 128
+00C2: jmpIf(VAR(0xBC) == 0, @00E9)
+00C8: jmpIf(VAR(0xF8) == 0, @00E9)
+00CE: VAR(0xF8) = VAR(0xE4)
+00D1: VAR(0xF8) &= 60
+00D5: jmpIf(VAR(0xF8) != 20, @00E9)
+00DB: jmpIf(VAR(0xF2) != 4000, @00E9)
+00E2: jmpIf(VAR(0xDC) != 33, @00E9)
 ```
 
 ## Bytecode

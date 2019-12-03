@@ -35,6 +35,9 @@ void Script::init() {
 		_scriptVars[0xC6] = 0x80;
 		_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA) ? 6000 : 4000;
 		_scriptVars[0xDC] = 33;
+		if (_res->getDataType() == Resource::DT_DOS) {
+			_scriptVars[0xE4] = 20;
+		}
 	}
 }
 
@@ -62,16 +65,16 @@ void Script::op_add() {
 void Script::op_addConst() {
 	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
 		if (_res->_currentPart == 16006 && _scriptPtr.pc == _res->_segCode + 0x6D48) {
-			warning("Script::op_addConst() hack for non-stop looping gun sound bug");
+			warning("Script::op_addConst() workaround for infinite looping gun sound");
 			// The script 0x27 slot 0x17 doesn't stop the gun sound from looping.
 			// This is a bug in the original game code, confirmed by Eric Chahi and
 			// addressed with the anniversary editions.
 			// For older releases (DOS, Amiga), we play the 'stop' sound like it is
 			// done in other part of the game code.
 			//
-			//  (0x6D43) jmp(0x6CE5)
-			//  (0x6D46) break
-			//  (0x6D47) VAR(0x06) += -50
+			//  6D43: jmp(0x6CE5)
+			//  6D46: break
+			//  6D47: VAR(0x06) -= 50
 			//
 			snd_playSound(0x5B, 1, 64, 1);
 		}
@@ -150,7 +153,7 @@ void Script::op_condJmp() {
 	case 0:
 		expr = (b == a);
 #ifdef BYPASS_PROTECTION
-		if (_res->_currentPart == 16000) {
+		if (_res->_currentPart == kPartCopyProtection) {
 			//
 			// 0CB8: jmpIf(VAR(0x29) == VAR(0x1E) @0CD3)
 			// ...
@@ -376,13 +379,20 @@ void Script::restartAt(int part, int pos) {
 		// playback sounds resnum >= 146
 		_scriptVars[0xDE] = Graphics::_is1991 ? 0 : 1;
 	}
-	if (_res->getDataType() == Resource::DT_DOS) {
-		_scriptVars[0xE4] = 20;
-		if (part == 16000) {
-			// another world / out of this world splash screen
-			const bool ootwScreen = (_vid->_stringsTable != Video::_stringsTableFr);
-			_scriptVars[0x54] = ootwScreen ? 0x81 : 0x1;
-		}
+	if (_res->getDataType() == Resource::DT_DOS && part == kPartCopyProtection) {
+		// VAR(0x54) indicates if the "Out of this World" title screen should be presented
+		//
+		//   0084: jmpIf(VAR(0x54) < 128, @00C4)
+		//   ..
+		//   008D: setPalette(num=0)
+		//   0090: updateResources(res=18)
+		//   ...
+		//   00C4: setPalette(num=23)
+		//   00CA: updateResources(res=71)
+
+		// Use "Another World" title screen if language is set to French
+		const bool awTitleScreen = (_vid->_stringsTable == Video::_stringsTableFr);
+		_scriptVars[0x54] = awTitleScreen ? 0x1 : 0x81;
 	}
 	_res->setupPart(part);
 	memset(_scriptTasks, 0xFF, sizeof(_scriptTasks));
