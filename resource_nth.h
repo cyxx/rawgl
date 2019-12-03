@@ -14,7 +14,7 @@ struct ResourceNth {
 	virtual void preloadDat(int part, int type, int num) {}
 	virtual uint8_t *loadDat(int num, uint8_t *dst, uint32_t *size) = 0;
 	virtual uint8_t *loadWav(int num, uint8_t *dst, uint32_t *size) = 0;
-	virtual const char *getString(Language lang, int num) { return 0; }
+	virtual const char *getString(Language lang, int num) = 0;
 	virtual const char *getMusicName(int num) = 0;
 	virtual void getBitmapSize(int *w, int *h) = 0;
 

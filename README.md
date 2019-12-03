@@ -12,7 +12,7 @@ The program requires the original data files.
 - Amiga (Bank*)
 - DOS (Bank*, memlist.bin)
 - DOS demo (Demo*, memlist.bin)
-- 15th Anniversary Edition (Pak01.pak, Intro2004.wav, End2004.wav)
+- 15th Anniversary Edition (Data/Pak01.pak, Menu/*, Music/*)
 - 20th Anniversary Edition (game/*)
 - Windows 3.1 (Bank, *mid)
 - 3DO (GameData/*)

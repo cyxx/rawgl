@@ -25,6 +25,7 @@ Resource::Resource(Video *vid, const char *dataDir)
 	if (!_dataDir) {
 		_dataDir = ".";
 	}
+	_lang = LANG_FR;
 }
 
 Resource::~Resource() {
@@ -379,28 +380,29 @@ static const int _memListBmp[] = {
 };
 
 void Resource::update(uint16_t num) {
+	if (num > 16000) {
+		_nextPart = num;
+		return;
+	}
 	switch (_dataType) {
 	case DT_15TH_EDITION:
 	case DT_20TH_EDITION:
+		if (num >= 3000) {
+			loadBmp(num);
+			break;
+		}
+		/* fall-through */
 	case DT_WIN31:
 	case DT_MAC:
-		if (num > 16000) {
-			_nextPart = num;
-		} else if (num >= 3000) {
-			loadBmp(num);
-		} else {
-			for (int i = 0; _memListBmp[i] != -1; ++i) {
-				if (num == _memListBmp[i]) {
-					loadBmp(num);
-					break;
-				}
+		for (int i = 0; _memListBmp[i] != -1; ++i) {
+			if (num == _memListBmp[i]) {
+				loadBmp(num);
+				break;
 			}
 		}
 		break;
 	case DT_3DO:
-		if (num > 16000) {
-			_nextPart = num;
-		} else if (num >= 2000) { // preload sounds
+		if (num >= 2000) { // preload sounds
 			const uint8_t *soundsList = getSoundsList3DO(num);
 			for (int i = 0; soundsList[i] != 255; ++i) {
 				loadDat(soundsList[i]);
@@ -411,21 +413,17 @@ void Resource::update(uint16_t num) {
 		break;
 	case DT_AMIGA:
 	case DT_DOS:
-		if (num > _numMemList) {
-			_nextPart = num;
-		} else {
-			if (0) { // from DOS disassembly
-				for (int i = 0; _memListAudio[i] != -1; ++i) {
-					if (num == _memListAudio[i]) {
-						return;
-					}
+		if (0) { // from DOS disassembly
+			for (int i = 0; _memListAudio[i] != -1; ++i) {
+				if (num == _memListAudio[i]) {
+					return;
 				}
 			}
-			MemEntry *me = &_memList[num];
-			if (me->status == STATUS_NULL) {
-				me->status = STATUS_TOLOAD;
-				load();
-			}
+		}
+		MemEntry *me = &_memList[num];
+		if (me->status == STATUS_NULL) {
+			me->status = STATUS_TOLOAD;
+			load();
 		}
 		break;
 	}
@@ -541,7 +539,7 @@ const char *Resource::getString(int num) {
 	switch (_dataType) {
 	case DT_15TH_EDITION:
 	case DT_20TH_EDITION:
-		return _nth->getString(LANG_US, num);
+		return _nth->getString(_lang, num);
 	case DT_WIN31:
 		return _win31->getString(num);
 	default:

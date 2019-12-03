@@ -79,6 +79,7 @@ enum Language {
 };
 
 enum {
+	kPartCopyProtection = 16000,
 	kPartIntro = 16001,
 	kPartWater = 16002,
 	kPartPrison = 16003,

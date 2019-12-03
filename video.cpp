@@ -289,24 +289,6 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 
 static const int NTH_EDITION_STRINGS_COUNT = 157;
 
-static const char *findString15th(int id) {
-	for (int i = 0; i < NTH_EDITION_STRINGS_COUNT; ++i) {
-		if (Video::_stringsId15th[i] == id) {
-			return Video::_stringsTable15th[i];
-		}
-	}
-	return 0;
-}
-
-static const char *findString20th(Resource *res, int id) {
-	for (int i = 0; i < NTH_EDITION_STRINGS_COUNT; ++i) {
-		if (Video::_stringsId15th[i] == id) {
-			return res->getString(i);
-		}
-	}
-	return 0;
-}
-
 static const char *findString(const StrEntry *stringsTable, int id) {
 	for (const StrEntry *se = stringsTable; se->id != 0xFFFF; ++se) {
 		if (se->id == id) {
@@ -318,12 +300,19 @@ static const char *findString(const StrEntry *stringsTable, int id) {
 
 void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 	bool escapedChars = false;
-	const char *str;
-	if (_res->getDataType() == Resource::DT_15TH_EDITION) {
-		str = findString15th(strId);
-	} else if (_res->getDataType() == Resource::DT_20TH_EDITION) {
-		str = findString20th(_res, strId);
-		escapedChars = true;
+	const char *str = 0;
+	if (_res->getDataType() == Resource::DT_15TH_EDITION || _res->getDataType() == Resource::DT_20TH_EDITION) {
+		for (int i = 0; i < NTH_EDITION_STRINGS_COUNT; ++i) {
+			if (Video::_stringsId15th[i] == strId) {
+				str = _res->getString(i);
+				if (str) {
+					escapedChars = true;
+				} else {
+					str = Video::_stringsTable15th[i];
+				}
+				break;
+			}
+		}
 	} else if (_res->getDataType() == Resource::DT_WIN31) {
 		str = _res->getString(strId);
 	} else if (_res->getDataType() == Resource::DT_3DO) {
@@ -396,7 +385,7 @@ void Video::fillPage(uint8_t page, uint8_t color) {
 
 void Video::copyPage(uint8_t src, uint8_t dst, int16_t vscroll) {
 	debug(DBG_VIDEO, "Video::copyPage(%d, %d)", src, dst);
-	if (src >= 0xFE || !((src &= 0xBF) & 0x80)) {
+	if (src >= 0xFE || ((src &= ~0x40) & 0x80) == 0) { // no vscroll
 		_graphics->copyBuffer(getPagePtr(dst), getPagePtr(src));
 	} else {
 		uint8_t sl = getPagePtr(src & 3);

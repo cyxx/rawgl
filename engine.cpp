@@ -67,6 +67,7 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	if (scalerFactor > 1) {
 		_vid.setScaler(scalerName, scalerFactor);
 	}
+	_res._lang = lang;
 	_res.allocMemBlock();
 	_res.readEntries();
 	_res.dumpEntries();

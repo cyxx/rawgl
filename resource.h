@@ -88,6 +88,7 @@ struct Resource {
 	ResourceWin31 *_win31;
 	Resource3do *_3do;
 	ResourceMac *_mac;
+	Language _lang;
 
 	Resource(Video *vid, const char *dataDir);
 	~Resource();

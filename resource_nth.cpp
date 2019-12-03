@@ -6,13 +6,36 @@
 #include "resource_nth.h"
 #include "util.h"
 
+static char *loadTextFile(File &f, const int size) {
+	char *buf = (char *)malloc(size + 1);
+	if (buf) {
+		const int count = f.read(buf, size);
+		if (count != size) {
+			warning("Failed to read %d bytes (%d expected)", count, size);
+			free(buf);
+			return 0;
+		}
+		buf[count] = 0;
+	}
+	return buf;
+}
 
 struct Resource15th: ResourceNth {
 	Pak _pak;
 	char _dataPath[MAXPATHLEN];
+	char _menuPath[MAXPATHLEN];
+	char *_textBuf;
+	const char *_stringsTable[157];
 
 	Resource15th(const char *dataPath) {
 		snprintf(_dataPath, sizeof(_dataPath), "%s/Data", dataPath);
+		snprintf(_menuPath, sizeof(_menuPath), "%s/Menu", dataPath);
+		_textBuf = 0;
+		memset(_stringsTable, 0, sizeof(_stringsTable));
+	}
+
+	virtual ~Resource15th() {
+		free(_textBuf);
 	}
 
 	virtual bool init() {
@@ -81,6 +104,71 @@ struct Resource15th: ResourceNth {
 			warning("Failed to allocate %d bytes", e->size);
 		} else {
 			warning("Unable to load '%s'", name);
+		}
+		return 0;
+	}
+
+	void loadStrings(Language lang) {
+		if (!_textBuf) {
+			const char *name = 0;
+			switch (lang) {
+			case LANG_FR:
+				name = "Francais.Txt";
+				break;
+			case LANG_US:
+				name = "English.Txt";
+				break;
+			case LANG_DE:
+				name = "German.Txt";
+				break;
+			case LANG_ES:
+				name = "Espanol.txt";
+				break;
+			case LANG_IT:
+				name = "Italian.Txt";
+				break;
+			default:
+				return;
+			}
+			char path[MAXPATHLEN];
+			snprintf(path, sizeof(path), "%s/lang_%s", _menuPath, name);
+			File f;
+			if (f.open(path)) {
+				const int size = f.size();
+				_textBuf = loadTextFile(f, size);
+				if (_textBuf) {
+					char *p = _textBuf;
+					while (true) {
+						char *end = strchr(p, '\r');
+						if (!end) {
+							break;
+						}
+						*end++ = 0;
+						if (*end == '\n') {
+							*end++ = 0;
+						}
+						const int len = end - p;
+						int strNum = -1;
+						if (len > 3 && sscanf(p, "%03d", &strNum) == 1) {
+							p += 3;
+							while (*p == ' ' || *p == '\t') {
+								++p;
+							}
+							if ((uint32_t)strNum < ARRAYSIZE(_stringsTable)) {
+								_stringsTable[strNum] = p;
+							}
+						}
+						p = end;
+					}
+				}
+			}
+		}
+	}
+
+	virtual const char *getString(Language lang, int num) {
+		loadStrings(lang);
+		if ((uint32_t)num < ARRAYSIZE(_stringsTable)) {
+			return _stringsTable[num];
 		}
 		return 0;
 	}
@@ -325,7 +413,7 @@ struct Resource20th: ResourceNth {
 		return inflateGzip(path);
 	}
 
-	const char *getString(Language lang, int num) {
+	void loadStrings(Language lang) {
 		if (!_textBuf) {
 			const char *name = 0;
 			switch (lang) {
@@ -345,7 +433,7 @@ struct Resource20th: ResourceNth {
 				name = "IT";
 				break;
 			default:
-				return 0;
+				return;
 			}
 			char path[MAXPATHLEN];
 			static const char *fmt[] = {
@@ -361,17 +449,9 @@ struct Resource20th: ResourceNth {
 			}
 			if (isOpen) {
 				const int size = f.size();
-				_textBuf = (char *)malloc(size + 1);
+				_textBuf = loadTextFile(f, size);
 				if (_textBuf) {
-					int count = f.read(_textBuf, size);
-					if (count != size) {
-						warning("Failed to read %d bytes (%d expected)", count, size);
-						free(_textBuf);
-						_textBuf = 0;
-						return 0;
-					}
-					_textBuf[count] = 0;
-					count = 0;
+					int count = 0;
 					for (char *p = _textBuf; count < (int)ARRAYSIZE(_stringsTable); ) {
 						_stringsTable[count++] = p;
 						char *end = strchr(p, '\n');
@@ -384,7 +464,10 @@ struct Resource20th: ResourceNth {
 				}
 			}
 		}
-		if (num >= 0 && num < (int)ARRAYSIZE(_stringsTable)) {
+	}
+	virtual const char *getString(Language lang, int num) {
+		loadStrings(lang);
+		if ((uint32_t)num < ARRAYSIZE(_stringsTable)) {
 			return _stringsTable[num];
 		}
 		return 0;
