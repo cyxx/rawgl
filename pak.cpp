@@ -41,6 +41,10 @@ void Pak::close() {
 	_entriesCount = 0;
 }
 
+static int comparePakEntry(const void *a, const void *b) {
+	return strcasecmp(((PakEntry *)a)->name, ((PakEntry *)b)->name);
+}
+
 void Pak::readEntries() {
 	uint8_t header[12];
 
@@ -75,6 +79,7 @@ void Pak::readEntries() {
 		e->size = READ_LE_UINT32(buf + 0x3C);
 		debug(DBG_PAK, "Pak::readEntries() buf '%s' size %d", e->name, e->size);
 	}
+	qsort(_entries, _entriesCount, sizeof(PakEntry), comparePakEntry);
 	// the original executable descrambles the (ke)y.txt file and check the last 4 bytes.
 	// this has been disabled in later re-releases and a key is bundled in the data files
 	if (0) {
@@ -92,13 +97,9 @@ void Pak::readEntries() {
 
 const PakEntry *Pak::find(const char *name) {
 	debug(DBG_PAK, "Pak::find() '%s'", name);
-	for (int i = 0; i < _entriesCount; ++i) {
-		const PakEntry *e = &_entries[i];
-		if (strcasecmp(e->name, name) == 0) {
-			return e;
-		}
-	}
-	return 0;
+	PakEntry tmp;
+	strcpy(tmp.name, name);
+	return (const PakEntry *)bsearch(&tmp, _entries, _entriesCount, sizeof(PakEntry), comparePakEntry);
 }
 
 void Pak::loadData(const PakEntry *e, uint8_t *buf, uint32_t *size) {
