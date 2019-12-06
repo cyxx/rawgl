@@ -66,6 +66,7 @@ struct Resource {
 
 	static const AmigaMemEntry _memListAmigaFR[ENTRIES_COUNT];
 	static const AmigaMemEntry _memListAmigaEN[ENTRIES_COUNT];
+	static const AmigaMemEntry _memListAtariEN[ENTRIES_COUNT];
 	static const uint8_t _memListParts[][4];
 
 	Video *_vid;

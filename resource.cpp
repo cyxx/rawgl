@@ -137,8 +137,8 @@ void Resource::readEntries() {
 		}
 		break;
 	case DT_AMIGA: {
-			static const uint32_t bank01Sizes[] = { 244674, 244868, 0 };
-			static const AmigaMemEntry *entries[] = { _memListAmigaFR, _memListAmigaEN, 0 };
+			static const uint32_t bank01Sizes[] = { 244674, 244868, 227142, 0 };
+			static const AmigaMemEntry *entries[] = { _memListAmigaFR, _memListAmigaEN, _memListAtariEN, 0 };
 			File f;
 			if (f.open("bank01", _dataDir)) {
 				for (int i = 0; bank01Sizes[i] != 0; ++i) {
