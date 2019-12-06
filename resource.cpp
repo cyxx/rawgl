@@ -169,10 +169,12 @@ void Resource::readEntries() {
 					me->packedSize = f.readUint32BE();
 					me->unpackedSize = f.readUint32BE();
 					if (me->status == 0xFF) {
+						const int num = _memListParts[8][1]; // 16008 bytecode
+						assert(num < _numMemList);
+						char bank[16];
+						snprintf(bank, sizeof(bank), "%s%02x", _bankPrefix, _memList[num].bankNum);
+						_hasPasswordScreen = f.open(bank, _dataDir);
 						return;
-					}
-					if (me->type == _memListParts[8][1]) { // 16008 bytecode
-						_hasPasswordScreen = true;
 					}
 					++_numMemList;
 					++me;
