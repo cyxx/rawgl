@@ -331,7 +331,7 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 	uint16_t xx = x;
 	int len = strlen(str);
 	for (int i = 0; i < len; ++i) {
-		if (str[i] == '\n') {
+		if (str[i] == '\n' || str[i] == '\r') {
 			y += 8;
 			x = xx;
 		} else if (str[i] == '\\' && escapedChars) {

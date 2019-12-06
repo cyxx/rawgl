@@ -35,7 +35,7 @@ void Script::init() {
 		_scriptVars[0xC6] = 0x80;
 		_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA) ? 6000 : 4000;
 		_scriptVars[0xDC] = 33;
-		if (_res->getDataType() == Resource::DT_DOS) {
+		if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_WIN31) {
 			_scriptVars[0xE4] = 20;
 		}
 	}
@@ -651,10 +651,6 @@ void Script::inp_handleSpecialKeys() {
 				_res->_nextPart = 16009;
 			}
 		}
-	}
-	if (_scriptVars[0xC9] == 1) {
-		// this happens on french/europeans versions when the user does not select
-		// any symbols for the protection, the disassembly shows a simple 'hlt' here.
 	}
 }
 

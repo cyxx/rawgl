@@ -393,6 +393,10 @@ void Resource::update(uint16_t num) {
 		}
 		/* fall-through */
 	case DT_WIN31:
+		if (num == 71 || num == 83) {
+			loadBmp(num);
+		}
+		/* fall-through */
 	case DT_MAC:
 		for (int i = 0; _memListBmp[i] != -1; ++i) {
 			if (num == _memListBmp[i]) {
@@ -589,13 +593,16 @@ const uint8_t Resource::_memListParts[][4] = {
 };
 
 void Resource::setupPart(int ptrId) {
+	int firstPart = kPartCopyProtection;
 	switch (_dataType) {
 	case DT_15TH_EDITION:
 	case DT_20TH_EDITION:
-	case DT_WIN31:
 	case DT_3DO:
+		firstPart = kPartIntro;
+		/* fall-through */
+	case DT_WIN31:
 	case DT_MAC:
-		if (ptrId >= 16001 && ptrId <= 16009) {
+		if (ptrId >= firstPart && ptrId <= 16009) {
 			invalidateAll();
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };
 			for (int i = 0; i < 4; ++i) {
