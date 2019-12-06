@@ -121,7 +121,7 @@ enum {
 	// 0x1C
 	op_jmpIfVarZero, // 3DO
 	op_jmpIfVarNonZero, // 3DO
-	op_var0xF7, // 3DO
+	op_printTime, // 3DO
 };
 
 #define ADDR_FUNC   (1 << 0)
@@ -300,9 +300,9 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 			fprintf(_out, "jmpIf(VAR(0x%02X) != 0, @%04X)", args[0], args[1]);
 		}
 		break;
-	case op_var0xF7:
+	case op_printTime:
 		if (_is3DO) {
-			fprintf(_out, "op_var0xF7");
+			fprintf(_out, "print(VAR(0xF7))");
 		}
 		break;
 	default:
