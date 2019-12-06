@@ -31,7 +31,6 @@ struct AmigaMemEntry {
 struct ResourceNth;
 struct ResourceWin31;
 struct Resource3do;
-struct ResourceMac;
 struct Video;
 
 struct Resource {
@@ -52,7 +51,6 @@ struct Resource {
 		DT_20TH_EDITION,
 		DT_WIN31,
 		DT_3DO,
-		DT_MAC,
 	};
 
 	enum {
@@ -87,7 +85,6 @@ struct Resource {
 	ResourceNth *_nth;
 	ResourceWin31 *_win31;
 	Resource3do *_3do;
-	ResourceMac *_mac;
 	Language _lang;
 
 	Resource(Video *vid, const char *dataDir);

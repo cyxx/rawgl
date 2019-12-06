@@ -10,14 +10,13 @@
 #include "resource_nth.h"
 #include "resource_win31.h"
 #include "resource_3do.h"
-#include "resource_mac.h"
 #include "unpack.h"
 #include "util.h"
 #include "video.h"
 
 
 Resource::Resource(Video *vid, const char *dataDir) 
-	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0), _mac(0) {
+	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0) {
 	_bankPrefix = "bank";
 	_hasPasswordScreen = true;
 	memset(_memList, 0, sizeof(_memList));
@@ -32,7 +31,6 @@ Resource::~Resource() {
 	delete _nth;
 	delete _win31;
 	delete _3do;
-	delete _mac;
 }
 
 bool Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
@@ -73,14 +71,6 @@ static bool check3DO(File &f, const char *dataDir) {
 	return f.open("File340", path);
 }
 
-static bool checkMacintosh(File &f, const char *dataDir) {
-	const char *ext = strrchr(dataDir, '.');
-	if (ext && strcasecmp(ext, ".rsrc") == 0) {
-		return f.open(dataDir);
-	}
-	return false;
-}
-
 void Resource::detectVersion() {
 	File f;
 	if (check15th(f, _dataDir)) {
@@ -101,9 +91,6 @@ void Resource::detectVersion() {
 	} else if (check3DO(f, _dataDir)) {
 		_dataType = DT_3DO;
 		debug(DBG_INFO, "Using 3DO data files");
-	} else if (checkMacintosh(f, _dataDir)) {
-		_dataType = DT_MAC;
-		debug(DBG_INFO, "Using Macintosh data files");
 	} else {
 		error("No data files found in '%s'", _dataDir);
 	}
@@ -204,13 +191,6 @@ void Resource::readEntries() {
 		_numMemList = ENTRIES_COUNT;
 		_3do = new Resource3do(_dataDir);
 		if (_3do->readEntries()) {
-			return;
-		}
-		break;
-	case DT_MAC:
-		_numMemList = ENTRIES_COUNT;
-		_mac = new ResourceMac(_dataDir);
-		if (_mac->load()) {
 			return;
 		}
 		break;
@@ -396,8 +376,6 @@ void Resource::update(uint16_t num) {
 		if (num == 71 || num == 83) {
 			loadBmp(num);
 		}
-		/* fall-through */
-	case DT_MAC:
 		for (int i = 0; _memListBmp[i] != -1; ++i) {
 			if (num == _memListBmp[i]) {
 				loadBmp(num);
@@ -447,9 +425,6 @@ void Resource::loadBmp(int num) {
 	case DT_3DO:
 		p = _3do->loadFile(num, 0, &size);
 		break;
-	case DT_MAC:
-		p = _mac->loadFile(num, 0, &size);
-		break;
 	default:
 		break;
 	}
@@ -476,9 +451,6 @@ uint8_t *Resource::loadDat(int num) {
 		break;
 	case DT_3DO:
 		p = _3do->loadFile(num, _scriptCurPtr, &size);
-		break;
-	case DT_MAC:
-		p = _mac->loadFile(num, _scriptCurPtr, &size);
 		break;
 	default:
 		break;
@@ -524,9 +496,6 @@ uint8_t *Resource::loadWav(int num) {
 		break;
 	case DT_WIN31:
 		p = _win31->loadFile(num, _scriptCurPtr, &size);
-		break;
-	case DT_MAC:
-		p = _mac->loadFile(num, _scriptCurPtr, &size, true);
 		break;
 	default:
 		break;
@@ -601,7 +570,6 @@ void Resource::setupPart(int ptrId) {
 		firstPart = kPartIntro;
 		/* fall-through */
 	case DT_WIN31:
-	case DT_MAC:
 		if (ptrId >= firstPart && ptrId <= 16009) {
 			invalidateAll();
 			uint8_t **segments[4] = { &_segVideoPal, &_segCode, &_segVideo1, &_segVideo2 };

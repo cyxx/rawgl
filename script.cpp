@@ -687,9 +687,6 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 			}
 		}
 		break;
-	case Resource::DT_MAC:
-		// TODO
-		break;
 	case Resource::DT_AMIGA:
 	case Resource::DT_DOS: {
 			MemEntry *me = &_res->_memList[resNum];
@@ -729,9 +726,6 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 				_mix->playAifcMusic(p, offset);
 			}
 		}
-		break;
-	case Resource::DT_MAC:
-		// TODO
 		break;
 	default: // DT_AMIGA, DT_DOS
 		if (resNum != 0) {
