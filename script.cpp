@@ -33,7 +33,7 @@ void Script::init() {
 		// bypass the protection
 		_scriptVars[0xBC] = 0x10;
 		_scriptVars[0xC6] = 0x80;
-		_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA) ? 6000 : 4000;
+		_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA || _res->getDataType() == Resource::DT_ATARI) ? 6000 : 4000;
 		_scriptVars[0xDC] = 33;
 		if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_WIN31) {
 			_scriptVars[0xE4] = 20;
@@ -63,7 +63,7 @@ void Script::op_add() {
 }
 
 void Script::op_addConst() {
-	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
+	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA || _res->getDataType() == Resource::DT_ATARI) {
 		if (_res->_currentPart == 16006 && _scriptPtr.pc == _res->_segCode + 0x6D48) {
 			warning("Script::op_addConst() workaround for infinite looping gun sound");
 			// The script 0x27 slot 0x17 doesn't stop the gun sound from looping.
@@ -688,6 +688,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		}
 		break;
 	case Resource::DT_AMIGA:
+	case Resource::DT_ATARI:
 	case Resource::DT_DOS: {
 			MemEntry *me = &_res->_memList[resNum];
 			if (me->status == Resource::STATUS_LOADED) {
@@ -727,7 +728,7 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 			}
 		}
 		break;
-	default: // DT_AMIGA, DT_DOS
+	default: // DT_AMIGA, DT_ATARI, DT_DOS
 		if (resNum != 0) {
 			_ply->loadSfxModule(resNum, delay, pos);
 			_ply->start();

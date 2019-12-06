@@ -25,6 +25,7 @@ Resource::Resource(Video *vid, const char *dataDir)
 		_dataDir = ".";
 	}
 	_lang = LANG_FR;
+	_amigaMemList = 0;
 }
 
 Resource::~Resource() {
@@ -71,6 +72,27 @@ static bool check3DO(File &f, const char *dataDir) {
 	return f.open("File340", path);
 }
 
+static const AmigaMemEntry *detectAmigaAtari(File &f, const char *dataDir) {
+	static const struct {
+		uint32_t bank01Size;
+		const AmigaMemEntry *entries;
+	} _files[] = {
+		{ 244674, Resource::_memListAmigaFR },
+		{ 244868, Resource::_memListAmigaEN },
+		{ 227142, Resource::_memListAtariEN },
+		{ 0, 0 }
+	};
+	if (f.open("bank01", dataDir)) {
+		const uint32_t size = f.size();
+		for (int i = 0; _files[i].entries; ++i) {
+			if (_files[i].bank01Size == size) {
+				return _files[i].entries;
+			}
+		}
+	}
+	return 0;
+}
+
 void Resource::detectVersion() {
 	File f;
 	if (check15th(f, _dataDir)) {
@@ -82,9 +104,14 @@ void Resource::detectVersion() {
 	} else if (f.open("memlist.bin", _dataDir)) {
 		_dataType = DT_DOS;
 		debug(DBG_INFO, "Using DOS data files");
-	}  else if (f.open("bank01", _dataDir)) {
-		_dataType = DT_AMIGA;
-		debug(DBG_INFO, "Using Amiga data files");
+	} else if ((_amigaMemList = detectAmigaAtari(f, _dataDir)) != 0) {
+		if (_amigaMemList == _memListAtariEN) {
+			_dataType = DT_ATARI;
+			debug(DBG_INFO, "Using Atari data files");
+		} else {
+			_dataType = DT_AMIGA;
+			debug(DBG_INFO, "Using Amiga data files");
+		}
 	} else if (f.open(ResourceWin31::FILENAME, _dataDir)) {
 		_dataType = DT_WIN31;
 		debug(DBG_INFO, "Using Win31 data files");
@@ -136,20 +163,11 @@ void Resource::readEntries() {
 			return;
 		}
 		break;
-	case DT_AMIGA: {
-			static const uint32_t bank01Sizes[] = { 244674, 244868, 227142, 0 };
-			static const AmigaMemEntry *entries[] = { _memListAmigaFR, _memListAmigaEN, _memListAtariEN, 0 };
-			File f;
-			if (f.open("bank01", _dataDir)) {
-				for (int i = 0; bank01Sizes[i] != 0; ++i) {
-					if (f.size() == bank01Sizes[i]) {
-						readEntriesAmiga(entries[i], 146);
-						return;
-					}
-				}
-			}
-		}
-		break;
+	case DT_AMIGA:
+	case DT_ATARI:
+		assert(_amigaMemList);
+		readEntriesAmiga(_amigaMemList, ENTRIES_COUNT);
+		return;
 	case DT_DOS: {
 			_hasPasswordScreen = false; // DOS demo versions do not have the resources
 			File f;
@@ -214,12 +232,12 @@ void Resource::readEntriesAmiga(const AmigaMemEntry *entries, int count) {
 
 void Resource::dumpEntries() {
 	static const bool kDump = false;
-	if (kDump && (_dataType == DT_DOS || _dataType == DT_AMIGA)) {
+	if (kDump && (_dataType == DT_DOS || _dataType == DT_AMIGA || _dataType == DT_ATARI)) {
 		for (int i = 0; i < _numMemList; ++i) {
 			if (_memList[i].unpackedSize == 0) {
 				continue;
 			}
-			if (_memList[i].bankNum == 5 && _dataType == DT_AMIGA) {
+			if (_memList[i].bankNum == 5 && (_dataType == DT_AMIGA || _dataType == DT_ATARI)) {
 				continue;
 			}
 			uint8_t *p = (uint8_t *)malloc(_memList[i].unpackedSize);
@@ -396,6 +414,7 @@ void Resource::update(uint16_t num) {
 		}
 		break;
 	case DT_AMIGA:
+	case DT_ATARI:
 	case DT_DOS:
 		if (0) { // from DOS disassembly
 			for (int i = 0; _memListAudio[i] != -1; ++i) {
@@ -589,6 +608,7 @@ void Resource::setupPart(int ptrId) {
 		_scriptBakPtr = _scriptCurPtr;
 		break;
 	case DT_AMIGA:
+	case DT_ATARI:
 	case DT_DOS:
 		if (ptrId != _currentPart) {
 			uint8_t ipal = 0;

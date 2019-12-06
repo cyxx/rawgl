@@ -397,28 +397,40 @@ void Video::copyPage(uint8_t src, uint8_t dst, int16_t vscroll) {
 }
 
 static void decode_amiga(const uint8_t *src, uint8_t *dst) {
+	const int plane_size = 200 * 320 / 8;
 	for (int y = 0; y < 200; ++y) {
-		int w = 40;
-		while (w--) {
-			uint8_t p[] = {
-				*(src + 8000 * 3),
-				*(src + 8000 * 2),
-				*(src + 8000 * 1),
-				*(src + 8000 * 0)
-			};
-			for(int j = 0; j < 4; ++j) {
-				uint8_t acc = 0;
-				for (int i = 0; i < 8; ++i) {
-					acc <<= 1;
-					acc |= (p[i & 3] & 0x80) ? 1 : 0;
-					p[i & 3] <<= 1;
+		for (int x = 0; x < 320; x += 8) {
+			for (int b = 0; b < 8; ++b) {
+				const int mask = 1 << (7 - b);
+				uint8_t color = 0;
+				for (int p = 0; p < 4; ++p) {
+					if (src[p * plane_size] & mask) {
+						color |= 1 << p;
+					}
 				}
-				*dst++ = acc >> 4;
-				*dst++ = acc & 0xF;
+				*dst++ = color;
 			}
 			++src;
 		}
-	}	
+	}
+}
+
+static void decode_atari(const uint8_t *src, uint8_t *dst) {
+	for (int y = 0; y < 200; ++y) {
+		for (int x = 0; x < 320; x += 8) {
+			for (int b = 0; b < 16; ++b) {
+				const int mask = 1 << (15 - b);
+				uint8_t color = 0;
+				for (int p = 0; p < 4; ++p) {
+					if (READ_BE_UINT16(src + p * 2) & mask) {
+						color |= 1 << p;
+					}
+				}
+				*dst++ = color;
+			}
+			src += 8;
+		}
+	}
 }
 
 static uint16_t rgb555_to_565(const uint16_t color) {
@@ -461,6 +473,9 @@ void Video::scaleBitmap(const uint8_t *src, int fmt) {
 void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 	if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_AMIGA) {
 		decode_amiga(src, _tempBitmap);
+		scaleBitmap(_tempBitmap, FMT_CLUT);
+	} else if (_res->getDataType() == Resource::DT_ATARI) {
+		decode_atari(src, _tempBitmap);
 		scaleBitmap(_tempBitmap, FMT_CLUT);
 	} else if (_res->getDataType() == Resource::DT_WIN31) {
 		yflip(src, BITMAP_W, BITMAP_H, _tempBitmap);

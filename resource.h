@@ -47,6 +47,7 @@ struct Resource {
 	enum DataType {
 		DT_DOS,
 		DT_AMIGA,
+		DT_ATARI,
 		DT_15TH_EDITION,
 		DT_20TH_EDITION,
 		DT_WIN31,
@@ -87,6 +88,7 @@ struct Resource {
 	ResourceWin31 *_win31;
 	Resource3do *_3do;
 	Language _lang;
+	const AmigaMemEntry *_amigaMemList;
 
 	Resource(Video *vid, const char *dataDir);
 	~Resource();

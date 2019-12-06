@@ -85,7 +85,7 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	}
 	_script.init();
 	_mix.init();
-	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA) {
+	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA || _res.getDataType() == Resource::DT_ATARI) {
 		switch (lang) {
 		case LANG_FR:
 			_vid._stringsTable = Video::_stringsTableFr;
