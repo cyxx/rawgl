@@ -30,14 +30,17 @@ void Script::init() {
 		_scriptVars[0xF2] = 6000;
 	} else {
 		_scriptVars[VAR_RANDOM_SEED] = time(0);
-		// bypass the protection
+#ifdef BYPASS_PROTECTION
+		// these 3 variables are set by the game code
 		_scriptVars[0xBC] = 0x10;
 		_scriptVars[0xC6] = 0x80;
 		_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA || _res->getDataType() == Resource::DT_ATARI) ? 6000 : 4000;
+		// these 2 variables are set by the engine executable
 		_scriptVars[0xDC] = 33;
 		if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_WIN31) {
 			_scriptVars[0xE4] = 20;
 		}
+#endif
 	}
 }
 
@@ -155,7 +158,7 @@ void Script::op_condJmp() {
 #ifdef BYPASS_PROTECTION
 		if (_res->_currentPart == kPartCopyProtection) {
 			//
-			// 0CB8: jmpIf(VAR(0x29) == VAR(0x1E) @0CD3)
+			// 0CB8: jmpIf(VAR(0x29) == VAR(0x1E), @0CD3)
 			// ...
 			//
 			if (var == 0x29 && (op & 0x80) != 0) {
@@ -269,6 +272,13 @@ void Script::op_updateDisplay() {
 	uint8_t page = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_updateDisplay(%d)", page);
 	inp_handleSpecialKeys();
+
+#ifndef BYPASS_PROTECTION
+	// entered protection symbols match the expected values
+	if (_res->_currentPart == 16000 && _scriptVars[0x67] == 1) {
+		_scriptVars[0xDC] = 33;
+	}
+#endif
 
 	const int frameHz = _is3DO ? 60 : 50;
 	if (!_fastMode && _scriptVars[VAR_PAUSE_SLICES] != 0) {
@@ -568,9 +578,7 @@ void Script::executeTask() {
 					}
 					continue;
 				case 30: {
-						if (0) {
-							fprintf(stdout, "Time = %d", _scriptVars[0xF7]);
-						}
+						fprintf(stdout, "Time = %d", _scriptVars[0xF7]);
 					}
 					continue;
 				}
