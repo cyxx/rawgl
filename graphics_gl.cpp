@@ -72,6 +72,7 @@ struct Texture {
 	void clear();
 	void readRaw16(const uint8_t *src, const Color *pal, int w, int h);
 	void readFont(const uint8_t *src);
+	void readRGB555(const uint16_t *src, int w, int h);
 };
 
 void Texture::init() {
@@ -226,6 +227,24 @@ void Texture::readFont(const uint8_t *src) {
 	}
 }
 
+static uint16_t rgb555_to_565(const uint16_t color) {
+	const int r = (color >> 10) & 31;
+	const int g = (color >>  5) & 31;
+	const int b =  color        & 31;
+	return (r << 11) | (g << 6) | b;
+}
+
+void Texture::readRGB555(const uint16_t *src, int w, int h) {
+	_rgbData = (uint8_t *)malloc(w * h * sizeof(uint16_t));
+	if (!_rgbData) {
+		return;
+	}
+	for (int i = 0; i < w * h; ++i) {
+		((uint16_t *)_rgbData)[i] = rgb555_to_565(src[i]);
+	}
+	uploadDataRGB(_rgbData, w * sizeof(uint16_t), w, h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
+}
+
 struct DrawListEntry {
 	static const int NUM_VERTICES = 1024;
 
@@ -312,7 +331,7 @@ struct GraphicsGL : Graphics {
 GraphicsGL::GraphicsGL() {
 	_fixUpPalette = FIXUP_PALETTE_NONE;
 	memset(_pal, 0, sizeof(_pal));
-	_alphaColor = &_pal[12]; /* _pal[0x8 | color] */
+	_alphaColor = &_pal[ALPHA_COLOR_INDEX];
 	_spritesSizeX = _spritesSizeY = 0;
 	_sprite.num = -1;
 }
@@ -494,9 +513,9 @@ void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int 
 		_backgroundTex.clear();
 		_backgroundTex.uploadDataRGB(data, w * 3, w, h, GL_RGB, GL_UNSIGNED_BYTE);
 		break;
-	case FMT_RGB565:
+	case FMT_RGB555:
 		_backgroundTex.clear();
-		_backgroundTex.uploadDataRGB(data, w * 2, w, h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5);
+		_backgroundTex.readRGB555((const uint16_t *)data, w, h);
 		break;
 	}
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);

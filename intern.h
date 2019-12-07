@@ -132,8 +132,8 @@ struct Color {
 	uint8_t g;
 	uint8_t b;
 
-	uint16_t rgb565() const {
-		return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+	uint16_t rgb555() const {
+		return ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
 	}
 };
 

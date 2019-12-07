@@ -433,19 +433,11 @@ static void decode_atari(const uint8_t *src, uint8_t *dst) {
 	}
 }
 
-static uint16_t rgb555_to_565(const uint16_t color) {
-	const int r = (color >> 10) & 31;
-	const int g = (color >>  5) & 31;
-	const int b = (color >>  0) & 31;
-	return (r << 11) | (g << 6) | b;
-}
-
 static void deinterlace555(const uint8_t *src, int w, int h, uint16_t *dst) {
 	for (int y = 0; y < h / 2; ++y) {
 		for (int x = 0; x < w; ++x) {
-			dst[x]     = rgb555_to_565(READ_BE_UINT16(&src[0]));
-			dst[w + x] = rgb555_to_565(READ_BE_UINT16(&src[2]));
-			src += 4;
+			dst[x]     = READ_BE_UINT16(src) & 0x7FFF; src += 2;
+			dst[w + x] = READ_BE_UINT16(src) & 0x7FFF; src += 2;
 		}
 		dst += w * 2;
 	}
@@ -481,8 +473,8 @@ void Video::copyBitmapPtr(const uint8_t *src, uint32_t size) {
 		yflip(src, BITMAP_W, BITMAP_H, _tempBitmap);
 		scaleBitmap(_tempBitmap, FMT_CLUT);
 	} else if (_res->getDataType() == Resource::DT_3DO) {
-		deinterlace555(src, BITMAP_W, BITMAP_H, _bitmap565);
-		scaleBitmap((const uint8_t *)_bitmap565, FMT_RGB565);
+		deinterlace555(src, BITMAP_W, BITMAP_H, _bitmap555);
+		scaleBitmap((const uint8_t *)_bitmap555, FMT_RGB555);
 	} else { // .BMP
 		if (Graphics::_is1991) {
 			const int w = READ_LE_UINT32(src + 0x12);

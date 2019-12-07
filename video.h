@@ -49,8 +49,8 @@ struct Video {
 	Ptr _pData;
 	uint8_t *_dataBuf;
 	const StrEntry *_stringsTable;
-	uint8_t _tempBitmap[320 * 200];
-	uint16_t _bitmap565[320 * 200];
+	uint8_t _tempBitmap[BITMAP_W * BITMAP_H];
+	uint16_t _bitmap555[BITMAP_W * BITMAP_H];
 	const Scaler *_scaler;
 	int _scalerFactor;
 	uint8_t *_scalerBuffer;

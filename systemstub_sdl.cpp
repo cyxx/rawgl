@@ -34,7 +34,7 @@ struct SystemStub_SDL : SystemStub {
 
 	virtual void prepareScreen(int &w, int &h, float ar[4]);
 	virtual void updateScreen();
-	virtual void setScreenPixels565(const uint16_t *data, int w, int h);
+	virtual void setScreenPixels555(const uint16_t *data, int w, int h);
 
 	virtual void processEvents();
 	virtual void sleep(uint32_t duration);
@@ -146,7 +146,7 @@ void SystemStub_SDL::updateScreen() {
 	}
 }
 
-void SystemStub_SDL::setScreenPixels565(const uint16_t *data, int w, int h) {
+void SystemStub_SDL::setScreenPixels555(const uint16_t *data, int w, int h) {
 	if (_renderer) {
 		if (_texW != w || _texH != h) {
 			if (_texture) {
@@ -155,7 +155,7 @@ void SystemStub_SDL::setScreenPixels565(const uint16_t *data, int w, int h) {
 			}
 		}
 		if (!_texture) {
-			_texture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w, h);
+			_texture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB555, SDL_TEXTUREACCESS_STREAMING, w, h);
 			if (!_texture) {
 				return;
 			}

@@ -37,10 +37,10 @@ void Script::init() {
 		_scriptVars[0xF2] = (_res->getDataType() == Resource::DT_AMIGA || _res->getDataType() == Resource::DT_ATARI) ? 6000 : 4000;
 		// these 2 variables are set by the engine executable
 		_scriptVars[0xDC] = 33;
+#endif
 		if (_res->getDataType() == Resource::DT_DOS || _res->getDataType() == Resource::DT_WIN31) {
 			_scriptVars[0xE4] = 20;
 		}
-#endif
 	}
 }
 

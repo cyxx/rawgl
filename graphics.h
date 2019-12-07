@@ -6,7 +6,7 @@
 
 enum {
 	FMT_CLUT,
-	FMT_RGB565,
+	FMT_RGB555,
 	FMT_RGB,
 	FMT_RGBA,
 };
@@ -29,6 +29,7 @@ enum {
 };
 
 enum {
+	ALPHA_COLOR_INDEX = 12,
 	GFX_W = 320,
 	GFX_H = 200
 };
@@ -39,7 +40,7 @@ struct Graphics {
 
 	static const uint8_t _font[];
 	static bool _is1991; // draw graphics as in the original 1991 game release
-	static bool _use565; // use 16bits graphics buffer (for 3DO)
+	static bool _use555; // use 16bits graphics buffer (for 3DO)
 
 	int _fixUpPalette;
 	bool _screenshot;

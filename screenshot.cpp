@@ -16,15 +16,7 @@ static void TO_LE16(uint8_t *dst, uint16_t value) {
 
 static const int TGA_HEADER_SIZE = 18;
 
-// 16 bits TGA expects 15 bits color depth
-static uint16_t rgb565_to_555(const uint16_t color) {
-	const int r = (color >> 11) & 31;
-	const int g = (color >>  6) & 31;
-	const int b = (color >>  0) & 31;
-	return (r << 10) | (g << 5) | b;
-}
-
-void saveTGA(const char *filename, const uint16_t *rgb, int w, int h) {
+void saveTGA(const char *filename, const uint16_t *rgb555, int w, int h) {
 
 	static const uint8_t kImageType = kTgaImageTypeRunLengthEncodedTrueColor;
 	uint8_t buffer[TGA_HEADER_SIZE];
@@ -46,16 +38,16 @@ void saveTGA(const char *filename, const uint16_t *rgb, int w, int h) {
 		f.write(buffer, sizeof(buffer));
 		if (kImageType == kTgaImageTypeUncompressedTrueColor) {
 			for (int i = 0; i < w * h; ++i) {
-				uint16_t color = rgb565_to_555(*rgb++);
+				const uint16_t color = *rgb555++;
 				f.writeByte(color & 255);
 				f.writeByte(color >> 8);
 			}
 		} else {
 			assert(kImageType == kTgaImageTypeRunLengthEncodedTrueColor);
-			uint16_t prevColor = rgb565_to_555(*rgb++);
+			uint16_t prevColor = *rgb555++;
 			int count = 0;
 			for (int i = 1; i < w * h; ++i) {
-				uint16_t color = rgb565_to_555(*rgb++);
+				const uint16_t color = *rgb555++;
 				if (prevColor == color && count < 127) {
 					++count;
 					continue;

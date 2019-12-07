@@ -50,7 +50,7 @@ static const struct {
 };
 
 bool Graphics::_is1991 = false;
-bool Graphics::_use565 = false;
+bool Graphics::_use555 = false;
 bool Video::_useEGA = false;
 
 static Graphics *createGraphics(int type) {
@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
 	}
 	if (graphicsType != GRAPHICS_GL && e->_res.getDataType() == Resource::DT_3DO) {
 		graphicsType = GRAPHICS_SOFTWARE;
-		Graphics::_use565 = true;
+		Graphics::_use555 = true;
 	}
 	Graphics *graphics = createGraphics(graphicsType);
 	SystemStub *stub = SystemStub_SDL_create();
