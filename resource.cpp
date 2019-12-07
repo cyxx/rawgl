@@ -371,10 +371,6 @@ static const uint8_t *getSoundsList3DO(int num) {
 	return 0;
 }
 
-static const int _memListAudio[] = {
-	8, 16, 97, 102, -1
-};
-
 static const int _memListBmp[] = {
 	145, 144, 73, 72, 70, 69, 68, 67, -1
 };
@@ -416,13 +412,6 @@ void Resource::update(uint16_t num) {
 	case DT_AMIGA:
 	case DT_ATARI:
 	case DT_DOS:
-		if (0) { // from DOS disassembly
-			for (int i = 0; _memListAudio[i] != -1; ++i) {
-				if (num == _memListAudio[i]) {
-					return;
-				}
-			}
-		}
 		MemEntry *me = &_memList[num];
 		if (me->status == STATUS_NULL) {
 			me->status = STATUS_TOLOAD;
