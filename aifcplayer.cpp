@@ -19,7 +19,7 @@ bool AifcPlayer::play(int mixRate, const char *path, uint32_t startOffset) {
 		_f.read(buf, sizeof(buf));
 		if (memcmp(buf, "FORM", 4) == 0 && memcmp(buf + 8, "AIFC", 4) == 0) {
 			const uint32_t size = READ_BE_UINT32(buf + 4);
-			for (uint32_t offset = 12; offset < size; ) {
+			for (uint32_t offset = 12; offset + 8 < size; ) {
 				_f.seek(startOffset + offset);
 				_f.read(buf, 8);
 				const uint32_t sz = READ_BE_UINT32(buf + 4);
@@ -30,7 +30,7 @@ bool AifcPlayer::play(int mixRate, const char *path, uint32_t startOffset) {
 					_f.read(buf, 10);
 					const int rate = READ_IEEE754(buf);
 					if (channels != 2) {
-						warning("Unsupported AIFF-C channels %d rate %d", channels, rate);
+						warning("Unsupported AIFF-C channels %d rate %d (%s)", channels, rate, path);
 						break;
 					}
 					_f.read(buf, 4);
@@ -50,7 +50,7 @@ bool AifcPlayer::play(int mixRate, const char *path, uint32_t startOffset) {
 				} else if (memcmp(buf, "FVER", 4) == 0) {
 					const uint32_t version = _f.readUint32BE();
 					if (version != 0xA2805140) {
-						warning("Unexpected AIFF-C version 0x%x\n", version);
+						warning("Unexpected AIFF-C version 0x%x (%s)", version, path);
 					}
 				} else if (memcmp(buf, "INST", 4) == 0) {
 					// unused
@@ -68,7 +68,8 @@ bool AifcPlayer::play(int mixRate, const char *path, uint32_t startOffset) {
 						// pad ((len + 1) & 1)
 					}
 				} else {
-					warning("Unhandled AIFF-C tag '%c%c%c%c' size %d offset 0x%x", buf[0], buf[1], buf[2], buf[3], sz, offset);
+					warning("Unhandled AIFF-C tag '%02x%02x%02x%02x' size %d offset 0x%x path %s", buf[0], buf[1], buf[2], buf[3], sz, startOffset + offset, path);
+					break;
 				}
 				offset += sz + 8;
 			}
