@@ -625,7 +625,9 @@ void Script::updateInput() {
 		ud = -1;
 		m |= 8; // jump
 	}
-	_scriptVars[VAR_HERO_POS_UP_DOWN] = ud;
+	if (!(_res->getDataType() == Resource::DT_AMIGA || _res->getDataType() == Resource::DT_ATARI)) {
+		_scriptVars[VAR_HERO_POS_UP_DOWN] = ud;
+	}
 
 	// The password selection screen in the 3DO version accepts both 'action'
 	// and 'jump' buttons. As 'up' is also mapped to 'jump', pressing it selects
