@@ -28,6 +28,35 @@ struct AmigaMemEntry {
 	uint32_t unpackedSize;
 };
 
+struct DemoJoy {
+	uint8_t keymask;
+	uint8_t counter;
+
+	uint8_t *bufPtr;
+	int bufPos, bufSize;
+
+	void start() {
+		if (bufSize > 0) {
+			keymask = bufPtr[0];
+			counter = bufPtr[1];
+			bufPos = 2;
+		}
+	}
+
+	uint8_t update() {
+		if (bufPos >= 0 && bufPos < bufSize) {
+			if (counter == 0) {
+				keymask = bufPtr[bufPos++];
+				counter = bufPtr[bufPos++];
+			} else {
+				--counter;
+			}
+			return keymask;
+		}
+		return 0;
+	}
+};
+
 struct ResourceNth;
 struct ResourceWin31;
 struct Resource3do;
@@ -89,6 +118,7 @@ struct Resource {
 	Resource3do *_3do;
 	Language _lang;
 	const AmigaMemEntry *_amigaMemList;
+	DemoJoy _demo3Joy;
 
 	Resource(Video *vid, const char *dataDir);
 	~Resource();
@@ -114,6 +144,7 @@ struct Resource {
 	void setupPart(int part);
 	void allocMemBlock();
 	void freeMemBlock();
+	void readDemo3Joy();
 };
 
 #endif

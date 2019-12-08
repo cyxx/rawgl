@@ -25,6 +25,7 @@ static const char *USAGE =
 	"  --fullscreen      Fullscreen display (stretched)\n"
 	"  --fullscreen-ar   Fullscreen display (4:3 aspect ratio)\n"
 	"  --ega-palette     Use EGA palette with DOS version\n"
+	"  --demo3-joy       Use inputs from 'demo3.joy' (DOS demo)\n"
 	;
 
 static const struct {
@@ -115,6 +116,7 @@ int main(int argc, char *argv[]) {
 	scaler.name[0] = 0;
 	scaler.factor = 1;
 	bool defaultGraphics = true;
+	bool demo3JoyInputs = false;
 	if (argc == 2) {
 		// data path as the only command line argument
 		struct stat st;
@@ -133,6 +135,7 @@ int main(int argc, char *argv[]) {
 			{ "fullscreen-ar", no_argument,  0, 'a' },
 			{ "scaler",   required_argument, 0, 's' },
 			{ "ega-palette", no_argument,    0, 'e' },
+			{ "demo3-joy",  no_argument,     0, 'j' },
 			{ "help",       no_argument,     0, 'h' },
 			{ 0, 0, 0, 0 }
 		};
@@ -181,6 +184,9 @@ int main(int argc, char *argv[]) {
 		case 'e':
 			Video::_useEGA = true;
 			break;
+		case 'j':
+			demo3JoyInputs = true;
+			break;
 		case 'h':
 			// fall-through
 		default:
@@ -203,6 +209,9 @@ int main(int argc, char *argv[]) {
 	SystemStub *stub = SystemStub_SDL_create();
 	stub->init(e->getGameTitle(lang), &dm);
 	e->setSystemStub(stub, graphics);
+	if (demo3JoyInputs && e->_res.getDataType() == Resource::DT_DOS) {
+		e->_res.readDemo3Joy();
+	}
 	e->setup(lang, graphicsType, scaler.name, scaler.factor);
 	while (!stub->_pi.quit) {
 		e->run();

@@ -26,9 +26,11 @@ Resource::Resource(Video *vid, const char *dataDir)
 	}
 	_lang = LANG_FR;
 	_amigaMemList = 0;
+	memset(&_demo3Joy, 0, sizeof(_demo3Joy));
 }
 
 Resource::~Resource() {
+	free(_demo3Joy.bufPtr);
 	delete _nth;
 	delete _win31;
 	delete _3do;
@@ -644,4 +646,19 @@ void Resource::allocMemBlock() {
 void Resource::freeMemBlock() {
 	free(_memPtrStart);
 	_memPtrStart = 0;
+}
+
+void Resource::readDemo3Joy() {
+	static const char *filename = "demo3.joy";
+	File f;
+	if (f.open(filename, _dataDir)) {
+		const uint32_t fileSize = f.size();
+		_demo3Joy.bufPtr = (uint8_t *)malloc(fileSize);
+		if (_demo3Joy.bufPtr) {
+			_demo3Joy.bufSize = f.read(_demo3Joy.bufPtr, fileSize);
+			_demo3Joy.bufPos = -1;
+		}
+	} else {
+		warning("Unable to open '%s'", filename);
+	}
 }

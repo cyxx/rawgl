@@ -418,6 +418,9 @@ void Script::restartAt(int part, int pos) {
 		}
 	}
 	_startTime = _timeStamp = _stub->getTimeStamp();
+	if (part == kPartWater) {
+		_res->_demo3Joy.start();
+	}
 }
 
 void Script::setupTasks() {
@@ -639,6 +642,28 @@ void Script::updateInput() {
 	}
 	_scriptVars[VAR_HERO_ACTION] = button;
 	_scriptVars[VAR_HERO_ACTION_POS_MASK] = m;
+	if (_res->_currentPart == kPartWater) {
+		const uint8_t mask = _res->_demo3Joy.update();
+		if (mask != 0) {
+			_scriptVars[VAR_HERO_ACTION_POS_MASK] = mask;
+			_scriptVars[VAR_HERO_POS_MASK] = mask & 15;
+			_scriptVars[VAR_HERO_POS_LEFT_RIGHT] = 0;
+			if (mask & 1) {
+				_scriptVars[VAR_HERO_POS_LEFT_RIGHT] = 1;
+			}
+			if (mask & 2) {
+				_scriptVars[VAR_HERO_POS_LEFT_RIGHT] = -1;
+			}
+			_scriptVars[VAR_HERO_POS_JUMP_DOWN] = 0;
+			if (mask & 4) {
+				_scriptVars[VAR_HERO_POS_JUMP_DOWN] = 1;
+			}
+			if (mask & 8) {
+				_scriptVars[VAR_HERO_POS_JUMP_DOWN] = -1;
+			}
+			_scriptVars[VAR_HERO_ACTION] = (mask >> 7);
+		}
+	}
 }
 
 void Script::inp_handleSpecialKeys() {
