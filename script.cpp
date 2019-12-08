@@ -419,7 +419,9 @@ void Script::restartAt(int part, int pos) {
 	}
 	_startTime = _timeStamp = _stub->getTimeStamp();
 	if (part == kPartWater) {
-		_res->_demo3Joy.start();
+		if (_res->_demo3Joy.start()) {
+			memset(_scriptVars, 0, sizeof(_scriptVars));
+		}
 	}
 }
 

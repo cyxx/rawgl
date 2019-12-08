@@ -35,12 +35,14 @@ struct DemoJoy {
 	uint8_t *bufPtr;
 	int bufPos, bufSize;
 
-	void start() {
+	bool start() {
 		if (bufSize > 0) {
 			keymask = bufPtr[0];
 			counter = bufPtr[1];
 			bufPos = 2;
+			return true;
 		}
+		return false;
 	}
 
 	uint8_t update() {
