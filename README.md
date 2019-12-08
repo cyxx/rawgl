@@ -10,6 +10,7 @@ rawgl is a re-implementation of the engine used in the game Another World.
 The program requires the original data files.
 
 - Amiga (Bank*)
+- Atari (Bank*)
 - DOS (Bank*, memlist.bin)
 - DOS demo (Demo*, memlist.bin)
 - 15th Anniversary Edition (Data/Pak01.pak, Menu/, Music/)
