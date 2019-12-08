@@ -609,6 +609,7 @@ void Script::updateInput() {
 	int16_t lr = 0;
 	int16_t m = 0;
 	int16_t ud = 0;
+	int16_t jd = 0;
 	if (_stub->_pi.dirMask & PlayerInput::DIR_RIGHT) {
 		lr = 1;
 		m |= 1;
@@ -618,33 +619,35 @@ void Script::updateInput() {
 		m |= 2;
 	}
 	if (_stub->_pi.dirMask & PlayerInput::DIR_DOWN) {
-		ud = 1;
+		ud = jd = 1;
 		m |= 4; // crouch
 	}
-	if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
-		ud = -1;
-		m |= 8; // jump
+	if (_is3DO) { // This could be enabled to any later version than Amiga, Atari and DOS demo
+		if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
+			ud = -1;
+		}
+		if (_stub->_pi.jump) {
+			jd = -1;
+			m |= 8; // jump
+		}
+	} else {
+		if (_stub->_pi.dirMask & PlayerInput::DIR_UP) {
+			ud = jd = -1;
+			m |= 8; // jump
+		}
 	}
 	if (!(_res->getDataType() == Resource::DT_AMIGA || _res->getDataType() == Resource::DT_ATARI)) {
 		_scriptVars[VAR_HERO_POS_UP_DOWN] = ud;
 	}
-
-	// The password selection screen in the 3DO version accepts both 'action'
-	// and 'jump' buttons. As 'up' is also mapped to 'jump', pressing it selects
-	// the highlighted letter instead of moving the cursor. We zero the jump code.
-	if (_is3DO && _res->_currentPart == kPartPassword) {
-		ud = 0;
-	}
-
-	_scriptVars[VAR_HERO_POS_JUMP_DOWN] = ud;
+	_scriptVars[VAR_HERO_POS_JUMP_DOWN] = jd;
 	_scriptVars[VAR_HERO_POS_LEFT_RIGHT] = lr;
 	_scriptVars[VAR_HERO_POS_MASK] = m;
-	int16_t button = 0;
-	if (_stub->_pi.button) { // inpButton
-		button = 1;
+	int16_t action = 0;
+	if (_stub->_pi.action) {
+		action = 1;
 		m |= 0x80;
 	}
-	_scriptVars[VAR_HERO_ACTION] = button;
+	_scriptVars[VAR_HERO_ACTION] = action;
 	_scriptVars[VAR_HERO_ACTION_POS_MASK] = m;
 	if (_res->_currentPart == kPartWater) {
 		const uint8_t mask = _res->_demo3Joy.update();

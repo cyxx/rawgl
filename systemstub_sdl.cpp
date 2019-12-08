@@ -205,7 +205,11 @@ void SystemStub_SDL::processEvents() {
 				break;
 			case SDLK_SPACE:
 			case SDLK_RETURN:
-				_pi.button = false;
+				_pi.action = false;
+				break;
+			case SDLK_LSHIFT:
+			case SDLK_RSHIFT:
+				_pi.jump = false;
 				break;
 			case SDLK_s:
 				_pi.screenshot = true;
@@ -255,7 +259,11 @@ void SystemStub_SDL::processEvents() {
 				break;
 			case SDLK_SPACE:
 			case SDLK_RETURN:
-				_pi.button = true;
+				_pi.action = true;
+				break;
+			case SDLK_LSHIFT:
+			case SDLK_RSHIFT:
+				_pi.jump = true;
 				break;
 			default:
 				break;
@@ -303,7 +311,7 @@ void SystemStub_SDL::processEvents() {
 		case SDL_JOYBUTTONDOWN:
 		case SDL_JOYBUTTONUP:
 			if (_joystick) {
-				_pi.button = (ev.jbutton.state == SDL_PRESSED);
+				_pi.action = (ev.jbutton.state == SDL_PRESSED);
 			}
 			break;
 		case SDL_CONTROLLERAXISMOTION:
@@ -381,10 +389,10 @@ void SystemStub_SDL::processEvents() {
 					}
 					break;
 				case SDL_CONTROLLER_BUTTON_A:
+					_pi.action = pressed;
+					break;
 				case SDL_CONTROLLER_BUTTON_B:
-				case SDL_CONTROLLER_BUTTON_X:
-				case SDL_CONTROLLER_BUTTON_Y:
-					_pi.button = pressed;
+					_pi.jump = pressed;
 					break;
 				}
 			}

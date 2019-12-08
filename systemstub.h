@@ -18,7 +18,8 @@ struct PlayerInput {
 	};
 
 	uint8_t dirMask;
-	bool button;
+	bool action; // run,shoot
+	bool jump;
 	bool code;
 	bool pause;
 	bool quit;

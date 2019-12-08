@@ -141,8 +141,8 @@ void Engine::doThreeScreens() {
 		_vid.updateDisplay(0, _stub);
 		while (!_stub->_pi.quit) {
 			_stub->processEvents();
-			if (_stub->_pi.button) {
-				_stub->_pi.button = false;
+			if (_stub->_pi.action) {
+				_stub->_pi.action = false;
 				break;
 			}
 			_stub->sleep(50);
@@ -184,8 +184,8 @@ void Engine::titlePage() {
 			_partNum = kPartIntro;
 			y = 0;
 		}
-		if (_stub->_pi.button) {
-			_stub->_pi.button = false;
+		if (_stub->_pi.action) {
+			_stub->_pi.action = false;
 			_script.restartAt(_partNum);
 			break;
 		}
