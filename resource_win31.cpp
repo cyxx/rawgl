@@ -38,41 +38,38 @@ struct Bitstream {
 	int _size;
 	uint16_t _bits;
 	int _len;
-	uint16_t _value;
 
-	bool eos() const {
-		return _size <= 0;
+	Bitstream()
+		: _f(0), _size(0), _bits(0), _len(0) {
 	}
 
-	bool refill() {
-		while (_len < 8) {
-			if (eos()) {
-				return false;
-			}
-			const uint8_t b = _f->readByte();
-			--_size;
-			_value |= b << (8 - _len);
-			_len += 8;
-		}
-		return true;
+	void reset(File *f, int size) {
+		_f = f;
+		_size = size;
+		_bits = 0;
+		_len = 0;
 	}
+
 	uint8_t readByte() {
 		if (_len < 8) {
-			assert(refill());
+			_bits <<= 8;
+			assert(_size > 0);
+			--_size;
+			_bits |= _f->readByte();
+			_len += 8;
 		}
-		const uint8_t b = _value >> 8;
-		_value <<= 8;
 		_len -= 8;
-		return b;
+		return (_bits >> _len) & 255;
 	}
 	int readBit() {
-		if(_len <= 0) {
-			assert(refill());
+		if (_len == 0) {
+			assert(_size > 0);
+			--_size;
+			_bits = _f->readByte();
+			_len = 8;
 		}
-		const int carry = ((_value & 0x8000) != 0) ? 1 : 0;
-		_value <<= 1;
 		--_len;
-		return carry;
+		return (_bits & (1 << _len)) != 0 ? 1 : 0;
 	}
 };
 
@@ -220,9 +217,7 @@ struct LzHuffman {
 
 	bool decompressEntry(File &f, const Win31BankEntry *e, uint8_t *out) {
 		f.seek(e->offset);
-		memset(&_stream, 0, sizeof(_stream));
-		_stream._f = &f;
-		_stream._size = e->packedSize;
+		_stream.reset(&f, e->packedSize);
 		return decode(out, e->size);
 	}
 };
