@@ -32,7 +32,7 @@ struct DisplayMode {
 	enum {
 		WINDOWED,
 		FULLSCREEN,    // stretch
-		FULLSCREEN_AR, // 4:3 aspect ratio
+		FULLSCREEN_AR, // 16:10 aspect ratio
 	} mode;
 	int width, height; // window dimensions
 	bool opengl;       // GL renderer

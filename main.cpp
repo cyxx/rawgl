@@ -21,9 +21,9 @@ static const char *USAGE =
 	"  --language=LANG   Language (fr,us,de,es,it)\n"
 	"  --part=NUM        Game part to start from (0-35 or 16001-16009)\n"
 	"  --render=NAME     Renderer (original,software,gl)\n"
-	"  --window=WxH      Windowed displayed size (default '640x480')\n"
+	"  --window=WxH      Windowed displayed size (default '640x400')\n"
 	"  --fullscreen      Fullscreen display (stretched)\n"
-	"  --fullscreen-ar   Fullscreen display (4:3 aspect ratio)\n"
+	"  --fullscreen-ar   Fullscreen display (16:10 aspect ratio)\n"
 	"  --ega-palette     Use EGA palette with DOS version\n"
 	"  --demo3-joy       Use inputs from 'demo3.joy' (DOS demo)\n"
 	;
