@@ -29,7 +29,7 @@ enum {
 };
 
 enum {
-	ALPHA_COLOR_INDEX = 12,
+	ALPHA_COLOR_INDEX = 12, // 3DO uses 0x0010 (RGB555) as the blend color, using color #12 matches Amiga/DOS graphics better
 	GFX_W = 320,
 	GFX_H = 200
 };
