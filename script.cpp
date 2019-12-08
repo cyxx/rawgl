@@ -22,7 +22,6 @@ Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid)
 void Script::init() {
 	memset(_scriptVars, 0, sizeof(_scriptVars));
 	_fastMode = false;
-	_gameOver = false;
 	_ply->_syncVar = &_scriptVars[VAR_MUSIC_SYNC];
 	_scriptPtr.byteSwap = _is3DO = (_res->getDataType() == Resource::DT_3DO);
 	if (_is3DO) {
@@ -366,8 +365,6 @@ void Script::op_updateResources() {
 		_ply->stop();
 		_mix->stopAll();
 		_res->invalidateRes();
-	} else if (_is3DO && num == 16009) {
-		_gameOver = true;
 	} else {
 		_res->update(num);
 	}

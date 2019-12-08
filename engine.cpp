@@ -55,7 +55,7 @@ void Engine::run() {
 		processInput();
 		_script.runTasks();
 		_mix.update();
-		if (_script._is3DO && _script._gameOver) {
+		if (_res.getDataType() == Resource::DT_3DO && _res._nextPart == 16009) {
 			_state = kStateEnd3DO;
 		}
 		break;
