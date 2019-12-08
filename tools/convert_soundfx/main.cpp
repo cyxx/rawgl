@@ -93,9 +93,8 @@ struct Player {
 		uint16_t loopPos;
 		uint8_t *loopData;
 		uint16_t loopLen;
-		uint16_t unk_9;
+		uint16_t period_arpeggio; // unused by Another World tracks
 		uint16_t sample_volume;
-		uint16_t unk_B;
 	};
 	struct Channel {
 		InstrumentSample sample;
@@ -245,18 +244,19 @@ void Player::handlePattern(uint8_t channel, uint8_t *&data, Pattern *pat) {
 					if (m < 0) {
 						m = 0;
 					}	
+				} else if (effect != 0) {
+					fprintf(stderr, "Unhandled effect %d\n", effect);
 				}
 				Mix_setChannelVolume(channel, m);
 				pat->sample_volume = m;
 			}
 		}
 	}
-	if (pat->note_1 == 0xFFFD) {
-		fprintf(stderr, "_scriptVars[0xF4] = pat->note_2;\n");
+	if (pat->note_1 == 0xFFFD) { // 'PIC'
 		pat->note_2 = 0;
 	} else if (pat->note_1 != 0) {
-		pat->unk_9 = pat->note_1;
-		if (pat->unk_9 == 0xFFFE) {
+		pat->period_arpeggio = pat->note_1;
+		if (pat->period_arpeggio == 0xFFFE) {
 			Mix_stopChannel(channel);
 		} else if (pat->sample_buffer != 0) {
 			InstrumentSample sample;
