@@ -54,6 +54,7 @@ struct GraphicsSoft: Graphics {
 	virtual void copyBuffer(int dst, int src, int vscroll = 0);
 	virtual void drawBuffer(int num, SystemStub *stub);
 	virtual void drawRect(int num, uint8_t color, const Point *pt, int w, int h);
+	virtual void drawBitmapOverlay(const uint8_t *data, int w, int h, int fmt, SystemStub *stub);
 };
 
 
@@ -451,6 +452,13 @@ void GraphicsSoft::drawRect(int num, uint8_t color, const Point *pt, int w, int 
 	for (int y = y1; y <= y2; ++y) {
 		*(uint16_t *)(_drawPagePtr + (y * _w + x1) * _byteDepth) = rgbColor;
 		*(uint16_t *)(_drawPagePtr + (y * _w + x2) * _byteDepth) = rgbColor;
+	}
+}
+
+void GraphicsSoft::drawBitmapOverlay(const uint8_t *data, int w, int h, int fmt, SystemStub *stub) {
+	if (fmt == FMT_RGB555) {
+		stub->setScreenPixels555((const uint16_t *)data, 112, 48);
+		stub->updateScreen();
 	}
 }
 

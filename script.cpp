@@ -674,6 +674,7 @@ void Script::inp_handleSpecialKeys() {
 	if (_stub->_pi.pause) {
 		if (_res->_currentPart != kPartCopyProtection && _res->_currentPart != kPartIntro) {
 			_stub->_pi.pause = false;
+			_vid->drawPauseBitmap(_stub);
 			while (!_stub->_pi.pause && !_stub->_pi.quit) {
 				_stub->processEvents();
 				_stub->sleep(50);

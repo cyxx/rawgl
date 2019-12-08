@@ -42,6 +42,7 @@ struct SystemStub {
 	typedef void (*AudioCallback)(void *param, uint8_t *stream, int len);
 
 	PlayerInput _pi;
+	DisplayMode _dm;
 
 	SystemStub() {
 		memset(&_pi, 0, sizeof(_pi));

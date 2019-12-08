@@ -100,11 +100,13 @@ void SystemStub_SDL::init(const char *title, const DisplayMode *dm) {
 		}
 	}
 	_screenshot = 1;
+	_dm = *dm;
 }
 
 void SystemStub_SDL::fini() {
 	if (_texture) {
 		SDL_DestroyTexture(_texture);
+		_texture = 0;
 	}
 	if (_joystick) {
 		SDL_JoystickClose(_joystick);
@@ -148,12 +150,6 @@ void SystemStub_SDL::updateScreen() {
 
 void SystemStub_SDL::setScreenPixels555(const uint16_t *data, int w, int h) {
 	if (_renderer) {
-		if (_texW != w || _texH != h) {
-			if (_texture) {
-				SDL_DestroyTexture(_texture);
-				_texture = 0;
-			}
-		}
 		if (!_texture) {
 			_texture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB555, SDL_TEXTUREACCESS_STREAMING, w, h);
 			if (!_texture) {
@@ -162,7 +158,18 @@ void SystemStub_SDL::setScreenPixels555(const uint16_t *data, int w, int h) {
 			_texW = w;
 			_texH = h;
 		}
-		SDL_UpdateTexture(_texture, 0, data, w * sizeof(uint16_t));
+		assert(w <= _texW && h <= _texH);
+		SDL_Rect r;
+		r.w = w;
+		r.h = h;
+		if (w != _texW && h != _texH) {
+			r.x = (_texW - w) / 2;
+			r.y = (_texH - h) / 2;
+		} else {
+			r.x = 0;
+			r.y = 0;
+		}
+		SDL_UpdateTexture(_texture, &r, data, w * sizeof(uint16_t));
 		SDL_RenderCopy(_renderer, _texture, 0, 0);
 	}
 }
@@ -176,8 +183,8 @@ void SystemStub_SDL::processEvents() {
 			break;
 		case SDL_WINDOWEVENT:
 			if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
-				_w = ev.window.data1;
-				_h = ev.window.data2;
+				_w = _dm.width  = ev.window.data1;
+				_h = _dm.height = ev.window.data2;
 			} else if (ev.window.event == SDL_WINDOWEVENT_CLOSE) {
 				_pi.quit = true;
 			}

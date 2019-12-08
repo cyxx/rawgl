@@ -81,6 +81,7 @@ struct Video {
 	void captureDisplay();
 	void setPaletteColor(uint8_t color, int r, int g, int b);
 	void drawRect(uint8_t page, uint8_t color, int x1, int y1, int x2, int y2);
+	void drawPauseBitmap(SystemStub *stub);
 };
 
 #endif

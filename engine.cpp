@@ -168,14 +168,11 @@ void Engine::titlePage() {
 	_res.loadBmp(70);
 	static const int kCursorColor = 0;
 	_vid.setPaletteColor(kCursorColor, 255, 0, 0);
-	static const int yPos[] = {
-		 97, 123,
-		123, 149
-	};
+	static const int yPos[] = { 97, 123, 149 };
 	int y = 0;
 	while (!_stub->_pi.quit) {
 		_vid.copyPage(0, 1, 0);
-		_vid.drawRect(1, kCursorColor, 97, yPos[y * 2], 210, yPos[y * 2 + 1]);
+		_vid.drawRect(1, kCursorColor, 97, yPos[y], 210, yPos[y + 1]);
 		_stub->processEvents();
 		if (_stub->_pi.dirMask & PlayerInput::DIR_DOWN) {
 			_stub->_pi.dirMask &= ~PlayerInput::DIR_DOWN;

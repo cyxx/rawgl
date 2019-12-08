@@ -110,12 +110,13 @@ static void decodeCine(FILE *fp, const char *name) {
 			fread(type, 4, 1, fp);
 			if (memcmp(type, "FHDR", 4) == 0) {
 				fseek(fp, 4, SEEK_CUR);
-				char compression[4];
+				char compression[5];
 				fread(compression, 4, 1, fp);
-				assert(memcmp(compression, "cvid", 4) == 0);
+				compression[4] = 0;
 				const int height = freadUint32BE(fp);
 				const int width = freadUint32BE(fp);
-				fprintf(stdout, "FHDR width %d height %d compression %s", width, height, compression);
+				fprintf(stdout, "FHDR width %d height %d compression %s\n", width, height, compression);
+				assert(memcmp(compression, "cvid", 4) == 0);
 				out.setup(width, height, &decoder);
 			} else if (memcmp(type, "FRME", 4) == 0) {
 				const int duration = freadUint32BE(fp);
@@ -146,7 +147,7 @@ static void decodeCine(FILE *fp, const char *name) {
 				compression[4] = 0;
 				fprintf(stdout, "SHDR rate %d channels %d compression %s\n", rate, channels, compression);
 			} else if (memcmp(type, "SSMP", 4) == 0) {
-				// decodeSampleSDX
+				// S16BE
 			} else {
 				fprintf(stderr, "Unhandled SNDS chunk '%c%c%c%c'\n", type[0], type[1], type[2], type[3]);
 				break;
