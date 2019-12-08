@@ -46,12 +46,18 @@ void Engine::run() {
 	case kStateTitle3DO:
 		titlePage();
 		break;
+	case kStateEnd3DO:
+		doEndCredits();
+		break;
 	case kStateGame:
 		_script.setupTasks();
 		_script.updateInput();
 		processInput();
 		_script.runTasks();
 		_mix.update();
+		if (_script._is3DO && _script._gameOver) {
+			_state = kStateEnd3DO;
+		}
 		break;
 	}
 }
@@ -149,6 +155,7 @@ void Engine::doEndCredits() {
 	scrollText(0, 380, Video::_endText3DO);
 	_script.snd_playMusic(0, 0, 0);
 	playCinepak("ootw2.cine");
+	_state = kStateTitle3DO;
 }
 
 void Engine::playCinepak(const char *name) {

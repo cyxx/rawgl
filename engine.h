@@ -22,6 +22,7 @@ struct Engine {
 	enum {
 		kStateLogo3DO,
 		kStateTitle3DO,
+		kStateEnd3DO,
 		kStateGame
 	};
 

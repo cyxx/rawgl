@@ -58,6 +58,7 @@ struct Script {
 	int _screenNum;
 	bool _is3DO;
 	uint32_t _startTime, _timeStamp;
+	bool _gameOver;
 
 	Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid);
 	void init();

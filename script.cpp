@@ -22,6 +22,7 @@ Script::Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid)
 void Script::init() {
 	memset(_scriptVars, 0, sizeof(_scriptVars));
 	_fastMode = false;
+	_gameOver = false;
 	_ply->_syncVar = &_scriptVars[VAR_MUSIC_SYNC];
 	_scriptPtr.byteSwap = _is3DO = (_res->getDataType() == Resource::DT_3DO);
 	if (_is3DO) {
@@ -365,6 +366,8 @@ void Script::op_updateResources() {
 		_ply->stop();
 		_mix->stopAll();
 		_res->invalidateRes();
+	} else if (_is3DO && num == 16009) {
+		_gameOver = true;
 	} else {
 		_res->update(num);
 	}
@@ -599,7 +602,7 @@ void Script::executeTask() {
 
 void Script::updateInput() {
 	_stub->processEvents();
-	if (_res->_currentPart == 16009) {
+	if (_res->_currentPart == kPartPassword) {
 		char c = _stub->_pi.lastChar;
 		if (c == 8 || /*c == 0xD ||*/ c == 0 || (c >= 'a' && c <= 'z')) {
 			_scriptVars[VAR_LAST_KEYCHAR] = c & ~0x20;
@@ -630,7 +633,7 @@ void Script::updateInput() {
 	// The password selection screen in the 3DO version accepts both 'action'
 	// and 'jump' buttons. As 'up' is also mapped to 'jump', pressing it selects
 	// the highlighted letter instead of moving the cursor. We zero the jump code.
-	if (_is3DO && (_res->_currentPart == 16008 || _res->_currentPart == 16009)) {
+	if (_is3DO && _res->_currentPart == kPartPassword) {
 		ud = 0;
 	}
 
@@ -670,7 +673,7 @@ void Script::updateInput() {
 
 void Script::inp_handleSpecialKeys() {
 	if (_stub->_pi.pause) {
-		if (_res->_currentPart != 16000 && _res->_currentPart != 16001) {
+		if (_res->_currentPart != kPartCopyProtection && _res->_currentPart != kPartIntro) {
 			_stub->_pi.pause = false;
 			while (!_stub->_pi.pause && !_stub->_pi.quit) {
 				_stub->processEvents();
@@ -682,8 +685,8 @@ void Script::inp_handleSpecialKeys() {
 	if (_stub->_pi.code) {
 		_stub->_pi.code = false;
 		if (_res->_hasPasswordScreen) {
-			if (_res->_currentPart != 16009 && _res->_currentPart != 16000) {
-				_res->_nextPart = 16009;
+			if (_res->_currentPart != kPartPassword && _res->_currentPart != kPartCopyProtection) {
+				_res->_nextPart = kPartPassword;
 			}
 		}
 	}
