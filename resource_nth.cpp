@@ -338,15 +338,14 @@ struct Resource20th: ResourceNth {
 	virtual uint8_t *loadDat(int num, uint8_t *dst, uint32_t *size) {
 		bool datOpen = false;
 		char path[MAXPATHLEN];
+		snprintf(path, sizeof(path), "%s/game/DAT", _dataPath);
 		File f;
 		if (_datName[0]) {
-			snprintf(path, sizeof(path), "%s/game/DAT/%s", _dataPath, _datName);
-			datOpen = f.open(path);
-			_datName[0] = 0;
+			datOpen = f.open(_datName, path);
 		}
 		if (!datOpen) {
-			snprintf(path, sizeof(path), "%s/game/DAT/FILE%03d.DAT", _dataPath, num);
-			datOpen = f.open(path);
+			snprintf(_datName, sizeof(_datName), "FILE%03d.DAT", num);
+			datOpen = f.open(_datName, path);
 		}
 		if (datOpen) {
 			const uint32_t dataSize = f.size();
@@ -355,11 +354,12 @@ struct Resource20th: ResourceNth {
 				warning("Failed to read %d bytes (expected %d)", dataSize, count);
 			}
 			*size = dataSize;
-			return dst;
 		} else {
-			warning("Unable to open '%s'", path);
+			warning("Unable to open '%s/%s'", path, _datName);
+			dst = 0;
 		}
-		return 0;
+		_datName[0] = 0;
+		return dst;
 	}
 
 	virtual uint8_t *loadWav(int num, uint8_t *dst, uint32_t *size) {
