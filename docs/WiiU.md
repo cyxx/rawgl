@@ -65,39 +65,42 @@ BE16        : height
 
 ## Game Code
 
-The game code contains two variants, one for the original low-resolution and another one for 'HD'.
+The game bytecode contains two variants, one for the original low-resolution (320x200) and another one for 'HD' (1280x800).
 
 Name   | Part  | Files
 ------ | ----- | -----
-Intro  | 16001 | intro2011.ma\*, intro2011hd.ma\*
-Eau    | 16002 | eau2011.ma\*, eau2011hd.ma\*
-Prison | 16003 | pri2011.ma\*, pri2011hd.ma\*
-Cite   | 16004 | cite2011.ma\*, cite2011hd.ma\*
-Arene  | 16005 | arene2011.ma\*, arene2011hd.ma\*
-Luxe   | 16006 | luxe2011.ma\*, luxe2011hd.ma\*
-Final  | 16007 | final2011.ma\*, final2011hd.ma\*
+Intro  | 16001 | intro2011(hd).mac/.mat
+Eau    | 16002 | eau2011(hd).mac/.mat
+Prison | 16003 | pri2011(hd).mac/.mat
+Cite   | 16004 | cite2011(hd).mac/.mat
+Arene  | 16005 | arene2011(hd).mac/.mat
+Luxe   | 16006 | luxe2011(hd).mac/.mat
+Final  | 16007 | final2011(hd).mac/.mat
 
-The only major difference between the 'HD' and non-'HD' bytecode files appear to be related to
-the polygons drawing code, as expected.
+The only difference between the 'SD' and 'HD' bytecode files appear to be related to the polygons offsets, as expected.
 
 ```
-$ diff -u eau2011.mac.asm eau2011hd.mac.asm
- 0D18: loc_0D18:
--0D18: GFX_0xEE
-+0D18: GFX_0xF1
+$ diff -u intro2011.mac.asm intro2011hd.mac.asm
 ...
- 1718: loc_1718:
--1718: GFX_0xDC
-+1718: GFX_0xDF
+-033A: (FA) drawShape(code=0xFA, x=160, y=100); // offset=0xF5F0 (bank1.mat)
++033A: (FB) drawShape(code=0xFB, x=160, y=100); // offset=0xF608 (bank1.mat)
+ 033E: (18) playSound(res=44, freq=15, vol=63, channel=2)
 ...
 ```
+
+An example of polygons upscale (SD vs HD .mat shape) :
+
+![clf10sd](clf10_sd.png) ![clf10hd](clf10_hd.png)
+
+
+## Bytecode Variables
 
 The game engine communicates with the game code via special variables.
 
 Index | Details
 ----- | -------
 0xBF  | Game difficulty (0 to 2)
-0xDB  | Mute sounds and enable loading of resource IDs >= 2000 (debug mode ?)
+0xDB  | Enable sounds preloading (resource >= 2000)
 0xDE  | Enable playback of remastered sounds (set to 0 when running the game in original low resolution)
 
 
