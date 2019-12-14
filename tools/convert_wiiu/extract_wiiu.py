@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
-# Extract data files from the WiiU version of 'Another World 20th Anniversary Edition'.
+# Extract data files from 'archive.bin' found in the WiiU and PS Vita versions
+# of 'Another World 20th Anniversary Edition'.
 #
 # liblz4.so is required to decompress the game data.
 #
@@ -13,14 +14,21 @@ import struct
 import sys
 from PIL import Image
 
+endian = '>' # LE for Vita, BE for WiiU
+rgb = 'RGBA' # RGB for Vita, RGBA for WiiU
+
 fname = 'content/archive.bin'
 if len(sys.argv) > 1:
 	fname = sys.argv[1]
+if len(sys.argv) > 2 and sys.argv[2] == 'vita':
+	endian = '<'
+	rgb = 'RGB'
 
 f = open(fname, 'rb')
 f.seek(-8, io.SEEK_END)
-pos   = struct.unpack('>I', f.read(4))[0]
-count = struct.unpack('>I', f.read(4))[0]
+pos   = struct.unpack(endian + 'I', f.read(4))[0]
+count = struct.unpack(endian + 'I', f.read(4))[0]
+print '0x%x, %d files' % (pos, count)
 
 def read_cstr(f):
 	str = ''
@@ -35,10 +43,10 @@ for i in range(0, count):
 	f.seek(pos)
 
 	fname        = read_cstr(f)
-	uncompressed = struct.unpack('>I', f.read(4))[0]
-	size         = struct.unpack('>I', f.read(4))[0]
-	offset       = struct.unpack('>I', f.read(4))[0]
-	flags        = struct.unpack('>I', f.read(4))[0]
+	uncompressed = struct.unpack(endian + 'I', f.read(4))[0]
+	size         = struct.unpack(endian + 'I', f.read(4))[0]
+	offset       = struct.unpack(endian + 'I', f.read(4))[0]
+	flags        = struct.unpack(endian + 'I', f.read(4))[0]
 	assert flags == 0 or flags == 1
 
 	pos = f.tell()
@@ -75,10 +83,10 @@ for i in range(0, count):
 		# 12 bytes footer
 		#   08 08 08 08 LE16(w) LE16(h) LE16(w) LE16(h)
 		awt.seek(-8, io.SEEK_END)
-		w = struct.unpack('>H', awt.read(2))[0]
-		h = struct.unpack('>H', awt.read(2))[0]
+		w = struct.unpack(endian + 'H', awt.read(2))[0]
+		h = struct.unpack(endian + 'H', awt.read(2))[0]
 		awt.seek(0)
-		image = Image.frombytes('RGBA', (w, h), awt.read(w * h * 4))
+		image = Image.frombytes(rgb, (w, h), awt.read(w * h * len(rgb)))
 		image.save(os.path.splitext(fn)[0] + '.png')
 
 	# low resolution (original 320x200) background pictures
