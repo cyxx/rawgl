@@ -16,7 +16,6 @@ static uint8_t _fileBuf[MAX_FILESIZE];
 static char _symbolsTable[MAX_SYMBOLS][7];
 
 static bool _is3DO = false;
-static bool _isAmiga = false;
 
 static FILE *_out = stdout;
 
@@ -159,9 +158,9 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 	if (_addr[addr] & ADDR_LABEL) {
 		fprintf(_out, "%04X: loc_%04X:\n", addr, addr);
 	}
-	fprintf(_out, "%04X: ", addr);
-	if (_isAmiga && opcode > op_playMusic && opcode < 0xC0) {
-		fprintf(_out, "0x%02x\n", opcode);
+	fprintf(_out, "%04X: (%02X) ", addr, opcode);
+	if (opcode > op_playMusic && (opcode & 0xC0) == 0) {
+		fputc('\n', _out);
 		return;
 	}
 	switch (opcode) {
@@ -308,7 +307,7 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 	default:
 		if (opcode & 0xC0) {
 			const uint16_t offset = args[0] << 1;
-			fprintf(_out, "GFX_0x%02X offset=0x%04x", opcode, offset);
+			fprintf(_out, "SHAPE_0x%02X offset=0x%04x (bank%d.mat) x=%d y=%d", opcode, offset, args[3], args[1], args[2]);
 			const char *name = _symbolsTable[offset];
 			if (name[0]) {
 				fprintf(_out, " name=%s", name);
@@ -316,7 +315,7 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		}
 		break;
 	}
-	fprintf(_out, "\n");
+	fputc('\n', _out);
 }
 
 static void (*visitOpcode)(uint16_t addr, uint8_t opcode, int args[16]);
@@ -331,7 +330,7 @@ static int parse(const uint8_t *buf, uint32_t size) {
 			a = *p++; // offset_lo
 			b = *p++; // x
 			c = *p++; // y
-			int args[3] = { ((op << 8) | a), b, c };
+			int args[4] = { ((op << 8) | a), b, c, 1 };
 			visitOpcode(addr, op, args);
 			continue;
 		}
@@ -349,8 +348,7 @@ static int parse(const uint8_t *buf, uint32_t size) {
 			if ((!(op & 2) && !(op & 1)) || ((op & 2) && (op & 1))) {
 				p--;
 			}
-			// (op&3)==3 use bank2.mat
-			int args[3] = { a, b, c };
+			int args[4] = { a, b, c, ((op & 3) == 3) ? 2 : 1 };
 			visitOpcode(addr, op, args);
 			continue;
 		}
@@ -537,8 +535,6 @@ int main(int argc, char *argv[]) {
 	if (argc >= 3) {
 		if (strcmp(argv[1], "-3do") == 0) {
 			_is3DO = true;
-		} else if (strcmp(argv[1], "-amiga") == 0) {
-			_isAmiga = true;
 		}
 		--argc;
 		++argv;
@@ -587,7 +583,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	} else {
-		fprintf(stdout, "Usage: %s [-3do|-amiga] /path/to/File%%d\n", argv[0]);
+		fprintf(stdout, "Usage: %s [-3do] /path/to/File%%d\n", argv[0]);
 	}
 	return 0;
 }
