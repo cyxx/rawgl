@@ -81,7 +81,10 @@ static void fillPolygon(const uint8_t *data, int color, int zoom, int x, int y) 
 		data += 2;
 	}
 
-	assert(color < 16);
+	if (color >= 16) {
+		assert(color == 0x10 || color == 0x11);
+		color = 15;
+	}
 
 	int i = 0;
 	int j = count - 1;

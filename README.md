@@ -29,7 +29,7 @@ directory. This can be changed with command line switches.
     --language=LANG   Language (fr,us,de,es,it)
     --part=NUM        Game part to start from (0-35 or 16001-16009)
     --render=NAME     Renderer (original,software,gl)
-    --window=WxH      Windowed displayed size (default '640x400')
+    --window=WxH      Windowed display size (default '640x400')
     --fullscreen      Fullscreen display (stretched)
     --fullscreen-ar   Fullscreen display (16:10 aspect ratio)
     --ega-palette     Use EGA palette with DOS version
@@ -47,5 +47,6 @@ In game hotkeys :
 
 ## Technical Details
 
+- [Amiga/DOS](docs/Amiga_DOS.md)
 - [3DO](docs/3DO.md)
 - [WiiU](docs/WiiU.md)

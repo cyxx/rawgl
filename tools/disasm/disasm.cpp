@@ -10,10 +10,12 @@ enum {
 	MAX_TASKS = 64,
 	MAX_FILESIZE = 0x10000,
 	MAX_SHAPENAMES = 0x10000,
+	MAX_OPCODES = 31, // 27 for Amiga/DOS, 31 for 3DO
 };
 
 static uint8_t _fileBuf[MAX_FILESIZE];
 static char _shapeNames[MAX_SHAPENAMES][7]; // shape (polygons) names are 6 characters long
+static int _histogramOp[MAX_OPCODES];
 
 static bool _is3DO = false;
 
@@ -146,6 +148,7 @@ static void checkOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		const int offset = args[1];
 		_addr[offset] |= ADDR_LABEL;
 	}
+	++_histogramOp[opcode];
 }
 
 static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
@@ -224,7 +227,7 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 			break;
 		}			
 		if (args[0] & 0x80) {
-			fprintf(_out, "VAR(0x%02X)", args[2]);
+			fprintf(_out, "VAR(0x%02X),", args[2]);
 		} else if (args[0] & 0x40) {
 			fprintf(_out, "%d,", (int16_t)args[2]);
 		} else {
@@ -582,6 +585,12 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		}
+		for (int i = 0; i < MAX_OPCODES; ++i) {
+			if (_histogramOp[i] != 0) {
+				fprintf(stdout, "%d:%d ", i, _histogramOp[i]);
+			}
+		}
+		fprintf(stdout, "\n");
 	} else {
 		fprintf(stdout, "Usage: %s [-3do] /path/to/File%%d\n", argv[0]);
 	}
