@@ -5,8 +5,14 @@ Another World has been ported on many platforms. The way the game was written (i
 
 This document focuses on the 3DO release made by Interplay in 1994. This version was not a straight port. In addition to reworking the assets, the game code was modified.
 
-Most of the information presented here was found by studying the binary code and assets. Some of it applies to the original versions.
-The bits of assembly game code were generated using the "disasm" tool.
+- [Assets](#assets)
+- [Game Code](#game-code)
+- [Game Copy Protection](#game-copy-protection)
+- [Bytecode](#bytecode)
+- [Resources](#resources)
+- [Rendering](#rendering)
+- [Introduction Sequence Synchronization](#introduction-sequence-synchronization)
+- [Game Passwords](#game-passwords)
 
 ## Assets
 
@@ -228,6 +234,60 @@ The upper nibble of the shape color byte specifies the primitive to draw.
 0x20 : rectangle
 0x40 : pixel
 0xC0 : polygon/quad
+```
+
+## Introduction Sequence Synchronization
+
+On Amiga/DOS, the introduction is synchronized to the music.
+
+The music module contains 2 bytes patterns, that are copied to the variable 0xF4.
+
+```
+if (pat.note_1 == -3) {
+    _vars[0xF4] = pat.note_2;
+}
+```
+
+The condition can be found in the original 68000 SoundFX player [routine](https://github.com/cyxx/rawgl/blob/master/docs/fxplayer.s#L555).
+
+The bytecode contains checks on this variable to wait and continue.
+
+```
+000B: (00) VAR(0xF4) = 0
+0F66: (0A) jmpIf(VAR(0xF4) == 43, @0F91)
+...
+1399: (0A) jmpIf(VAR(0xF4) == 46, @13AA)
+13AE: (0A) jmpIf(VAR(0xF4) == 47, @13BF)
+13C3: (0A) jmpIf(VAR(0xF4) == 48, @13D4)
+13F6: (0A) jmpIf(VAR(0xF4) != 49, @1406)
+```
+
+
+On the 3DO, the tracker based music has been replaced with digital tracks.
+The synchronization had to be modified.
+
+That version relies on the variable 0xF7. It holds the total number of VBLs since the game started.
+
+```
+nbtrame = readTick() - OldVBL;
+if (_vars[0xFF] != 0) {
+    while (_vars[0xFF] > nbtrame) {
+       nbtrame = readTick() - OldVBL;
+    }
+}
+_vars[0xF7] += nbtrame;
+OldVBL += nbtrame;
+```
+
+The introduction bytecode has the checks against this variable for the timing.
+
+```
+0068: jmpIf(VAR(0xF7) < 3450, @0067)
+043E: jmpIf(VAR(0xF7) < 7484, @043D)
+046A: jmpIf(VAR(0xF7) < 8602, @0469)
+jmpIf(VAR(0xF7) < 9212, @0576)
+...
+jmpIf(VAR(0xF7) < 400, @1C40)
 ```
 
 ## Game Passwords
