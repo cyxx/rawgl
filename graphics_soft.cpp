@@ -332,14 +332,17 @@ void GraphicsSoft::drawBitmap(int buffer, const uint8_t *data, int w, int h, int
 	case 1:
 		if (fmt == FMT_CLUT && _w == w && _h == h) {
 			memcpy(getPagePtr(buffer), data, w * h);
+			return;
 		}
 		break;
 	case 2:
 		if (fmt == FMT_RGB555 && _w == w && _h == h) {
 			memcpy(getPagePtr(buffer), data, getPageSize());
+			return;
 		}
 		break;
 	}
+	warning("GraphicsSoft::drawBitmap() unhandled fmt %d w %d h %d", fmt, w, h);
 }
 
 void GraphicsSoft::drawPoint(int buffer, uint8_t color, const Point *pt) {
