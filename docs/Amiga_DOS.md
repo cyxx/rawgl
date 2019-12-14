@@ -209,9 +209,9 @@ Atari ST        | 0x7EF2
 
 ## Cracks
 
-### DOS
+The game copy protection was cracked after the game release. Let's have a closer look at several versions.
 
-The game copy protection was cracked after the game release. Let's have a closer look at one version.
+### DOS
 
 ```
 $ md5sum ANOTHER.EXE
@@ -294,7 +294,7 @@ The bytes '0xED 0x0C' will patch the symbols counters comparison and exit the pr
 
 With these in place, the two main protection checks are passing and the game can start.
 
-### Amiga
+### Amiga WHDLoad
 
 [WHDLoad](http://www.whdload.de/games/AnotherWorld.html) removes the protection at the installation time.
 
@@ -340,3 +340,65 @@ These instructions replace conditionals with jumps.
 ```
 
 With the symbols and counters comparisons removed, the protection screen successfully exits.
+
+
+### Amiga retro presskit
+
+The 20th Anniversary edition comes with a few extras, including the original English Amiga version as .adf files.
+This is part of the [retro presskit](http://thedigitalounge.com/dl/AnotherWorld-Retro-presskit.zip).
+
+The filenames clearly indicates the protection has been removed.
+
+```
+-rw-a--     2.0 fat   901120 b- defX 06-Dec-22 15:59 AnotherWorld_DiskA_nologo_noprotec.adf
+-rw-a--     2.0 fat   901120 b- defX 06-Dec-22 15:59 AnotherWorld_DiskB_nologo_noprotec.adf
+```
+
+Looking at the date and time modifications, we can see the main executable and the `bank01` have been modified.
+
+```
+$ unadf -l /tmp/AnotherWorld_DiskA_nologo_noprotec.adf
+  55096  1991/12/30  10:17:30  bank06
+  10366  1991/12/30  10:17:33  bank09
+         1991/12/30  10:06:25  Trashcan/
+     25  1991/12/30  12:09:35  .info
+  52294  1991/12/30  10:17:48  bank0B
+  25108  1991/12/30  10:17:53  bank0C
+  94862  1991/12/30  10:18:16  bank0D
+         1991/12/30  10:10:31  s/
+    251  1991/12/30  12:12:52  readme.txt
+  28964  2006/12/17  15:17:20  another
+   1166  1991/12/30  10:06:25  Trashcan.info
+ 244868  2006/12/17  15:18:21  bank01
+ 226172  1991/12/30  10:17:16  bank02
+```
+
+This is interesting because the `bank01` is the file where the protection screen bytecode is stored.
+
+Running the .adf through an emulator, we can verify the protection is passing if we select any symbols.
+It is however failing if less than 3 symbols are selected.
+
+![Protection Amiga Presskit Error](protection-amiga-presskit-2.png)
+
+This hints only the first check of the bytecode has been patched (the symbol comparison) but not the counter.
+Let's dump the bytecode around these two checks.
+
+We can see the bytecode at 0x0A14 has been modified to jump as if a symbol matched.
+
+```
+09FC: (0A) jmpIf(VAR(0x29) == VAR(0x1E), @0A68)
+0A02: (0A) jmpIf(VAR(0x29) == VAR(0x1F), @0A68)
+0A08: (0A) jmpIf(VAR(0x29) == VAR(0x20), @0A68)
+0A0E: (0A) jmpIf(VAR(0x29) == VAR(0x21), @0A68)
+0A14: (07) jmp(@0A68)
+```
+
+The second check has however not been patched, which explains the protection fails if no symbol is selected.
+
+```
+0A88: (0A) jmpIf(VAR(0x1B) != 21, @0AD5)
+0A8E: (14) VAR(0x32) &= 31
+0A92: (0A) jmpIf(VAR(0x32) < 3, @0AD5)
+0A98: (0A) jmpIf(VAR(0x64) < 20, @0AD5)
+0A9E: (04) call(@081E)
+```
