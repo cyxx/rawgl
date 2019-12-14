@@ -3,6 +3,12 @@
 
 This document lists differences found in the Amiga and DOS executables and bytecode of Another World.
 
+- [Game Copy Protection](#game-copy-protection)
+- [Variables](#variables)
+- [Opcodes Dispatch](#opcodes-dispatch)
+- [Data Files](#data-files)
+- [Cracks](#cracks)
+
 ## Game Copy Protection
 
 To prevent piracy, the game was bundled with a code wheel.
@@ -56,7 +62,7 @@ if (_part == 16000 && _vars[0x67] == 1) {
 }
 ```
 
-Interchanging the Amiga and DOS bytecode with another interpreter would require patching the bytecode or the executable.
+While it is possible to use the Amiga datafiles with the DOS executable, the 0xE4 variable prevents the other way around.
 
 
 ## Game Code
@@ -138,14 +144,14 @@ The "Out of This World" and "Interplay" screens can be toggled by setting bit 7 
 
 The Amiga bytecode maps both `jump` and `up` to the same button (0xFB).
 
-The DOS bytecode relies on the variable 0xE5 for the jump action.
+The DOS bytecode relies on the variable 0xE5 for the `jump` action.
 
 
 ## Opcodes Dispatch
 
-The Amiga executable dispatches the opcodes with a sequence of 'if/else if' checks.
+The Amiga executable dispatches the opcodes with a sequence of 'if/else if' conditions.
 
-The order roughly corresponds to the frequency of the opcodes found in the game code.
+The order of these checks roughly corresponds to the frequency of the opcodes found in the game code.
 
 ![Amiga Opcodes Histogram](amiga_opcodes_histogram.png)
 
@@ -187,3 +193,101 @@ seg000:1AD5    shl ax, 1
 seg000:1AD7    mov bx, ax
 seg000:1AD9    jmp ds:_op_table[bx] ; opcodes jump table
 ```
+
+## Data Files
+
+The game data is stored in several `Bank` files. The offsets and sizes for each file are stored in the `memlist.bin` file for the DOS version.
+
+On Amiga (and Atari ST), the `memlist.bin` file is stored in the executable itself.
+
+Version         | Offset
+--------------- | ------
+Amiga (French)  | 0x5E7A
+Amiga (English) | 0x5EC2
+Atari ST        | 0x7EF2
+
+
+## Cracks
+
+The game copy protection was cracked after the game release. Let's have a closer look at one version.
+
+```
+$ md5sum ANOTHER.EXE
+4b68a50a1cbb35dcb977932b11aa7b78  ANOTHER.EXE
+$ strings ANOTHER.EXE
+THIS GAME WAS CRACKED BY TDT 12-04-92
+```
+
+The game shows the copy protection screen but accepts any input for the symbols.
+
+
+From the output of the `strings` command, it seems the executable is packed. Let's run it through `unp`.
+
+![dosbox unp](dosbox-unp.png)
+
+With an unpacked executable, we can now generate the disassembly.
+
+After mapping function names and reviewing the code, the conditional jump opcode implementation looks suspicious.
+
+```
+seg000:1B98 op_condJmp_tampered:
+seg000:1B98    push    cs
+seg000:1B99    mov     ax, offset loc_15206
+seg000:1B9C    push    ds
+seg000:1B9D    push    ax
+seg000:1B9E    retf
+```
+
+Looking at the implementation of that trampoline function, it patches the bytecode from the offset 0xC4C.
+
+```
+seg001:0016 loc_15206:
+seg001:0016    cmp     di, 0C4Ch             ; bytecode offset
+seg001:001A    jnz     short loc_1521D
+seg001:001C    mov     byte ptr es:[di], 81h
+seg001:0020    mov     word ptr es:[di+3], 0B70Ch
+seg001:0026    mov     word ptr es:[di+99h], 0ED0Ch
+seg001:002D loc_1521D:
+seg001:002D    mov     ax, offset op_condJmp ; jump back to the original opcode implementation
+seg001:0030    push    ax
+seg001:0031    xor     ah, ah
+seg001:0033    xor     ch, ch
+seg001:0035    mov     al, es:[di]
+seg001:0038    retf
+```
+
+Let's dump the game bytecode around `0x0C4C` and `0x0CE5`.
+
+```
+0C4B: (0A) jmpIf(VAR(0x29) == VAR(0x1E), @0C66)
+0C51: (0A) jmpIf(VAR(0x29) == VAR(0x1F), @0C66)
+0C57: (0A) jmpIf(VAR(0x29) == VAR(0x20), @0C66)
+0C5D: (0A) jmpIf(VAR(0x29) == VAR(0x21), @0C66)
+0C63: (07) jmp(@0D4F)
+...
+0CE1: (0A) jmpIf(VAR(0x32) < 6, @0D4F)
+0CE7: (0A) jmpIf(VAR(0x64) < 20, @0D4F)
+```
+
+The variables 0x1E..0x21 contains the 4 symbols to be entered.
+Variables 0x32 and 0x64 hold other counters that must be greater than 6 and 20.
+
+
+Let's have a look at the bytecode patching.
+
+
+The bytes '0x81 0x0B, 0x70' will change the first condition to accept any symbol.
+```
+0C4B: (0A) jmpIf(VAR(0x29) != VAR(0x1E), @0CB7)
+...
+0CB7: (04) call(@0A15)
+```
+
+The bytes '0x0E 0x0C' will patch the symbols counters comparaison and exit the protection screen.
+```
+0CE1: (0A) jmpIf(VAR(0x32) < 6, @0CED)
+0CE7: (0A) jmpIf(VAR(0x64) < 20, @0D4F)
+0CED: (04) call(@0A15)
+```
+
+With these in place, the two main protection checks are passing and the game can start.
