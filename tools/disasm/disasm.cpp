@@ -9,11 +9,11 @@
 enum {
 	MAX_TASKS = 64,
 	MAX_FILESIZE = 0x10000,
-	MAX_SYMBOLS = 0x10000,
+	MAX_SHAPENAMES = 0x10000,
 };
 
 static uint8_t _fileBuf[MAX_FILESIZE];
-static char _symbolsTable[MAX_SYMBOLS][7];
+static char _shapeNames[MAX_SHAPENAMES][7]; // shape (polygons) names are 6 characters long
 
 static bool _is3DO = false;
 
@@ -27,13 +27,13 @@ static uint16_t readWord(const uint8_t *p) {
 	}
 }
 
-static void readSymbols(const uint8_t *buf, uint32_t size) {
+static void readShapeNames(const uint8_t *buf, uint32_t size) {
 	uint32_t offset = 0;
 	while (offset < size) {
 		const uint16_t addr = readWord(buf + offset); offset += 2;
-		assert(addr < MAX_SYMBOLS);
-		memcpy(_symbolsTable[addr], buf + offset, 6); offset += 6;
-		fprintf(stdout, "Symbol '%s' at 0x%x\n", _symbolsTable[addr], addr);
+		assert(addr < MAX_SHAPENAMES);
+		memcpy(_shapeNames[addr], buf + offset, 6); offset += 6;
+		// fprintf(stdout, "Shape '%s' at 0x%x\n", _shapeNames[addr], addr);
 	}
 }
 
@@ -306,12 +306,13 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		break;
 	default:
 		if (opcode & 0xC0) {
-			const uint16_t offset = args[0] << 1;
-			fprintf(_out, "SHAPE_0x%02X offset=0x%04x (bank%d.mat) x=%d y=%d", opcode, offset, args[3], args[1], args[2]);
-			const char *name = _symbolsTable[offset];
+			const uint16_t offset = args[0];
+			fprintf(_out, "drawShape(code=0x%02X, x=%d, y=%d", opcode, args[1], args[2]);
+			const char *name = _shapeNames[offset];
 			if (name[0]) {
-				fprintf(_out, " name=%s", name);
+				fprintf(_out, ", name=%s", name);
 			}
+			fprintf(_out, "); // offset=0x%04X (bank%d.mat)", offset << 1, args[3]);
 		}
 		break;
 	}
@@ -330,7 +331,7 @@ static int parse(const uint8_t *buf, uint32_t size) {
 			a = *p++; // offset_lo
 			b = *p++; // x
 			c = *p++; // y
-			int args[4] = { ((op << 8) | a), b, c, 1 };
+			int args[4] = { (((op & 0x7F) << 8) | a), b, c, 1 };
 			visitOpcode(addr, op, args);
 			continue;
 		}
@@ -344,9 +345,8 @@ static int parse(const uint8_t *buf, uint32_t size) {
 			if (!(op & 8) && !(op & 4)) {
 				p++;
 			}
-			d = *p++;
-			if ((!(op & 2) && !(op & 1)) || ((op & 2) && (op & 1))) {
-				p--;
+			if ((!(op & 2) && (op & 1)) || ((op & 2) && !(op & 1))) {
+				p++;
 			}
 			int args[4] = { a, b, c, ((op & 3) == 3) ? 2 : 1 };
 			visitOpcode(addr, op, args);
@@ -549,7 +549,7 @@ int main(int argc, char *argv[]) {
 				strcpy(ext, ".nom");
 				const int size = readFile(path);
 				if (size != 0) {
-					readSymbols(_fileBuf, size);
+					readShapeNames(_fileBuf, size);
 				}
 			}
 			const int size = readFile(argv[1]);

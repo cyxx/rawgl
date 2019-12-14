@@ -500,19 +500,16 @@ void Script::executeTask() {
 					pt.y = _scriptVars[pt.y];
 				}
 			}
-			uint16_t zoom = _scriptPtr.fetchByte();
+			uint16_t zoom = 64;
 			if (!(opcode & 2)) {
-				if (!(opcode & 1)) {
-					--_scriptPtr.pc;
-					zoom = 0x40;
-				} else {
-					zoom = _scriptVars[zoom];
+				if (opcode & 1) {
+					zoom = _scriptVars[_scriptPtr.fetchByte()];
 				}
 			} else {
 				if (opcode & 1) {
 					_res->_useSegVideo2 = true;
-					--_scriptPtr.pc;
-					zoom = 0x40;
+				} else {
+					zoom = _scriptPtr.fetchByte();
 				}
 			}
 			debug(DBG_VIDEO, "vid_opcd_0x40 : off=0x%X x=%d y=%d", off, pt.x, pt.y);
