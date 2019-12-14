@@ -382,12 +382,9 @@ void Script::restartAt(int part, int pos) {
 	_ply->stop();
 	_mix->stopAll();
 	if (_res->getDataType() == Resource::DT_20TH_EDITION && part != 16001) {
-		// difficulty (0 to 2)
-		_scriptVars[0xBF] = 1;
-		// mute sounds and enable resnum >= 2000 (Debug Mode ?)
-//		_scriptVars[0xDB] = 1;
-		// playback sounds resnum >= 146
-		_scriptVars[0xDE] = Graphics::_is1991 ? 0 : 1;
+		_scriptVars[0xBF] = 1; // difficulty (0 to 2)
+		// _scriptVars[0xDB] = 1; // preload sounds (resnum >= 2000)
+		_scriptVars[0xDE] = Graphics::_is1991 ? 0 : 1; // playback remastered sounds (resnum >= 146)
 	}
 	if (_res->getDataType() == Resource::DT_DOS && part == kPartCopyProtection) {
 		// VAR(0x54) indicates if the "Out of this World" title screen should be presented
@@ -476,7 +473,7 @@ void Script::executeTask() {
 			if (_is3DO) {
 				_vid->drawShape3DO(0xFF, 64, &pt);
 			} else {
-				_vid->drawShape(0xFF, 0x40, &pt);
+				_vid->drawShape(0xFF, 64, &pt);
 			}
 		} else if (opcode & 0x40) {
 			Point pt;

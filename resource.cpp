@@ -388,16 +388,19 @@ void Resource::update(uint16_t num) {
 		if (num >= 3000) {
 			loadBmp(num);
 			break;
+		} else if (num >= 2000) {
+			break;
 		}
 		/* fall-through */
 	case DT_WIN31:
 		if (num == 71 || num == 83) {
 			loadBmp(num);
+			break;
 		}
 		for (int i = 0; _memListBmp[i] != -1; ++i) {
 			if (num == _memListBmp[i]) {
 				loadBmp(num);
-				break;
+				return;
 			}
 		}
 		break;
