@@ -151,10 +151,6 @@ The DOS bytecode relies on the variable 0xE5 for the `jump` action.
 
 The Amiga executable dispatches the opcodes with a sequence of 'if/else if' conditions.
 
-The order of these checks roughly corresponds to the frequency of the opcodes found in the game code.
-
-![Amiga Opcodes Histogram](amiga_opcodes_histogram.png)
-
 ```
 0162    clr.l   d0
 0164    move.b  (a0)+,d0
@@ -174,6 +170,10 @@ The order of these checks roughly corresponds to the frequency of the opcodes fo
 0246    cmp.b   #$1A,d0
 024A    beq.w   loc_638 ; op_playMusic
 ```
+
+The order of these checks roughly corresponds to the frequency of the opcodes found in the game code.
+
+![Amiga Opcodes Histogram](amiga_opcodes_histogram.png)
 
 The DOS executable relies on a jump table.
 
@@ -208,6 +208,8 @@ Atari ST        | 0x7EF2
 
 
 ## Cracks
+
+### DOS
 
 The game copy protection was cracked after the game release. Let's have a closer look at one version.
 
@@ -276,14 +278,14 @@ Variables 0x32 and 0x64 hold other counters that must be greater than 6 and 20.
 Let's have a look at the bytecode patching.
 
 
-The bytes '0x81 0x0B, 0x70' will change the first condition to accept any symbol.
+The bytes '0x81 0xB7, 0x0C' will change the first condition to accept any symbol.
 ```
 0C4B: (0A) jmpIf(VAR(0x29) != VAR(0x1E), @0CB7)
 ...
 0CB7: (04) call(@0A15)
 ```
 
-The bytes '0x0E 0x0C' will patch the symbols counters comparaison and exit the protection screen.
+The bytes '0xED 0x0C' will patch the symbols counters comparison and exit the protection screen.
 ```
 0CE1: (0A) jmpIf(VAR(0x32) < 6, @0CED)
 0CE7: (0A) jmpIf(VAR(0x64) < 20, @0D4F)
@@ -291,3 +293,50 @@ The bytes '0x0E 0x0C' will patch the symbols counters comparaison and exit the p
 ```
 
 With these in place, the two main protection checks are passing and the game can start.
+
+### Amiga
+
+[WHDLoad](http://www.whdload.de/games/AnotherWorld.html) removes the protection at the installation time.
+
+The archive contains the source code of the patcher and supports 3 different versions.
+
+It also works by patching the bytecode. Let's have a look at the French version.
+
+The patcher works by intercepting the file reads and matches on the file offset.
+
+```
+cmp.l   #$1B5EE,d1 ; protection load
+beq.b   .prot
+```
+
+This corresponds to the resource #21
+
+```
+{ 4, 0x1, 0x01B5EE, 0x0D2A, 0x0D2A },
+```
+
+As the file is not compressed, the bytes can be modified in place.
+
+```
+; 0A 80 29 1E 09 6A 0A 80 29
+lea     $94f(a1),a2
+move.b  #$07,(a2)+
+move.b  #$09,(a2)+
+move.b  #$bb,(a2)
+; 0A 01 1B 15 0A 28 14 32
+lea     $9db(a1),a2
+move.b  #$07,(a2)+
+move.b  #$09,(a2)+
+move.b  #$f1,(a2)
+```
+
+These instructions replace conditionals with jumps.
+
+```
+; 094F: (0A) jmpIf(VAR(0x29) == VAR(0x1E), @096A)
+094F: (07) jmp(@09BB)
+; 09DB: (0A) jmpIf(VAR(0x1B) != 21, @0A28)
+09DB: (07) jmp(@09F1)
+```
+
+With the symbols and counters comparisons removed, the protection screen successfully exits.
