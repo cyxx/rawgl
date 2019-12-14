@@ -273,6 +273,7 @@ void Mixer::playAifcMusic(const char *path, uint32_t offset) {
 		_aifc = new AifcPlayer();
 	}
 	if (_impl) {
+		_impl->stopAifcMusic();
 		if (_aifc->play(Mixer_impl::kMixFreq, path, offset)) {
 			_impl->playAifcMusic(_aifc);
 		}
@@ -290,6 +291,7 @@ void Mixer::stopAifcMusic() {
 void Mixer::playSfxMusic(int num) {
 	debug(DBG_SND, "Mixer::playSfxMusic(%d)", num);
 	if (_impl && _sfx) {
+		_impl->stopSfxMusic();
 		_sfx->play(Mixer_impl::kMixFreq);
 		return _impl->playSfxMusic(_sfx);
 	}

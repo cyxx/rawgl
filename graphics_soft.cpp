@@ -457,7 +457,7 @@ void GraphicsSoft::drawRect(int num, uint8_t color, const Point *pt, int w, int 
 
 void GraphicsSoft::drawBitmapOverlay(const uint8_t *data, int w, int h, int fmt, SystemStub *stub) {
 	if (fmt == FMT_RGB555) {
-		stub->setScreenPixels555((const uint16_t *)data, 112, 48);
+		stub->setScreenPixels555((const uint16_t *)data, w, h);
 		stub->updateScreen();
 	}
 }
