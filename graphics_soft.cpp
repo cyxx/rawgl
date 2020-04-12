@@ -32,6 +32,7 @@ struct GraphicsSoft: Graphics {
 	void setSize(int w, int h);
 	void drawPolygon(uint8_t color, const QuadStrip &qs);
 	void drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color);
+	void drawSpriteMask(int x, int y, uint8_t color, const uint8_t *data);
 	void drawPoint(int16_t x, int16_t y, uint8_t color);
 	void drawLineT(int16_t x1, int16_t x2, int16_t y, uint8_t color);
 	void drawLineN(int16_t x1, int16_t x2, int16_t y, uint8_t color);
@@ -45,7 +46,7 @@ struct GraphicsSoft: Graphics {
 	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, int count);
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
-	virtual void drawSprite(int buffer, int num, const Point *pt);
+	virtual void drawSprite(int buffer, int num, const Point *pt, uint8_t color);
 	virtual void drawBitmap(int buffer, const uint8_t *data, int w, int h, int fmt);
 	virtual void drawPoint(int buffer, uint8_t color, const Point *pt);
 	virtual void drawQuadStrip(int buffer, uint8_t color, const QuadStrip *qs);
@@ -97,8 +98,8 @@ void GraphicsSoft::setSize(int w, int h) {
 
 static uint32_t calcStep(const Point &p1, const Point &p2, uint16_t &dy) {
 	dy = p2.y - p1.y;
-	uint16_t delta = (dy == 0) ? 1 : dy;
-	return ((p2.x - p1.x) << 16) / delta;
+	uint16_t delta = (dy <= 1) ? 1 : dy;
+	return ((p2.x - p1.x) * (0x4000 / delta)) << 2;
 }
 
 void GraphicsSoft::drawPolygon(uint8_t color, const QuadStrip &quadStrip) {
@@ -197,6 +198,31 @@ void GraphicsSoft::drawChar(uint8_t c, uint16_t x, uint16_t y, uint8_t color) {
 					if (ch & (1 << (7 - i))) {
 						((uint16_t *)(_drawPagePtr + offset))[j * _w + i] = rgbColor;
 					}
+				}
+			}
+		}
+	}
+}
+void GraphicsSoft::drawSpriteMask(int x, int y, uint8_t color, const uint8_t *data) {
+	const int w = *data++;
+	x = xScale(x - w / 2);
+	const int h = *data++;
+	y = yScale(y - h / 2);
+	assert(_byteDepth == 1);
+	for (int j = 0; j < h; ++j) {
+		const int yoffset = y + j;
+		for (int i = 0; i < (w + 15) / 16; ++i) {
+			const uint16_t mask = READ_BE_UINT16(data); data += 2;
+			if (yoffset < 0 || yoffset >= _h) {
+				continue;
+			}
+			const int xoffset = x + i * 16;
+			for (int b = 0; b < 16; ++b) {
+				if (xoffset + b < 0 || xoffset + b >= _w) {
+					continue;
+				}
+				if (mask & (1 << (15 - b))) {
+					_drawPagePtr[yoffset * _w + xoffset + b] = color;
 				}
 			}
 		}
@@ -321,9 +347,13 @@ void GraphicsSoft::setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, i
 	}
 }
 
-void GraphicsSoft::drawSprite(int buffer, int num, const Point *pt) {
+void GraphicsSoft::drawSprite(int buffer, int num, const Point *pt, uint8_t color) {
 	if (_is1991) {
-		// no-op for 1991
+		if (num < _shapesMaskCount) {
+			setWorkPagePtr(buffer);
+			const uint8_t *data = _shapesMaskData + _shapesMaskOffset[num];
+			drawSpriteMask(pt->x, pt->y, color, data);
+		}
 	}
 }
 

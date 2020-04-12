@@ -41,6 +41,9 @@ struct Graphics {
 	static const uint8_t _font[];
 	static bool _is1991; // draw graphics as in the original 1991 game release
 	static bool _use555; // use 16bits graphics buffer (for 3DO)
+	static const uint16_t _shapesMaskOffset[];
+	static const int _shapesMaskCount;
+	static const uint8_t _shapesMaskData[];
 
 	int _fixUpPalette;
 	bool _screenshot;
@@ -53,7 +56,7 @@ struct Graphics {
 	virtual void setFont(const uint8_t *src, int w, int h) = 0;
 	virtual void setPalette(const Color *colors, int count) = 0;
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize) = 0;
-	virtual void drawSprite(int buffer, int num, const Point *pt) = 0;
+	virtual void drawSprite(int buffer, int num, const Point *pt, uint8_t color) = 0;
 	virtual void drawBitmap(int buffer, const uint8_t *data, int w, int h, int fmt) = 0;
 	virtual void drawPoint(int buffer, uint8_t color, const Point *pt) = 0;
 	virtual void drawQuadStrip(int buffer, uint8_t color, const QuadStrip *qs) = 0;

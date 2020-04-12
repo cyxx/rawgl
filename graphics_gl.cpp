@@ -312,7 +312,7 @@ struct GraphicsGL : Graphics {
 	virtual void setFont(const uint8_t *src, int w, int h);
 	virtual void setPalette(const Color *colors, int count);
 	virtual void setSpriteAtlas(const uint8_t *src, int w, int h, int xSize, int ySize);
-	virtual void drawSprite(int listNum, int num, const Point *pt);
+	virtual void drawSprite(int listNum, int num, const Point *pt, uint8_t color);
 	virtual void drawBitmap(int listNum, const uint8_t *data, int w, int h, int fmt);
 	virtual void drawPoint(int listNum, uint8_t color, const Point *pt);
 	virtual void drawQuadStrip(int listNum, uint8_t color, const QuadStrip *qs);
@@ -484,7 +484,7 @@ static void drawSpriteHelper(const Point *pt, int num, int xSize, int ySize, int
 	drawTexQuad(pos, uv, texId);
 }
 
-void GraphicsGL::drawSprite(int listNum, int num, const Point *pt) {
+void GraphicsGL::drawSprite(int listNum, int num, const Point *pt, uint8_t color) {
 	assert(listNum < NUM_LISTS);
 	_fptr.glBindFramebuffer(GL_FRAMEBUFFER, _fbPage0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0 + listNum);

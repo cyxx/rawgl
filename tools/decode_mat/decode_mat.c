@@ -6,6 +6,7 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include "bitmap.h"
+#include "data.h"
 
 static uint8_t palette[16 * 3] = {
 	0x22,0x22,0x33,0x33,0x33,0x55,0x33,0x44,0x77,0x55,0xaa,0xff,0x77,0x66,0x66,0xdd,0xbb,0xaa,0x99,0x77,0x77,0xdd,0x99,0x88,
@@ -54,8 +55,8 @@ static void readShapeNames(const uint8_t *buf, uint32_t size) {
 
 static uint32_t calcStep(int p1_x, int p1_y, int p2_x, int p2_y, uint16_t *dy) {
 	*dy = p2_y - p1_y;
-	uint16_t delta = (*dy == 0) ? 1 : *dy;
-	return ((p2_x - p1_x) << 16) / delta;
+	uint16_t delta = (*dy <= 1) ? 1 : *dy;
+	return ((p2_x - p1_x) * (0x4000 / delta)) << 2;
 }
 
 static void fillPolygon(const uint8_t *data, int color, int zoom, int x, int y) {
@@ -76,8 +77,8 @@ static void fillPolygon(const uint8_t *data, int color, int zoom, int x, int y) 
 	assert((count & 1) == 0);
 	assert(count <= MAX_VERTICES);
 	for (int i = 0; i < count; ++i) {
-		_vertices[i].x = x1 + data[0] * zoom / SCALE;
-		_vertices[i].y = y1 + data[1] * zoom / SCALE;
+		_vertices[i].x = data[0] * zoom / SCALE;
+		_vertices[i].y = data[1] * zoom / SCALE;
 		data += 2;
 	}
 
@@ -89,9 +90,9 @@ static void fillPolygon(const uint8_t *data, int color, int zoom, int x, int y) 
 	int i = 0;
 	int j = count - 1;
 
-	x2 = _vertices[i].x;
-	x1 = _vertices[j].x;
-	int scanline = (_vertices[i].y < _vertices[j].y) ? _vertices[i].y : _vertices[j].y;
+	x2 = x1 + _vertices[i].x;
+	x1 = x1 + _vertices[j].x;
+	int scanline = y1;
 
 	++i;
 	--j;
@@ -134,7 +135,7 @@ static void fillPolygon(const uint8_t *data, int color, int zoom, int x, int y) 
 						x2 = SCREEN_W - 1;
 					}
 					const int len = x2 - x1 + 1;
-					if (len > 0 && x1 >= 0) {
+					if (len > 0) {
 						memset(_screen + scanline * SCREEN_W + x1, color, len);
 					}
 				}
@@ -142,6 +143,27 @@ static void fillPolygon(const uint8_t *data, int color, int zoom, int x, int y) 
 				cpt2 += step2;
 				++scanline;
 				if (scanline >= SCREEN_H) return;
+			}
+		}
+	}
+}
+
+static void decodeShapeMask(int num, int color, int x, int y) {
+	static const int COUNT = sizeof(shapes_offset) / sizeof(shapes_offset[0]);
+	if (num < COUNT) {
+		const uint8_t *p = shapes_data + shapes_offset[num];
+		const int w = *p++;
+		x -= w / 2;
+		const int h = *p++;
+		y -= h / 2;
+		for (int j = 0; j < h; ++j) {
+			for (int i = 0; i < w; i += 16) {
+				const uint16_t mask = readWord(p); p += 2;
+				for (int b = 0; b < 16; ++b) {
+					if (mask & (1 << (15 - b))) {
+						_screen[(y + j) * SCREEN_W + x + i * 16 + b] = color;
+					}
+				}
 			}
 		}
 	}
@@ -162,7 +184,9 @@ static void dumpShapeParts(const uint8_t *data, int zoom, int x, int y) {
 		int color = 0xFF;
 		if (offset & 0x8000) {
 			color = data[0] & 0x7F;
+			decodeShapeMask(data[1], color, x1, y1);
 			data += 2;
+			continue;
 		}
 		offset <<= 1;
 		dumpShape(_buffer + offset, 0, color, zoom, x1, y1);

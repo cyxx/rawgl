@@ -143,10 +143,10 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 						drawShapePart3DO(color, part, &po);
 						continue;
 					}
-					offset &= 0x7FFF;
 				}
+				offset <<= 1;
 				uint8_t *bak = _pData.pc;
-				_pData.pc = _dataBuf + offset * 2;
+				_pData.pc = _dataBuf + offset;
 				drawShape3DO(color, zoom, &po);
 				_pData.pc = bak;
 			} while (--count != 0);
@@ -260,29 +260,31 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 		po.y += _pData.fetchByte() * zoom / 64;
 		uint16_t color = 0xFF;
 		if (off & 0x8000) {
-			color = *_pData.pc & 0x7F;
-			if (!Graphics::_is1991 && _hasHeadSprites && _displayHead) {
-				const int id = _pData.pc[1];
-				switch (id) {
+			color = _pData.fetchByte();
+			const int num = _pData.fetchByte();
+			if (Graphics::_is1991 && (color & 0x80)) {
+				_graphics->drawSprite(_buffers[0], num, &po, color & 0x7F);
+				continue;
+			} else if (_hasHeadSprites && _displayHead) {
+				switch (num) {
 				case 0x4A: { // facing right
 						Point pos(po.x - 4, po.y - 7);
-						_graphics->drawSprite(_buffers[0], 0, &pos);
+						_graphics->drawSprite(_buffers[0], 0, &pos, color);
 					}
 				case 0x4D:
 					return;
 				case 0x4F: { // facing left
 						Point pos(po.x - 4, po.y - 7);
-						_graphics->drawSprite(_buffers[0], 1, &pos);
+						_graphics->drawSprite(_buffers[0], 1, &pos, color);
 					}
 				case 0x50:
 					return;
 				}
 			}
-			_pData.pc += 2;
 		}
-		off &= 0x7FFF;
+		off <<= 1;
 		uint8_t *bak = _pData.pc;
-		_pData.pc = _dataBuf + off * 2;
+		_pData.pc = _dataBuf + off;
 		drawShape(color, zoom, &po);
 		_pData.pc = bak;
 	}
