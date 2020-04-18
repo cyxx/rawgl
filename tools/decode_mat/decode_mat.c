@@ -157,7 +157,7 @@ static void decodeShapeMask(int num, int color, int x, int y) {
 		const int h = *p++;
 		y -= h / 2;
 		for (int j = 0; j < h; ++j) {
-			for (int i = 0; i < w; i += 16) {
+			for (int i = 0; i <= w / 16; ++i) {
 				const uint16_t mask = readWord(p); p += 2;
 				for (int b = 0; b < 16; ++b) {
 					if (mask & (1 << (15 - b))) {
@@ -183,10 +183,12 @@ static void dumpShapeParts(const uint8_t *data, int zoom, int x, int y) {
 		data += 2;
 		int color = 0xFF;
 		if (offset & 0x8000) {
-			color = data[0] & 0x7F;
-			decodeShapeMask(data[1], color, x1, y1);
-			data += 2;
-			continue;
+			color = *data++;
+			const int num = *data++;
+			if (color & 0x80) {
+				decodeShapeMask(num, color & 0x7F, x1, y1);
+				continue;
+			}
 		}
 		offset <<= 1;
 		dumpShape(_buffer + offset, 0, color, zoom, x1, y1);

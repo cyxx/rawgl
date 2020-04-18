@@ -137,10 +137,9 @@ void Video::drawShape3DO(int color, int zoom, const Point *pt) {
 				color = 0xFF;
 				if (offset & 0x8000) {
 					color = _pData.fetchByte();
-					int part = _pData.fetchByte();
+					const int num = _pData.fetchByte();
 					if (color & 0x80) {
-						color &= 0xF;
-						drawShapePart3DO(color, part, &po);
+						drawShapePart3DO(color & 0xF, num, &po);
 						continue;
 					}
 				}
@@ -254,17 +253,19 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 	int16_t n = _pData.fetchByte();
 	debug(DBG_VIDEO, "Video::drawShapeParts n=%d", n);
 	for ( ; n >= 0; --n) {
-		uint16_t off = _pData.fetchWord();
+		uint16_t offset = _pData.fetchWord();
 		Point po(pt);
 		po.x += _pData.fetchByte() * zoom / 64;
 		po.y += _pData.fetchByte() * zoom / 64;
 		uint16_t color = 0xFF;
-		if (off & 0x8000) {
+		if (offset & 0x8000) {
 			color = _pData.fetchByte();
 			const int num = _pData.fetchByte();
-			if (Graphics::_is1991 && (color & 0x80)) {
-				_graphics->drawSprite(_buffers[0], num, &po, color & 0x7F);
-				continue;
+			if (Graphics::_is1991) {
+				if (color & 0x80) {
+					_graphics->drawSprite(_buffers[0], num, &po, color & 0x7F);
+					continue;
+				}
 			} else if (_hasHeadSprites && _displayHead) {
 				switch (num) {
 				case 0x4A: { // facing right
@@ -281,10 +282,11 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 					return;
 				}
 			}
+			color &= 0x7F;
 		}
-		off <<= 1;
+		offset <<= 1;
 		uint8_t *bak = _pData.pc;
-		_pData.pc = _dataBuf + off;
+		_pData.pc = _dataBuf + offset;
 		drawShape(color, zoom, &po);
 		_pData.pc = bak;
 	}

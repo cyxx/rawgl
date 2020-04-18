@@ -211,7 +211,7 @@ void GraphicsSoft::drawSpriteMask(int x, int y, uint8_t color, const uint8_t *da
 	assert(_byteDepth == 1);
 	for (int j = 0; j < h; ++j) {
 		const int yoffset = y + j;
-		for (int i = 0; i < (w + 15) / 16; ++i) {
+		for (int i = 0; i <= w / 16; ++i) {
 			const uint16_t mask = READ_BE_UINT16(data); data += 2;
 			if (yoffset < 0 || yoffset >= _h) {
 				continue;
