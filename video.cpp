@@ -610,13 +610,12 @@ void Video::drawRect(uint8_t page, uint8_t color, int x1, int y1, int x2, int y2
 	_graphics->drawRect(page, color, &pt, x2 - x1, y2 - y1);
 }
 
-void Video::drawPauseBitmap(SystemStub *stub) {
-	if (_res->getDataType() == Resource::DT_3DO) {
-		int w, h;
-		uint16_t *data = _res->_3do->loadShape555("PauseShape", &w, &h);
-		if (data) {
-			_graphics->drawBitmapOverlay((const uint8_t *)data, w, h, FMT_RGB555, stub);
-			free(data);
-		}
+void Video::drawBitmap3DO(const char *name, SystemStub *stub) {
+	assert(_res->getDataType() == Resource::DT_3DO);
+	int w, h;
+	uint16_t *data = _res->_3do->loadShape555(name, &w, &h);
+	if (data) {
+		_graphics->drawBitmapOverlay((const uint8_t *)data, w, h, FMT_RGB555, stub);
+		free(data);
 	}
 }

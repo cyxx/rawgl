@@ -190,7 +190,7 @@ void SystemStub_SDL::processEvents() {
 			}
 			break;
 		case SDL_KEYUP:
-			switch(ev.key.keysym.sym) {
+			switch (ev.key.keysym.sym) {
 			case SDLK_LEFT:
 				_pi.dirMask &= ~PlayerInput::DIR_LEFT;
 				break;
@@ -220,6 +220,7 @@ void SystemStub_SDL::processEvents() {
 			case SDLK_p:
 				_pi.pause = true;
 				break;
+			case SDLK_ESCAPE:
 			case SDLK_AC_BACK:
 				_pi.back = true;
 				break;

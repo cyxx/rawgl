@@ -55,8 +55,15 @@ void Engine::run() {
 		processInput();
 		_script.runTasks();
 		_mix.update();
-		if (_res.getDataType() == Resource::DT_3DO && _res._nextPart == 16009) {
-			_state = kStateEnd3DO;
+		if (_res.getDataType() == Resource::DT_3DO) {
+			switch (_res._nextPart) {
+			case 16009:
+				_state = kStateEnd3DO;
+				break;
+			case 16000:
+				_state = kStateTitle3DO;
+				break;
+			}
 		}
 		break;
 	}

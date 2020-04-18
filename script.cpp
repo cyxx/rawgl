@@ -671,13 +671,48 @@ void Script::inp_handleSpecialKeys() {
 	if (_stub->_pi.pause) {
 		if (_res->_currentPart != kPartCopyProtection && _res->_currentPart != kPartIntro) {
 			_stub->_pi.pause = false;
-			_vid->drawPauseBitmap(_stub);
+			if (_is3DO) {
+				_vid->drawBitmap3DO("PauseShape", _stub);
+			}
 			while (!_stub->_pi.pause && !_stub->_pi.quit) {
 				_stub->processEvents();
 				_stub->sleep(50);
 			}
 		}
 		_stub->_pi.pause = false;
+	}
+	if (_stub->_pi.back) {
+		_stub->_pi.back = false;
+		if (_is3DO) {
+			static const char *names[] = { "EndShape1", "EndShape2" };
+			int current = 0;
+			_vid->drawBitmap3DO(names[current], _stub);
+			while (!_stub->_pi.quit) {
+				_stub->processEvents();
+				_stub->sleep(50);
+				if (_stub->_pi.dirMask & PlayerInput::DIR_LEFT) {
+					_stub->_pi.dirMask &= ~PlayerInput::DIR_LEFT;
+					if (current != 0) {
+						current = 0;
+						_vid->drawBitmap3DO(names[current], _stub);
+					}
+				}
+				if (_stub->_pi.dirMask & PlayerInput::DIR_RIGHT) {
+					_stub->_pi.dirMask &= ~PlayerInput::DIR_RIGHT;
+					if (current != 1) {
+						current = 1;
+						_vid->drawBitmap3DO(names[current], _stub);
+					}
+				}
+				if (_stub->_pi.action) {
+					_stub->_pi.action = true;
+					if (current == 0) {
+						_res->_nextPart = 16000;
+					}
+					break;
+				}
+			}
+		}
 	}
 	if (_stub->_pi.code) {
 		_stub->_pi.code = false;
