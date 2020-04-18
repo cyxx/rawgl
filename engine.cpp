@@ -84,7 +84,7 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	_res.allocMemBlock();
 	_res.readEntries();
 	_res.dumpEntries();
-	const bool isNth = (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION);
+	const bool isNth = !Graphics::_is1991 && (_res.getDataType() == Resource::DT_15TH_EDITION || _res.getDataType() == Resource::DT_20TH_EDITION);
 	if (isNth) {
 		// get HD background bitmaps resolution
 		_res._nth->getBitmapSize(&w, &h);

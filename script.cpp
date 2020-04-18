@@ -409,11 +409,6 @@ void Script::restartAt(int part, int pos) {
 	if (pos >= 0) {
 		_scriptVars[0] = pos;
 	}
-	if (_vid->_graphics->_fixUpPalette == FIXUP_PALETTE_REDRAW) {
-		if (part == 16009) {
-			_vid->changePal(5);
-		}
-	}
 	_startTime = _timeStamp = _stub->getTimeStamp();
 	if (part == kPartWater) {
 		if (_res->_demo3Joy.start()) {
@@ -705,7 +700,7 @@ void Script::inp_handleSpecialKeys() {
 					}
 				}
 				if (_stub->_pi.action) {
-					_stub->_pi.action = true;
+					_stub->_pi.action = false;
 					if (current == 0) {
 						_res->_nextPart = 16000;
 					}

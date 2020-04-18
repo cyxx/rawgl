@@ -262,7 +262,7 @@ void Video::drawShapeParts(uint16_t zoom, const Point *pgc) {
 			color = _pData.fetchByte();
 			const int num = _pData.fetchByte();
 			if (Graphics::_is1991) {
-				if (color & 0x80) {
+				if (!_hasHeadSprites && (color & 0x80) != 0) {
 					_graphics->drawSprite(_buffers[0], num, &po, color & 0x7F);
 					continue;
 				}
@@ -402,7 +402,7 @@ void Video::copyPage(uint8_t src, uint8_t dst, int16_t vscroll) {
 }
 
 static void decode_amiga(const uint8_t *src, uint8_t *dst) {
-	const int plane_size = 200 * 320 / 8;
+	static const int plane_size = 200 * 320 / 8;
 	for (int y = 0; y < 200; ++y) {
 		for (int x = 0; x < 320; x += 8) {
 			for (int b = 0; b < 8; ++b) {
