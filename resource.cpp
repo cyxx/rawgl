@@ -14,6 +14,7 @@
 #include "util.h"
 #include "video.h"
 
+static const char *atariDemo = "aw.tos";
 
 Resource::Resource(Video *vid, const char *dataDir) 
 	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0) {
@@ -41,7 +42,7 @@ bool Resource::readBank(const MemEntry *me, uint8_t *dstBuf) {
 	char name[10];
 	snprintf(name, sizeof(name), "%s%02x", _bankPrefix, me->bankNum);
 	File f;
-	if (f.open(name, _dataDir)) {
+	if (f.open(name, _dataDir) || (_dataType == DT_ATARI_DEMO && f.open(atariDemo, _dataDir))) {
 		f.seek(me->bankPos);
 		const size_t count = f.read(dstBuf, me->packedSize);
 		ret = (count == me->packedSize);
@@ -120,6 +121,9 @@ void Resource::detectVersion() {
 	} else if (check3DO(f, _dataDir)) {
 		_dataType = DT_3DO;
 		debug(DBG_INFO, "Using 3DO data files");
+	} else if (f.open(atariDemo, _dataDir) && f.size() == 96513) {
+		_dataType = DT_ATARI_DEMO;
+		debug(DBG_INFO, "Using Atari demo file");
 	} else {
 		error("No data files found in '%s'", _dataDir);
 	}
@@ -214,6 +218,31 @@ void Resource::readEntries() {
 		_3do = new Resource3do(_dataDir);
 		if (_3do->readEntries()) {
 			return;
+		}
+		break;
+	case DT_ATARI_DEMO: {
+			File f;
+			if (f.open(atariDemo, _dataDir)) {
+				static const struct {
+					uint8_t type;
+					uint8_t num;
+					uint32_t offset;
+					uint16_t size;
+				} data[] = {
+					{ RT_SHAPE, 0x19, 0x50f0, 65146 },
+					{ RT_PALETTE, 0x17, 0x14f6a, 2048 },
+					{ RT_BYTECODE, 0x18, 0x1576a, 8368 }
+				};
+				_numMemList = ENTRIES_COUNT;
+				for (int i = 0; i < 3; ++i) {
+					MemEntry *entry = &_memList[data[i].num];
+					entry->type = data[i].type;
+					entry->bankNum = 15;
+					entry->bankPos = data[i].offset;
+					entry->packedSize = entry->unpackedSize = data[i].size;
+				}
+				return;
+			}
 		}
 		break;
 	}
@@ -416,6 +445,7 @@ void Resource::update(uint16_t num) {
 		break;
 	case DT_AMIGA:
 	case DT_ATARI:
+	case DT_ATARI_DEMO:
 	case DT_DOS:
 		MemEntry *me = &_memList[num];
 		if (me->status == STATUS_NULL) {
@@ -603,6 +633,7 @@ void Resource::setupPart(int ptrId) {
 		break;
 	case DT_AMIGA:
 	case DT_ATARI:
+	case DT_ATARI_DEMO:
 	case DT_DOS:
 		if (ptrId != _currentPart) {
 			uint8_t ipal = 0;

@@ -83,6 +83,7 @@ struct Resource {
 		DT_20TH_EDITION,
 		DT_WIN31,
 		DT_3DO,
+		DT_ATARI_DEMO, // ST Action Issue44 Disk28
 	};
 
 	enum {

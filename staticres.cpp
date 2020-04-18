@@ -578,6 +578,8 @@ const char *Video::_stringsTable15th[] = {
 	"KFCA",
 };
 
+const char *Video::_str0x194AtariDemo = "Je signale que Monsieur\na tout de meme 40 minutes\net 21 secondes de retard.";
+
 const StrEntry Video::_stringsTable3DO[] = {
 	{ 1, "Copyright } 1997 Cortland Computer, Inc.\nAll rights reserved.\n\nGS/OS Version 7.03\nII Infinitum!" },
 	{ 2, "Copyright } 1997 Peanut Computer, Inc.\nAll rights reserved.\n\nOS/BH Version 7.03" },

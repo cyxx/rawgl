@@ -754,6 +754,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		break;
 	case Resource::DT_AMIGA:
 	case Resource::DT_ATARI:
+	case Resource::DT_ATARI_DEMO:
 	case Resource::DT_DOS: {
 			MemEntry *me = &_res->_memList[resNum];
 			if (me->status == Resource::STATUS_LOADED) {

@@ -11,6 +11,7 @@ The program requires the original data files.
 
 - Amiga (Bank*)
 - Atari (Bank*)
+- Atari demo (AW.TOS)
 - DOS (Bank*, memlist.bin)
 - DOS demo (Demo*, memlist.bin)
 - 15th Anniversary Edition (Data/Pak01.pak, Menu/, Music/)

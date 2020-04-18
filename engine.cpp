@@ -98,7 +98,11 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	}
 	_script.init();
 	_mix.init();
-	if (_res.getDataType() == Resource::DT_DOS || _res.getDataType() == Resource::DT_AMIGA || _res.getDataType() == Resource::DT_ATARI) {
+	switch (_res.getDataType()) {
+	case Resource::DT_DOS:
+	case Resource::DT_AMIGA:
+	case Resource::DT_ATARI:
+	case Resource::DT_ATARI_DEMO:
 		switch (lang) {
 		case LANG_FR:
 			_vid._stringsTable = Video::_stringsTableFr;
@@ -108,6 +112,9 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 			_vid._stringsTable = Video::_stringsTableEng;
 			break;
 		}
+		break;
+	default:
+		break;
 	}
 	if (_res.getDataType() == Resource::DT_3DO && _partNum == 16001) {
 		_state = kStateLogo3DO;
