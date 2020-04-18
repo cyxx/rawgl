@@ -239,7 +239,9 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		fprintf(_out, "setPalette(num=%d)", args[0]);
 		break;
 	case op_changeTasksState:
-		fprintf(_out, "changeTasksState(from=%d,to=%d,type=%d)", args[0], args[1], args[2]);
+		assert(args[0] < MAX_TASKS && args[1] < MAX_TASKS);
+		assert(args[0] <= args[1]);
+		fprintf(_out, "changeTasksState(start=%d,end=%d,state=%d)", args[0], args[1], args[2]);
 		break;
 	case op_selectPage:
 		fprintf(_out, "selectPage(page=%d)", args[0]);

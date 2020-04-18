@@ -223,27 +223,23 @@ void Script::op_setPalette() {
 }
 
 void Script::op_changeTasksState() {
-	uint8_t j = _scriptPtr.fetchByte();
-	uint8_t i = _scriptPtr.fetchByte();
-	int8_t n = (i & 0x3F) - j;
-	if (n < 0) {
-		warning("Script::op_changeTasksState() ec=0x%X (n < 0)", 0x880);
+	uint8_t start = _scriptPtr.fetchByte();
+	uint8_t end = _scriptPtr.fetchByte();
+	if (end < start) {
+		warning("Script::op_changeTasksState() ec=0x%X (end < start)", 0x880);
 		return;
 	}
-	++n;
-	uint8_t a = _scriptPtr.fetchByte();
+	uint8_t state = _scriptPtr.fetchByte();
 
-	debug(DBG_SCRIPT, "Script::op_changeTasksState(%d, %d, %d)", j, i, a);
+	debug(DBG_SCRIPT, "Script::op_changeTasksState(%d, %d, %d)", start, end, state);
 
-	if (a == 2) {
-		uint16_t *p = &_scriptTasks[1][j];
-		while (n--) {
-			*p++ = 0xFFFE;
+	if (state == 2) {
+		for (; start <= end; ++start) {
+			_scriptTasks[1][start] = 0xFFFE;
 		}
-	} else if (a < 2) {
-		uint8_t *p = &_scriptStates[1][j];
-		while (n--) {
-			*p++ = a;
+	} else if (state < 2) {
+		for (; start <= end; ++start) {
+			_scriptStates[1][start] = state;
 		}
 	}
 }
