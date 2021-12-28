@@ -814,7 +814,7 @@ void Script::fixUpPalette_changeScreen(int part, int screen) {
 		break;
 	case 16006:
 		if (screen == 0x4A) { // bitmap resources #144, #145
-			pal = 1;
+			pal = 2;
 		}
 		break;
 	}
