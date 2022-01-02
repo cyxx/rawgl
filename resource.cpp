@@ -357,6 +357,7 @@ void Resource::invalidateAll() {
 		_memList[i].status = STATUS_NULL;
 	}
 	_scriptCurPtr = _memPtrStart;
+	_vid->_currentPal = 0xFF;
 }
 
 static const uint8_t *getSoundsList3DO(int num) {
