@@ -143,7 +143,7 @@ void Player::loadSfxModule(int num) {
 		}
 		_delay = READ_BE_UINT16(p);
 //		_delay = 15700;
-		_delay = _delay * 60 / 7050;
+		_delay = _delay * 60 * 1000 / (PAULA_FREQ * 2);
 		_bufData = p + 0xC0;
 		fprintf(stdout, "eventDelay = %d\n", _delay);
 		loadInstruments(p + 2);

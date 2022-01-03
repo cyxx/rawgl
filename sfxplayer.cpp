@@ -10,6 +10,7 @@
 #include "systemstub.h"
 #include "util.h"
 
+static const int kPaulaFreq = 7159092;
 
 SfxPlayer::SfxPlayer(Resource *res)
 	: _res(res), _delay(0), _resNum(0) {
@@ -18,7 +19,7 @@ SfxPlayer::SfxPlayer(Resource *res)
 
 void SfxPlayer::setEventsDelay(uint16_t delay) {
 	debug(DBG_SND, "SfxPlayer::setEventsDelay(%d)", delay);
-	_delay = delay * 60 / 7050;
+	_delay = delay * 60 * 1000 / kPaulaFreq;
 }
 
 void SfxPlayer::loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos) {
@@ -38,7 +39,7 @@ void SfxPlayer::loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		} else {
 			_delay = delay;
 		}
-		_delay = _delay * 60 / 7050;
+		_delay = _delay * 60 * 1000 / kPaulaFreq;
 		_sfxMod.data = me->bufPtr + 0xC0;
 		debug(DBG_SND, "SfxPlayer::loadSfxModule() eventDelay = %d ms", _delay);
 		prepareInstruments(me->bufPtr + 2);
@@ -232,7 +233,7 @@ void SfxPlayer::handlePattern(uint8_t channel, const uint8_t *data) {
 		} else if (pat.sampleBuffer != 0) {
 			assert(pat.note_1 >= 0x37 && pat.note_1 < 0x1000);
 			// convert amiga period value to hz
-			uint16_t freq = 7159092 / (pat.note_1 * 2);
+			const int freq = kPaulaFreq / (pat.note_1 * 2);
 			debug(DBG_SND, "SfxPlayer::handlePattern() adding sample freq = 0x%X", freq);
 			SfxChannel *ch = &_channels[channel];
 			ch->sampleData = pat.sampleBuffer + pat.sampleStart;
