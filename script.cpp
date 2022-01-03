@@ -53,7 +53,7 @@ void Script::op_movConst() {
 
 void Script::op_mov() {
 	uint8_t i = _scriptPtr.fetchByte();
-	uint8_t j = _scriptPtr.fetchByte();	
+	uint8_t j = _scriptPtr.fetchByte();
 	debug(DBG_SCRIPT, "Script::op_mov(0x%02X, 0x%02X)", i, j);
 	_scriptVars[i] = _scriptVars[j];
 }
@@ -103,7 +103,7 @@ void Script::op_ret() {
 	debug(DBG_SCRIPT, "Script::op_ret()");
 	if (_stackPtr == 0) {
 		error("Script::op_ret() ec=0x%X stack underflow", 0x8F);
-	}	
+	}
 	--_stackPtr;
 	_scriptPtr.pc = _res->_segCode + _scriptStackCalls[_stackPtr];
 }
@@ -116,7 +116,7 @@ void Script::op_yieldTask() {
 void Script::op_jmp() {
 	uint16_t off = _scriptPtr.fetchWord();
 	debug(DBG_SCRIPT, "Script::op_jmp(0x%02X)", off);
-	_scriptPtr.pc = _res->_segCode + off;	
+	_scriptPtr.pc = _res->_segCode + off;
 }
 
 void Script::op_installTask() {
@@ -378,7 +378,7 @@ void Script::restartAt(int part, int pos) {
 	_ply->stop();
 	_mix->stopAll();
 	if (_res->getDataType() == Resource::DT_20TH_EDITION && part != 16001) {
-		_scriptVars[0xBF] = 1; // difficulty (0 to 2)
+		_scriptVars[0xBF] = _difficulty; // difficulty (0 to 2)
 		// _scriptVars[0xDB] = 1; // preload sounds (resnum >= 2000)
 		_scriptVars[0xDE] = Graphics::_is1991 ? 0 : 1; // playback remastered sounds (resnum >= 146)
 	}
