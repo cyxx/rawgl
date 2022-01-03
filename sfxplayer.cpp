@@ -74,7 +74,18 @@ void SfxPlayer::play(int rate) {
 	memset(_channels, 0, sizeof(_channels));
 }
 
-static void mixChannel(int8_t &s, SfxChannel *ch) {
+static int16_t toS16(int a) {
+	if (a < -128) {
+		return -32768;
+	} else if (a > 127) {
+		return 32767;
+	} else {
+		const uint8_t u8 = (a ^ 0x80);
+		return ((u8 << 8) | u8) - 32768;
+	}
+}
+
+static void mixChannel(int16_t &s, SfxChannel *ch) {
 	if (ch->sampleLen == 0) {
 		return;
 	}
@@ -82,28 +93,22 @@ static void mixChannel(int8_t &s, SfxChannel *ch) {
 	ch->pos.offset += ch->pos.inc;
 	int pos2 = pos1 + 1;
 	if (ch->sampleLoopLen != 0) {
-		if (pos1 == ch->sampleLoopPos + ch->sampleLoopLen - 1) {
+		if (pos1 >= ch->sampleLoopPos + ch->sampleLoopLen - 1) {
 			pos2 = ch->sampleLoopPos;
 			ch->pos.offset = pos2 << Frac::BITS;
 		}
 	} else {
-		if (pos1 == ch->sampleLen - 1) {
+		if (pos1 >= ch->sampleLen - 1) {
 			ch->sampleLen = 0;
 			return;
 		}
 	}
-	int16_t sample = ch->pos.interpolate((int8_t)ch->sampleData[pos1], (int8_t)ch->sampleData[pos2]);
-	sample = s + sample * ch->volume / 64;
-	if (sample < -128) {
-		sample = -128;
-	} else if (sample > 127) {
-		sample = 127;
-	}
-	s = (int8_t)sample;
+	int sample = ch->pos.interpolate((int8_t)ch->sampleData[pos1], (int8_t)ch->sampleData[pos2]);
+	sample = s + toS16(sample * ch->volume / 64);
+	s = (sample < -32768 ? -32768 : (sample > 32767 ? 32767 : sample));
 }
 
-void SfxPlayer::mixSamples(int8_t *buf, int len) {
-	memset(buf, 0, len * 2);
+void SfxPlayer::mixSamples(int16_t *buf, int len) {
 	const int samplesPerTick = _rate / (1000 / _delay);
 	while (len != 0) {
 		if (_samplesLeft == 0) {
@@ -127,26 +132,10 @@ void SfxPlayer::mixSamples(int8_t *buf, int len) {
 	}
 }
 
-static void nr(const int8_t *in, int len, int8_t *out) {
-	static int prevL = 0;
-	static int prevR = 0;
-	for (int i = 0; i < len; ++i) {
-		const int sL = *in++ >> 1;
-		*out++ = sL + prevL;
-		prevL = sL;
-		const int sR = *in++ >> 1;
-		*out++ = sR + prevR;
-		prevR = sR;
-	}
-}
-
-void SfxPlayer::readSamples(int8_t *buf, int len) {
-	if (_delay == 0) {
-		memset(buf, 0, len * 2);
-	} else {
-		int8_t *bufin = (int8_t *)alloca(len * 2);
-		mixSamples(bufin, len);
-		nr(bufin, len, buf);
+void SfxPlayer::readSamples(int16_t *buf, int len) {
+	memset(buf, 0, len * sizeof(int16_t));
+	if (_delay != 0) {
+		mixSamples(buf, len / 2);
 	}
 }
 
