@@ -175,12 +175,19 @@ struct Resource15th: ResourceNth {
 
 	virtual const char *getMusicName(int num) {
 		const char *path = 0;
+		File f;
 		switch (num) {
 		case 7:
 			path = "Music/AW/RmSnd/Intro2004.wav";
+			if (!f.open(path)) {
+				path = "Music/AW/Intro2004.wav";
+			}
 			break;
 		case 138:
 			path = "Music/AW/RmSnd/End2004.wav";
+			if (!f.open(path)) {
+				path = "Music/AW/End2004.wav";
+			}
 			break;
 		}
 		return path;
