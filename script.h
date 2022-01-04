@@ -15,14 +15,20 @@ struct SfxPlayer;
 struct SystemStub;
 struct Video;
 
+enum Difficulty {
+	DIFFICULTY_EASY = 0,
+	DIFFICULTY_NORMAL = 1,
+	DIFFICULTY_HARD = 2
+};
+
 struct Script {
 	typedef void (Script::*OpcodeStub)();
 
 	enum ScriptVars {
 		VAR_RANDOM_SEED          = 0x3C,
-		
+
 		VAR_SCREEN_NUM           = 0x67,
-		
+
 		VAR_LAST_KEYCHAR         = 0xDA,
 
 		VAR_HERO_POS_UP_DOWN     = 0xE5,
@@ -37,9 +43,10 @@ struct Script {
 		VAR_HERO_ACTION_POS_MASK = 0xFE,
 		VAR_PAUSE_SLICES         = 0xFF
 	};
-	
+
 	static const OpcodeStub _opTable[];
 	static const uint16_t _freqTable[];
+	static Difficulty _difficulty;
 
 	Mixer *_mix;
 	Resource *_res;
@@ -61,7 +68,7 @@ struct Script {
 
 	Script(Mixer *mix, Resource *res, SfxPlayer *ply, Video *vid);
 	void init();
-	
+
 	void op_movConst();
 	void op_mov();
 	void op_add();
@@ -98,7 +105,7 @@ struct Script {
 
 	void updateInput();
 	void inp_handleSpecialKeys();
-	
+
 	void snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel);
 	void snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos);
 

@@ -14,7 +14,7 @@
 #include "util.h"
 
 
-static const char *USAGE = 
+static const char *USAGE =
 	"Raw(gl) - Another World Interpreter\n"
 	"Usage: rawgl [OPTIONS]...\n"
 	"  --datapath=PATH   Path to data files (default '.')\n"
@@ -26,6 +26,7 @@ static const char *USAGE =
 	"  --fullscreen-ar   Fullscreen display (16:10 aspect ratio)\n"
 	"  --ega-palette     Use EGA palette with DOS version\n"
 	"  --demo3-joy       Use inputs from 'demo3.joy' (DOS demo)\n"
+	"  --difficulty=DIFF Difficulty (easy,normal,hard)\n"
 	;
 
 static const struct {
@@ -50,9 +51,20 @@ static const struct {
 	{ 0,  -1 }
 };
 
+static const struct {
+	const char *name;
+	int difficulty;
+} DIFFICULTIES[] = {
+	{ "easy", DIFFICULTY_EASY },
+	{ "normal", DIFFICULTY_NORMAL },
+	{ "hard", DIFFICULTY_HARD },
+	{ 0,  -1 }
+};
+
 bool Graphics::_is1991 = false;
 bool Graphics::_use555 = false;
 bool Video::_useEGA = false;
+Difficulty Script::_difficulty = DIFFICULTY_NORMAL;
 
 static Graphics *createGraphics(int type) {
 	switch (type) {
@@ -136,6 +148,7 @@ int main(int argc, char *argv[]) {
 			{ "scaler",   required_argument, 0, 's' },
 			{ "ega-palette", no_argument,    0, 'e' },
 			{ "demo3-joy",  no_argument,     0, 'j' },
+			{ "difficulty", required_argument, 0, 'i' },
 			{ "help",       no_argument,     0, 'h' },
 			{ 0, 0, 0, 0 }
 		};
@@ -187,6 +200,14 @@ int main(int argc, char *argv[]) {
 		case 'j':
 			demo3JoyInputs = true;
 			break;
+		case 'i':
+			for (int i = 0; DIFFICULTIES[i].name; ++i) {
+				if (strcmp(optarg, DIFFICULTIES[i].name) == 0) {
+					Script::_difficulty = (Difficulty)DIFFICULTIES[i].difficulty;
+					break;
+				}
+			}
+			break;
 		case 'h':
 			// fall-through
 		default:
@@ -206,6 +227,19 @@ int main(int argc, char *argv[]) {
 		Graphics::_use555 = true;
 	}
 	Graphics *graphics = createGraphics(graphicsType);
+	if (e->_res.getDataType() == Resource::DT_20TH_EDITION) {
+		switch (Script::_difficulty) {
+		case DIFFICULTY_EASY:
+			debug(DBG_INFO, "Using easy difficulty");
+			break;
+		case DIFFICULTY_NORMAL:
+			debug(DBG_INFO, "Using normal difficulty");
+			break;
+		case DIFFICULTY_HARD:
+			debug(DBG_INFO, "Using hard difficulty");
+			break;
+		}
+	}
 	SystemStub *stub = SystemStub_SDL_create();
 	stub->init(e->getGameTitle(lang), &dm);
 	e->setSystemStub(stub, graphics);
