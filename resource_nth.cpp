@@ -26,8 +26,12 @@ struct Resource15th: ResourceNth {
 	char _menuPath[MAXPATHLEN];
 	char *_textBuf;
 	const char *_stringsTable[157];
+	bool _hasRemasteredMusic;
 
 	Resource15th(const char *dataPath) {
+		snprintf(_dataPath, sizeof(_dataPath), "%s/Music/AW/RmSnd", dataPath);
+		struct stat s;
+		_hasRemasteredMusic = (stat(_dataPath, &s) == 0 && S_ISDIR(s.st_mode));
 		snprintf(_dataPath, sizeof(_dataPath), "%s/Data", dataPath);
 		snprintf(_menuPath, sizeof(_menuPath), "%s/Menu", dataPath);
 		_textBuf = 0;
@@ -175,17 +179,18 @@ struct Resource15th: ResourceNth {
 
 	virtual const char *getMusicName(int num) {
 		const char *path = 0;
-		File f;
 		switch (num) {
 		case 7:
-			path = "Music/AW/RmSnd/Intro2004.wav";
-			if (!f.open(path)) {
+			if (_hasRemasteredMusic) {
+				path = "Music/AW/RmSnd/Intro2004.wav";
+			} else {
 				path = "Music/AW/Intro2004.wav";
 			}
 			break;
 		case 138:
-			path = "Music/AW/RmSnd/End2004.wav";
-			if (!f.open(path)) {
+			if (_hasRemasteredMusic) {
+				path = "Music/AW/RmSnd/End2004.wav";
+			} else {
 				path = "Music/AW/End2004.wav";
 			}
 			break;
