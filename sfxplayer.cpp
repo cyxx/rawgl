@@ -19,7 +19,7 @@ SfxPlayer::SfxPlayer(Resource *res)
 
 void SfxPlayer::setEventsDelay(uint16_t delay) {
 	debug(DBG_SND, "SfxPlayer::setEventsDelay(%d)", delay);
-	_delay = delay * 60 * 1000 / kPaulaFreq;
+	_delay = delay;
 }
 
 void SfxPlayer::loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos) {
@@ -29,17 +29,14 @@ void SfxPlayer::loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos) {
 		_resNum = resNum;
 		memset(&_sfxMod, 0, sizeof(SfxModule));
 		_sfxMod.curOrder = pos;
-		_sfxMod.numOrder = READ_BE_UINT16(me->bufPtr + 0x3E);
+		_sfxMod.numOrder = me->bufPtr[0x3F];
 		debug(DBG_SND, "SfxPlayer::loadSfxModule() curOrder = 0x%X numOrder = 0x%X", _sfxMod.curOrder, _sfxMod.numOrder);
-		for (int i = 0; i < 0x80; ++i) {
-			_sfxMod.orderTable[i] = *(me->bufPtr + 0x40 + i);
-		}
+		_sfxMod.orderTable = me->bufPtr + 0x40;
 		if (delay == 0) {
 			_delay = READ_BE_UINT16(me->bufPtr);
 		} else {
 			_delay = delay;
 		}
-		_delay = _delay * 60 * 1000 / kPaulaFreq;
 		_sfxMod.data = me->bufPtr + 0xC0;
 		debug(DBG_SND, "SfxPlayer::loadSfxModule() eventDelay = %d ms", _delay);
 		prepareInstruments(me->bufPtr + 2);
@@ -109,10 +106,10 @@ static void mixChannel(int16_t &s, SfxChannel *ch) {
 }
 
 void SfxPlayer::mixSamples(int16_t *buf, int len) {
-	const int samplesPerTick = _rate / (1000 / _delay);
 	while (len != 0) {
 		if (_samplesLeft == 0) {
 			handleEvents();
+			const int samplesPerTick = _rate * (_delay * 60 * 1000 / kPaulaFreq) / 1000;
 			_samplesLeft = samplesPerTick;
 		}
 		int count = _samplesLeft;
@@ -214,24 +211,22 @@ void SfxPlayer::handlePattern(uint8_t channel, const uint8_t *data) {
 		}
 	}
 	if (pat.note_1 == 0xFFFD) {
-		debug(DBG_SND, "SfxPlayer::handlePattern() _scriptVars[0xF4] = 0x%X", pat.note_2);
+		debug(DBG_SND, "SfxPlayer::handlePattern() _syncVar = 0x%X", pat.note_2);
 		*_syncVar = pat.note_2;
-	} else if (pat.note_1 != 0) {
-		if (pat.note_1 == 0xFFFE) {
-			_channels[channel].sampleLen = 0;
-		} else if (pat.sampleBuffer != 0) {
-			assert(pat.note_1 >= 0x37 && pat.note_1 < 0x1000);
-			// convert amiga period value to hz
-			const int freq = kPaulaFreq / (pat.note_1 * 2);
-			debug(DBG_SND, "SfxPlayer::handlePattern() adding sample freq = 0x%X", freq);
-			SfxChannel *ch = &_channels[channel];
-			ch->sampleData = pat.sampleBuffer + pat.sampleStart;
-			ch->sampleLen = pat.sampleLen;
-			ch->sampleLoopPos = pat.loopPos;
-			ch->sampleLoopLen = pat.loopLen;
-			ch->volume = pat.sampleVolume;
-			ch->pos.offset = 0;
-			ch->pos.inc = (freq << Frac::BITS) / _rate;
-		}
+	} else if (pat.note_1 == 0xFFFE) {
+		_channels[channel].sampleLen = 0;
+	} else if (pat.note_1 != 0 && pat.sampleBuffer != 0) {
+		assert(pat.note_1 >= 0x37 && pat.note_1 < 0x1000);
+		// convert amiga period value to hz
+		const int freq = kPaulaFreq / (pat.note_1 * 2);
+		debug(DBG_SND, "SfxPlayer::handlePattern() adding sample freq = 0x%X", freq);
+		SfxChannel *ch = &_channels[channel];
+		ch->sampleData = pat.sampleBuffer + pat.sampleStart;
+		ch->sampleLen = pat.sampleLen;
+		ch->sampleLoopPos = pat.loopPos;
+		ch->sampleLoopLen = pat.loopLen;
+		ch->volume = pat.sampleVolume;
+		ch->pos.offset = 0;
+		ch->pos.inc = (freq << Frac::BITS) / _rate;
 	}
 }

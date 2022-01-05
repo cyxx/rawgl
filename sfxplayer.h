@@ -19,7 +19,7 @@ struct SfxModule {
 	uint16_t curPos;
 	uint8_t curOrder;
 	uint8_t numOrder;
-	uint8_t orderTable[0x80];
+	uint8_t *orderTable;
 	SfxInstrument samples[15];
 };
 
