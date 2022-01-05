@@ -109,7 +109,7 @@ struct Mixer_impl {
 				playSound(channel, volume, chunk, loops);
 				return;
 			}
-                }
+		}
 		const uint32_t size = READ_LE_UINT32(data + 4) + 8;
 		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
 		Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
@@ -219,10 +219,10 @@ void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, ui
 	}
 }
 
-void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
-	debug(DBG_SND, "Mixer::playSoundWav(%d, %d)", channel, volume);
+void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume, uint8_t loop) {
+	debug(DBG_SND, "Mixer::playSoundWav(%d, %d, %d)", channel, volume, loop);
 	if (_impl) {
-		return _impl->playSoundWav(channel, data, freq, volume);
+		return _impl->playSoundWav(channel, data, freq, volume, (loop != 0) ? -1 : 0);
 	}
 }
 

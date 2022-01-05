@@ -715,6 +715,23 @@ void Script::inp_handleSpecialKeys() {
 	}
 }
 
+static uint8_t getWavLooping(uint16_t resNum) {
+	switch (resNum) {
+	case 1:
+	case 3:
+	case 8:
+	case 16:
+	case 89:
+	case 97:
+	case 102:
+	case 104:
+	case 106:
+	case 132:
+	case 139: return 1;
+	}
+	return 0;
+}
+
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
 	if (vol == 0) {
@@ -728,7 +745,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	case Resource::DT_15TH_EDITION: {
 			uint8_t *buf = _res->loadWav(resNum);
 			if (buf) {
-				_mix->playSoundWav(channel & 3, buf, _freqTable[freq], vol);
+				_mix->playSoundWav(channel & 3, buf, _freqTable[freq], vol, getWavLooping(resNum));
 			}
 		}
 		break;
@@ -737,7 +754,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 			// ignore sample rate specified by the script, use .wav header value
 			uint8_t *buf = _res->loadWav(resNum);
 			if (buf) {
-				_mix->playSoundWav(channel & 3, buf, 0, vol);
+				_mix->playSoundWav(channel & 3, buf, 0, vol, getWavLooping(resNum));
 			}
 		}
 		break;
