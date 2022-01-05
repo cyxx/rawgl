@@ -163,7 +163,7 @@ void Resource::readEntries() {
 		}
 		break;
 	case DT_20TH_EDITION:
-		_numMemList = ENTRIES_COUNT;
+		_numMemList = ENTRIES_COUNT_20TH;
 		_nth = ResourceNth::create(20, _dataDir);
 		if (_nth && _nth->init()) {
 			return;

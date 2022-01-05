@@ -89,6 +89,7 @@ struct Resource {
 	enum {
 		MEM_BLOCK_SIZE = 1 * 1024 * 1024,
 		ENTRIES_COUNT = 146,
+		ENTRIES_COUNT_20TH = 178,
 	};
 
 	enum {
@@ -104,7 +105,7 @@ struct Resource {
 
 	Video *_vid;
 	const char *_dataDir;
-	MemEntry _memList[ENTRIES_COUNT + 1];
+	MemEntry _memList[ENTRIES_COUNT_20TH];
 	uint16_t _numMemList;
 	uint16_t _currentPart, _nextPart;
 	uint8_t *_memPtrStart, *_scriptBakPtr, *_scriptCurPtr, *_vidBakPtr, *_vidCurPtr;
