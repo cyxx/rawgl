@@ -765,17 +765,22 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
 	switch (_res->getDataType()) {
-	case Resource::DT_15TH_EDITION:
 	case Resource::DT_20TH_EDITION:
-	case Resource::DT_WIN31:
-		if (resNum == 0 || resNum == 5000) {
+		if (resNum == 5000) {
 			_mix->stopMusic();
-		} else {
+			break;
+		}
+		/* fall-through */
+	case Resource::DT_15TH_EDITION:
+	case Resource::DT_WIN31:
+		if (resNum != 0) {
 			char path[MAXPATHLEN];
 			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
 			if (p) {
 				_mix->playMusic(p);
 			}
+		} else if (delay == 0) {
+			_mix->stopMusic();
 		}
 		break;
 	case Resource::DT_3DO:
