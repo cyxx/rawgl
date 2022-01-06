@@ -143,12 +143,12 @@ struct Mixer_impl {
 		Mix_Volume(channel, volume * MIX_MAX_VOLUME / 63);
 	}
 
-	void playMusic(const char *path) {
+	void playMusic(const char *path, int loops = 0) {
 		stopMusic();
 		_music = Mix_LoadMUS(path);
 		if (_music) {
 			Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
-			Mix_PlayMusic(_music, 0);
+			Mix_PlayMusic(_music, loops);
 		} else {
 			warning("Failed to load music '%s', %s", path, Mix_GetError());
 		}
@@ -247,10 +247,10 @@ void Mixer::setChannelVolume(uint8_t channel, uint8_t volume) {
 	}
 }
 
-void Mixer::playMusic(const char *path) {
-	debug(DBG_SND, "Mixer::playMusic(%s)", path);
+void Mixer::playMusic(const char *path, uint8_t loop) {
+	debug(DBG_SND, "Mixer::playMusic(%s, %d)", path, loop);
 	if (_impl) {
-		return _impl->playMusic(path);
+		return _impl->playMusic(path, (loop != 0) ? -1 : 0);
 	}
 }
 

@@ -34,6 +34,9 @@ directory. This can be changed with command line switches.
     --fullscreen      Fullscreen display (stretched)
     --fullscreen-ar   Fullscreen display (16:10 aspect ratio)
     --ega-palette     Use EGA palette with DOS version
+    --demo3-joy       Use inputs from 'demo3.joy' (DOS demo)
+    --difficulty=DIFF Difficulty (easy,normal,hard)
+    --audio=AUDIO     Audio (original,remastered)
 ```
 
 In game hotkeys :

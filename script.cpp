@@ -377,10 +377,10 @@ void Script::op_playMusic() {
 void Script::restartAt(int part, int pos) {
 	_ply->stop();
 	_mix->stopAll();
-	if (_res->getDataType() == Resource::DT_20TH_EDITION && part != 16001) {
+	if (_res->getDataType() == Resource::DT_20TH_EDITION) {
 		_scriptVars[0xBF] = _difficulty; // difficulty (0 to 2)
 		// _scriptVars[0xDB] = 1; // preload sounds (resnum >= 2000)
-		_scriptVars[0xDE] = Graphics::_is1991 ? 0 : 1; // playback remastered sounds (resnum >= 146)
+		_scriptVars[0xDE] = _useRemasteredAudio ? 1 : 0; // playback remastered sounds (resnum >= 146)
 	}
 	if (_res->getDataType() == Resource::DT_DOS && part == kPartCopyProtection) {
 		// VAR(0x54) indicates if the "Out of this World" title screen should be presented
@@ -781,11 +781,15 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 
 void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "snd_playMusic(0x%X, %d, %d)", resNum, delay, pos);
+	uint8_t loop = 0;
 	switch (_res->getDataType()) {
 	case Resource::DT_20TH_EDITION:
 		if (resNum == 5000) {
 			_mix->stopMusic();
 			break;
+		}
+		if (resNum >= 5001 && resNum <= 5010) {
+			loop = 1;
 		}
 		/* fall-through */
 	case Resource::DT_15TH_EDITION:
@@ -794,10 +798,8 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 			char path[MAXPATHLEN];
 			const char *p = _res->getMusicPath(resNum, path, sizeof(path));
 			if (p) {
-				_mix->playMusic(p);
+				_mix->playMusic(p, loop);
 			}
-		} else if (delay == 0) {
-			_mix->stopMusic();
 		}
 		break;
 	case Resource::DT_3DO:
