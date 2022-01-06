@@ -47,6 +47,7 @@ struct Script {
 	static const OpcodeStub _opTable[];
 	static const uint16_t _freqTable[];
 	static Difficulty _difficulty;
+	static bool _useRemasteredAudio;
 
 	Mixer *_mix;
 	Resource *_res;

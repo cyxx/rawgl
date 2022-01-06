@@ -27,6 +27,7 @@ static const char *USAGE =
 	"  --ega-palette     Use EGA palette with DOS version\n"
 	"  --demo3-joy       Use inputs from 'demo3.joy' (DOS demo)\n"
 	"  --difficulty=DIFF Difficulty (easy,normal,hard)\n"
+	"  --audio=AUDIO     Audio (original,remastered)\n"
 	;
 
 static const struct {
@@ -65,6 +66,7 @@ bool Graphics::_is1991 = false;
 bool Graphics::_use555 = false;
 bool Video::_useEGA = false;
 Difficulty Script::_difficulty = DIFFICULTY_NORMAL;
+bool Script::_useRemasteredAudio = true;
 
 static Graphics *createGraphics(int type) {
 	switch (type) {
@@ -149,6 +151,7 @@ int main(int argc, char *argv[]) {
 			{ "ega-palette", no_argument,    0, 'e' },
 			{ "demo3-joy",  no_argument,     0, 'j' },
 			{ "difficulty", required_argument, 0, 'i' },
+			{ "audio",    required_argument, 0, 'u' },
 			{ "help",       no_argument,     0, 'h' },
 			{ 0, 0, 0, 0 }
 		};
@@ -208,6 +211,13 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			break;
+		case 'u':
+			if (strcmp(optarg, "remastered") == 0) {
+				Script::_useRemasteredAudio = true;
+			} else if (strcmp(optarg, "original") == 0) {
+				Script::_useRemasteredAudio = false;
+			}
+			break;
 		case 'h':
 			// fall-through
 		default:
@@ -238,6 +248,13 @@ int main(int argc, char *argv[]) {
 		case DIFFICULTY_HARD:
 			debug(DBG_INFO, "Using hard difficulty");
 			break;
+		}
+	}
+	if (e->_res.getDataType() == Resource::DT_15TH_EDITION || e->_res.getDataType() == Resource::DT_20TH_EDITION) {
+		if (Script::_useRemasteredAudio) {
+			debug(DBG_INFO, "Using remastered audio");
+		} else {
+			debug(DBG_INFO, "Using original audio");
 		}
 	}
 	SystemStub *stub = SystemStub_SDL_create();

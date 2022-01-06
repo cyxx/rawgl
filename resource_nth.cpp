@@ -5,6 +5,7 @@
 #include "pak.h"
 #include "resource_nth.h"
 #include "util.h"
+#include "script.h"
 
 static char *loadTextFile(File &f, const int size) {
 	char *buf = (char *)malloc(size + 1);
@@ -88,8 +89,11 @@ struct Resource15th: ResourceNth {
 
 	virtual uint8_t *loadWav(int num, uint8_t *dst, uint32_t *size) {
 		char name[32];
-		snprintf(name, sizeof(name), "rmsnd/file%03d.wav", num);
-		const PakEntry *e = _pak.find(name);
+		const PakEntry *e = 0;
+		if (Script::_useRemasteredAudio) {
+			snprintf(name, sizeof(name), "rmsnd/file%03d.wav", num);
+			e = _pak.find(name);
+		}
 		if (!e) {
 			snprintf(name, sizeof(name), "file%03db.wav", num);
 			e = _pak.find(name);
@@ -181,14 +185,14 @@ struct Resource15th: ResourceNth {
 		const char *path = 0;
 		switch (num) {
 		case 7:
-			if (_hasRemasteredMusic) {
+			if (_hasRemasteredMusic && Script::_useRemasteredAudio) {
 				path = "Music/AW/RmSnd/Intro2004.wav";
 			} else {
 				path = "Music/AW/Intro2004.wav";
 			}
 			break;
 		case 138:
-			if (_hasRemasteredMusic) {
+			if (_hasRemasteredMusic && Script::_useRemasteredAudio) {
 				path = "Music/AW/RmSnd/End2004.wav";
 			} else {
 				path = "Music/AW/End2004.wav";
@@ -376,6 +380,15 @@ struct Resource20th: ResourceNth {
 
 	virtual uint8_t *loadWav(int num, uint8_t *dst, uint32_t *size) {
 		char path[MAXPATHLEN];
+		if (!Script::_useRemasteredAudio) {
+			snprintf(path, sizeof(path), "%s/game/WGZ/original/file%03d.wgz", _dataPath, num);
+			struct stat s;
+			if (stat(path, &s) != 0) {
+				snprintf(path, sizeof(path), "%s/game/WGZ/original/file%03dB.wgz", _dataPath, num);
+			}
+			*size = 0;
+			return inflateGzip(path);
+		}
 		switch (num) {
 		case 81: {
 				const int r = 1 + rand() % 3;
@@ -486,7 +499,7 @@ struct Resource20th: ResourceNth {
 	}
 
 	virtual const char *getMusicName(int num) {
-		if (num >= 5000) {
+		if (num >= 5000 && Script::_useRemasteredAudio) {
 			snprintf(_musicName, sizeof(_musicName), "game/OGG/amb%d.ogg", num);
 			switch (num) {
 			case 5005:
@@ -502,11 +515,18 @@ struct Resource20th: ResourceNth {
 		} else {
 			switch (num) {
 			case 7:
-				strcpy(_musicName, "game/OGG/Intro_20th.ogg");
+				if (Script::_useRemasteredAudio) {
+					strcpy(_musicName, "game/OGG/Intro_20th.ogg");
+				} else {
+					strcpy(_musicName, "game/OGG/original/intro.ogg");
+				}
 				break;
 			case 138:
-				strcpy(_musicName, "game/OGG/Ending_15th.ogg");
-				break;
+				if (!Script::_useRemasteredAudio) {
+					strcpy(_musicName, "game/OGG/original/ending.ogg");
+					break;
+				}
+				/* fall-through */
 			default:
 				return 0;
 			}
