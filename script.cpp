@@ -741,20 +741,16 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	if (vol > 63) {
 		vol = 63;
 	}
+	if (freq > 39) {
+		freq = 39;
+	}
 	switch (_res->getDataType()) {
-	case Resource::DT_15TH_EDITION: {
+	case Resource::DT_15TH_EDITION:
+	case Resource::DT_20TH_EDITION:
+	case Resource::DT_WIN31: {
 			uint8_t *buf = _res->loadWav(resNum);
 			if (buf) {
 				_mix->playSoundWav(channel & 3, buf, _freqTable[freq], vol, getWavLooping(resNum));
-			}
-		}
-		break;
-	case Resource::DT_20TH_EDITION:
-	case Resource::DT_WIN31: {
-			// ignore sample rate specified by the script, use .wav header value
-			uint8_t *buf = _res->loadWav(resNum);
-			if (buf) {
-				_mix->playSoundWav(channel & 3, buf, 0, vol, getWavLooping(resNum));
 			}
 		}
 		break;
@@ -771,7 +767,6 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	case Resource::DT_DOS: {
 			MemEntry *me = &_res->_memList[resNum];
 			if (me->status == Resource::STATUS_LOADED) {
-				assert(freq < 40);
 				_mix->playSoundRaw(channel & 3, me->bufPtr, _freqTable[freq], vol);
 			}
 		}
