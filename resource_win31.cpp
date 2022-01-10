@@ -301,7 +301,7 @@ void ResourceWin31::readStrings() {
 		if (num == 0xFFFF) {
 			break;
 		}
-		if (num < ARRAYSIZE(_stringsTable)) {
+		if (num < ARRAYSIZE(_stringsTable) && _stringsTable[num] == 0) {
 			_stringsTable[num] = (const char *)_textBuf + offset;
 		}
 		while (offset < len && _textBuf[offset++] != 0);
