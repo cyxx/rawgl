@@ -16,7 +16,7 @@
 
 static const char *atariDemo = "aw.tos";
 
-Resource::Resource(Video *vid, const char *dataDir) 
+Resource::Resource(Video *vid, const char *dataDir)
 	: _vid(vid), _dataDir(dataDir), _currentPart(0), _nextPart(0), _dataType(DT_DOS), _nth(0), _win31(0), _3do(0) {
 	_bankPrefix = "bank";
 	_hasPasswordScreen = true;
@@ -631,6 +631,8 @@ void Resource::setupPart(int ptrId) {
 				}
 			}
 			_currentPart = ptrId;
+		} else {
+			error("Resource::setupPart() ec=0x%X invalid part", 0xF07);
 		}
 		_scriptBakPtr = _scriptCurPtr;
 		break;
