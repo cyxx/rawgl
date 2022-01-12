@@ -424,7 +424,7 @@ static void decode_amiga(const uint8_t *src, uint8_t *dst) {
 
 static void decode_atari(const uint8_t *src, uint8_t *dst) {
 	for (int y = 0; y < 200; ++y) {
-		for (int x = 0; x < 320; x += 8) {
+		for (int x = 0; x < 320; x += 16) {
 			for (int b = 0; b < 16; ++b) {
 				const int mask = 1 << (15 - b);
 				uint8_t color = 0;

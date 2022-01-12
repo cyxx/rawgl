@@ -108,7 +108,7 @@ struct Resource {
 	MemEntry _memList[ENTRIES_COUNT_20TH];
 	uint16_t _numMemList;
 	uint16_t _currentPart, _nextPart;
-	uint8_t *_memPtrStart, *_scriptBakPtr, *_scriptCurPtr, *_vidBakPtr, *_vidCurPtr;
+	uint8_t *_memPtrStart, *_scriptBakPtr, *_scriptCurPtr, *_vidCurPtr;
 	bool _useSegVideo2;
 	uint8_t *_segVideoPal;
 	uint8_t *_segCode;

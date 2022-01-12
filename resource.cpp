@@ -308,8 +308,9 @@ void Resource::load() {
 			memPtr = _vidCurPtr;
 		} else {
 			memPtr = _scriptCurPtr;
-			if (me->unpackedSize > uint32_t(_vidBakPtr - _scriptCurPtr)) {
-				warning("Resource::load() not enough memory");
+			const uint32_t avail = uint32_t(_vidCurPtr - _scriptCurPtr);
+			if (me->unpackedSize > avail) {
+				warning("Resource::load() not enough memory, available=%d", avail);
 				me->status = STATUS_NULL;
 				continue;
 			}
@@ -675,7 +676,7 @@ void Resource::setupPart(int ptrId) {
 void Resource::allocMemBlock() {
 	_memPtrStart = (uint8_t *)malloc(MEM_BLOCK_SIZE);
 	_scriptBakPtr = _scriptCurPtr = _memPtrStart;
-	_vidBakPtr = _vidCurPtr = _memPtrStart + MEM_BLOCK_SIZE - 0x800 * 16;
+	_vidCurPtr = _memPtrStart + MEM_BLOCK_SIZE - (320 * 200 / 2); // 4bpp bitmap
 	_useSegVideo2 = false;
 }
 
