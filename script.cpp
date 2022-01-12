@@ -749,8 +749,12 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		freq = 39;
 	}
 	switch (_res->getDataType()) {
-	case Resource::DT_15TH_EDITION:
 	case Resource::DT_20TH_EDITION:
+		if (freq != 0) {
+			--freq;
+		}
+		/* fall-through */
+	case Resource::DT_15TH_EDITION:
 	case Resource::DT_WIN31: {
 			uint8_t *buf = _res->loadWav(resNum);
 			if (buf) {
