@@ -10,8 +10,6 @@
 #include "systemstub.h"
 #include "util.h"
 
-static const int kPaulaFreq = 7159092;
-
 SfxPlayer::SfxPlayer(Resource *res)
 	: _res(res), _delay(0), _resNum(0) {
 	_playing = false;

@@ -732,6 +732,10 @@ static uint8_t getWavLooping(uint16_t resNum) {
 	return 0;
 }
 
+static int getSoundFreq(uint8_t period) {
+	return kPaulaFreq / (Script::_periodTable[period] * 2);
+}
+
 void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t channel) {
 	debug(DBG_SND, "snd_playSound(0x%X, %d, %d, %d)", resNum, freq, vol, channel);
 	if (vol == 0) {
@@ -750,7 +754,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	case Resource::DT_WIN31: {
 			uint8_t *buf = _res->loadWav(resNum);
 			if (buf) {
-				_mix->playSoundWav(channel & 3, buf, _freqTable[freq], vol, getWavLooping(resNum));
+				_mix->playSoundWav(channel & 3, buf, getSoundFreq(freq), vol, getWavLooping(resNum));
 			}
 		}
 		break;
@@ -767,7 +771,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	case Resource::DT_DOS: {
 			MemEntry *me = &_res->_memList[resNum];
 			if (me->status == Resource::STATUS_LOADED) {
-				_mix->playSoundRaw(channel & 3, me->bufPtr, _freqTable[freq], vol);
+				_mix->playSoundRaw(channel & 3, me->bufPtr, getSoundFreq(freq), vol);
 			}
 		}
 		break;

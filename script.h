@@ -45,7 +45,7 @@ struct Script {
 	};
 
 	static const OpcodeStub _opTable[];
-	static const uint16_t _freqTable[];
+	static const uint16_t _periodTable[];
 	static Difficulty _difficulty;
 	static bool _useRemasteredAudio;
 

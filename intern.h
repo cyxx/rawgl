@@ -90,6 +90,10 @@ enum {
 	kPartPassword = 16008
 };
 
+enum {
+	kPaulaFreq = 7159092
+};
+
 struct Ptr {
 	uint8_t *pc;
 	bool byteSwap;

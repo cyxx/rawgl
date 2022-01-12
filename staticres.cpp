@@ -47,12 +47,11 @@ const Script::OpcodeStub Script::_opTable[] = {
 	&Script::op_playMusic
 };
 
-const uint16_t Script::_freqTable[] = {
-	0x0CFF, 0x0DC3, 0x0E91, 0x0F6F, 0x1056, 0x114E, 0x1259, 0x136C,
-	0x149F, 0x15D9, 0x1726, 0x1888, 0x19FD, 0x1B86, 0x1D21, 0x1EDE,
-	0x20AB, 0x229C, 0x24B3, 0x26D7, 0x293F, 0x2BB2, 0x2E4C, 0x3110,
-	0x33FB, 0x370D, 0x3A43, 0x3DDF, 0x4157, 0x4538, 0x4998, 0x4DAE,
-	0x5240, 0x5764, 0x5C9A, 0x61C8, 0x6793, 0x6E19, 0x7485, 0x7BBD
+const uint16_t Script::_periodTable[] = {
+	1076, 1016,  960,  906,  856,  808,  762,  720,  678,  640,
+	 604,  570,  538,  508,  480,  453,  428,  404,  381,  360,
+	 339,  320,  302,  285,  269,  254,  240,  226,  214,  202,
+	 190,  180,  170,  160,  151,  143,  135,  127,  120,  113
 };
 
 const uint8_t Graphics::_font[] = {
