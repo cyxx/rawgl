@@ -52,10 +52,8 @@ static Mix_Chunk *loadAndConvertWav(SDL_RWops *rw, int freeRw, int freq, SDL_Aud
 		return 0;
 	}
 
-	if (wavSpec.freq == 22050) {
-		freq = (int)(freq * 2.21764064f);
-	} else if (wavSpec.freq == 44100) {
-		freq = (int)(freq * 4.43528128f);
+	if (wavSpec.freq == 22050 || wavSpec.freq == 44100 || wavSpec.freq == 48000) {
+		freq = (int)(freq * (wavSpec.freq / 9943.0f));
 	}
 
 	if (SDL_BuildAudioCVT(&cvt, wavSpec.format, wavSpec.channels, freq, dstFormat, dstChannels, dstFreq) < 0) {
@@ -155,21 +153,10 @@ struct Mixer_impl {
 			const int rate = READ_LE_UINT32(fmt + 4);
 			const int bits = READ_LE_UINT16(fmt + 14);
 			debug(DBG_SND, "wave format %d channels %d rate %d bits %d", format, channels, rate, bits);
-			const bool isMixerFormat = (format == 1 && channels == kMixSoundChannels && rate == kMixFreq && bits == SDL_AUDIO_BITSIZE(kMixFormat) && !SDL_AUDIO_ISFLOAT(kMixFormat));
-			if (freq == 0 && isMixerFormat && (AUDIO_S16SYS == AUDIO_S16LSB)) {
-				Mix_Chunk *chunk = Mix_QuickLoad_WAV(const_cast<uint8_t *>(data));
-				playSound(channel, volume, chunk, loops);
-				return;
-			}
 		}
 		const uint32_t size = READ_LE_UINT32(data + 4) + 8;
 		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
-		Mix_Chunk *chunk = 0;
-		if (freq == 0) {
-			chunk = Mix_LoadWAV_RW(rw, 1);
-		} else {
-			chunk = loadAndConvertWav(rw, 1, freq, kMixFormat, kMixSoundChannels, kMixFreq);
-		}
+		Mix_Chunk *chunk = loadAndConvertWav(rw, 1, freq, kMixFormat, kMixSoundChannels, kMixFreq);
 		playSound(channel, volume, chunk, loops);
 	}
 	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
