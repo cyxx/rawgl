@@ -91,24 +91,20 @@ struct OperaIso {
 
 static int decodeLzss(const uint8_t *src, uint32_t len, uint8_t *dst) {
 	uint32_t rd = 0, wr = 0;
-	int code = 0x100 | src[rd++];
 	while (rd < len) {
-		const bool bit = (code & 1);
-		code >>= 1;
-		if (bit) {
-			dst[wr++] = src[rd++];
-		} else {
-			const int code1 = src[rd] | ((src[rd + 1] & 0xF) << 8); // offset
-			const int code2 = (src[rd + 1] >> 4) + 3; // len
-			rd += 2;
-			const uint16_t offset = 0xF000 | code1;
-			for (int i = 0; i < code2; ++i) {
-				dst[wr] = dst[wr + (int16_t)offset];
-				++wr;
+		const uint8_t code = src[rd++];
+		for (int j = 0; j < 8 && rd < len; ++j) {
+			if (code & (1 << j)) {
+				dst[wr++] = src[rd++];
+			} else {
+				const uint16_t offset = 0xF000 | src[rd] | ((src[rd + 1] & 0xF) << 8);
+				const int len = (src[rd + 1] >> 4) + 3;
+				rd += 2;
+				for (int i = 0; i < len; ++i) {
+					dst[wr] = dst[wr + (int16_t)offset];
+					++wr;
+				}
 			}
-		}
-		if (code == 1) {
-			code = 0x100 | src[rd++];
 		}
 	}
 	return wr;
