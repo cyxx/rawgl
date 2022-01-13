@@ -97,12 +97,13 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 		_vid.setDefaultFont();
 	}
 	_script.init();
-	_mix.init();
+	bool softwareMixer = false;
 	switch (_res.getDataType()) {
 	case Resource::DT_DOS:
 	case Resource::DT_AMIGA:
 	case Resource::DT_ATARI:
 	case Resource::DT_ATARI_DEMO:
+		softwareMixer = true;
 		switch (lang) {
 		case LANG_FR:
 			_vid._stringsTable = Video::_stringsTableFr;
@@ -116,6 +117,7 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	default:
 		break;
 	}
+	_mix.init(softwareMixer);
 	if (_res.getDataType() == Resource::DT_3DO && _partNum == 16001) {
 		_state = kStateLogo3DO;
 	} else {

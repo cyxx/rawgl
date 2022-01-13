@@ -8,38 +8,64 @@
 #define MIX_INIT_FLUIDSYNTH MIX_INIT_MID // renamed with SDL2_mixer >= 2.0.2
 #include <SDL_mixer.h>
 #include "aifcplayer.h"
-#include "file.h"
 #include "mixer.h"
 #include "sfxplayer.h"
-#include "systemstub.h"
 #include "util.h"
 
-static uint8_t *convertMono8(SDL_AudioCVT *cvt, const uint8_t *data, int freq, int size, int *cvtLen) {
-	static const int kHz = 11025;
-	assert(kHz / freq <= 4);
-	uint8_t *out = (uint8_t *)malloc(size * 4 * cvt->len_mult);
-	if (out) {
-		// point resampling
-		Frac pos;
-		pos.offset = 0;
-		pos.inc = (freq << Frac::BITS) / kHz;
-		int len = 0;
-		for (; int(pos.getInt()) < size; pos.offset += pos.inc) {
-			out[len] = data[pos.getInt()];
-			++len;
-		}
-		// convert to mixer format
-		cvt->len = len;
-		cvt->buf = out;
-		if (SDL_ConvertAudio(cvt) < 0) {
-			free(out);
-			return 0;
-		}
-		out = cvt->buf;
-		*cvtLen = cvt->len_cvt;
+static int16_t toS16(int a) {
+	if (a <= -128) {
+		return -32768;
+	} else if (a >= 127) {
+		return 32767;
+	} else {
+		const uint8_t u8 = (a ^ 0x80);
+		return ((u8 << 8) | u8) - 32768;
 	}
-	return out;
 }
+
+static int16_t mixS16(int sample1, int sample2) {
+	const int sample = sample1 + sample2;
+	return sample < -32768 ? -32768 : ((sample > 32767 ? 32767 : sample));
+}
+
+struct MixerChannel {
+	const uint8_t *_data;
+	Frac _pos;
+	uint32_t _len;
+	uint32_t _loopLen, _loopPos;
+	int _volume;
+
+	void init(const uint8_t *data, int freq, int volume, int mixingFreq) {
+		_data = data;
+		_pos.offset = 8 << Frac::BITS;
+		_pos.inc = (freq << Frac::BITS) / mixingFreq;
+
+		const int len = READ_BE_UINT16(data) * 2;
+		_loopLen = READ_BE_UINT16(data + 2) * 2;
+		_loopPos = _loopLen ? len : 0;
+		_len = len;
+
+		_volume = volume;
+	}
+
+	void mix(int16_t &sample) {
+		if (_data) {
+			const uint32_t pos = _pos.getInt();
+			_pos.offset += _pos.inc;
+			if (_loopLen != 0) {
+				if (pos >= _loopPos + _loopLen) {
+					_pos.offset = _loopPos << Frac::BITS;
+				}
+			} else {
+				if (pos >= _len) {
+					_data = 0;
+					return;
+				}
+			}
+			sample = mixS16(sample, toS16(((int8_t)_data[pos]) * _volume / 64));
+		}
+	}
+};
 
 static Mix_Chunk *loadAndConvertWav(SDL_RWops *rw, int freeRw, int freq, SDL_AudioFormat dstFormat, int dstChannels, int dstFreq) {
 	SDL_AudioSpec wavSpec;
@@ -98,22 +124,23 @@ struct Mixer_impl {
 
 	Mix_Chunk *_sounds[kMixChannels];
 	Mix_Music *_music;
-	uint8_t *_samples[kMixChannels];
-	SDL_AudioCVT _cvt;
+	MixerChannel _channels[kMixChannels]; // 0,3:left 1,2:right
+	SfxPlayer *_sfx;
 
-	void init() {
+	void init(bool softwareMixer) {
 		memset(_sounds, 0, sizeof(_sounds));
 		_music = 0;
-		memset(_samples, 0, sizeof(_samples));
+		memset(_channels, 0, sizeof(_channels));
+		_sfx = 0;
 
 		Mix_Init(MIX_INIT_OGG | MIX_INIT_FLUIDSYNTH);
 		if (Mix_OpenAudio(kMixFreq, kMixFormat, kMixSoundChannels, kMixBufSize) < 0) {
 			warning("Mix_OpenAudio failed: %s", Mix_GetError());
 		}
-		Mix_AllocateChannels(kMixChannels);
-		memset(&_cvt, 0, sizeof(_cvt));
-		if (SDL_BuildAudioCVT(&_cvt, AUDIO_S8, 1, 11025, kMixFormat, kMixSoundChannels, kMixFreq) < 0) {
-			warning("SDL_BuildAudioCVT failed: %s", SDL_GetError());
+		if (softwareMixer) {
+			Mix_HookMusic(mixAudio, this);
+		} else {
+			Mix_AllocateChannels(kMixChannels);
 		}
 	}
 	void quit() {
@@ -131,18 +158,9 @@ struct Mixer_impl {
 	}
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, int freq, uint8_t volume) {
-		int len = READ_BE_UINT16(data) * 2;
-		const int loopLen = READ_BE_UINT16(data + 2) * 2;
-		if (loopLen != 0) {
-			len = loopLen;
-		}
-		int sampleLen = 0;
-		uint8_t *sample = convertMono8(&_cvt, data + 8, freq, len, &sampleLen);
-		if (sample) {
-			Mix_Chunk *chunk = Mix_QuickLoad_RAW(sample, sampleLen);
-			playSound(channel, volume, chunk, (loopLen != 0) ? -1 : 0);
-			_samples[channel] = sample;
-		}
+		SDL_LockAudio();
+		_channels[channel].init(data, freq, volume, kMixFreq);
+		SDL_UnlockAudio();
 	}
 	void playSoundWav(uint8_t channel, const uint8_t *data, int freq, uint8_t volume, int loops = 0) {
 		const uint32_t size = READ_LE_UINT32(data + 4) + 8;
@@ -165,16 +183,20 @@ struct Mixer_impl {
 		_sounds[channel] = chunk;
 	}
 	void stopSound(uint8_t channel) {
+		SDL_LockAudio();
+		_channels[channel]._data = 0;
+		SDL_UnlockAudio();
 		Mix_HaltChannel(channel);
 		freeSound(channel);
 	}
 	void freeSound(int channel) {
 		Mix_FreeChunk(_sounds[channel]);
 		_sounds[channel] = 0;
-		free(_samples[channel]);
-		_samples[channel] = 0;
 	}
 	void setChannelVolume(uint8_t channel, uint8_t volume) {
+		SDL_LockAudio();
+		_channels[channel]._volume = volume;
+		SDL_UnlockAudio();
 		Mix_Volume(channel, volume * MIX_MAX_VOLUME / 63);
 	}
 
@@ -204,18 +226,43 @@ struct Mixer_impl {
 		Mix_HookMusic(0, 0);
 	}
 
-	static void mixSfxPlayer(void *data, uint8_t *s16buf, int len) {
-		((SfxPlayer *)data)->readSamples((int16_t *)s16buf, len / sizeof(int16_t));
-	}
 	void playSfxMusic(SfxPlayer *sfx) {
-		Mix_HookMusic(mixSfxPlayer, sfx);
+		SDL_LockAudio();
+		_sfx = sfx;
+		_sfx->play(kMixFreq);
+		SDL_UnlockAudio();
 	}
 	void stopSfxMusic() {
-		Mix_HookMusic(0, 0);
+		SDL_LockAudio();
+		if (_sfx) {
+			_sfx->stop();
+			_sfx = 0;
+		}
+		SDL_UnlockAudio();
+	}
+
+	void mixChannels(int16_t *samples, int count) {
+		for (int i = 0; i < count; i += 2) {
+			_channels[0].mix(*samples);
+			_channels[3].mix(*samples);
+			++samples;
+			_channels[1].mix(*samples);
+			_channels[2].mix(*samples);
+			++samples;
+                }
+	}
+
+	static void mixAudio(void *data, uint8_t *s16buf, int len) {
+		memset(s16buf, 0, len);
+		Mixer_impl *mixer = (Mixer_impl *)data;
+		mixer->mixChannels((int16_t *)s16buf, len / sizeof(int16_t));
+		if (mixer->_sfx) {
+			mixer->_sfx->readSamples((int16_t *)s16buf, len / sizeof(int16_t));
+		}
 	}
 
 	void stopAll() {
-		for (int i = 0; i < 4; ++i) {
+		for (int i = 0; i < kMixChannels; ++i) {
 			stopSound(i);
 		}
 		stopMusic();
@@ -227,9 +274,9 @@ Mixer::Mixer(SfxPlayer *sfx)
 	: _aifc(0), _sfx(sfx) {
 }
 
-void Mixer::init() {
+void Mixer::init(bool softwareMixer) {
 	_impl = new Mixer_impl();
-	_impl->init();
+	_impl->init(softwareMixer);
 }
 
 void Mixer::quit() {
@@ -320,8 +367,6 @@ void Mixer::stopAifcMusic() {
 void Mixer::playSfxMusic(int num) {
 	debug(DBG_SND, "Mixer::playSfxMusic(%d)", num);
 	if (_impl && _sfx) {
-		_impl->stopSfxMusic();
-		_sfx->play(Mixer_impl::kMixFreq);
 		return _impl->playSfxMusic(_sfx);
 	}
 }
@@ -329,7 +374,6 @@ void Mixer::playSfxMusic(int num) {
 void Mixer::stopSfxMusic() {
 	debug(DBG_SND, "Mixer::stopSfxMusic()");
 	if (_impl && _sfx) {
-		_sfx->stop();
 		return _impl->stopSfxMusic();
 	}
 }

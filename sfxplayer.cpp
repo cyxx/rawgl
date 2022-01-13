@@ -11,7 +11,7 @@
 #include "util.h"
 
 SfxPlayer::SfxPlayer(Resource *res)
-	: _res(res), _delay(0), _resNum(0) {
+	: _res(res), _delay(0) {
 	_playing = false;
 }
 
@@ -23,8 +23,7 @@ void SfxPlayer::setEventsDelay(uint16_t delay) {
 void SfxPlayer::loadSfxModule(uint16_t resNum, uint16_t delay, uint8_t pos) {
 	debug(DBG_SND, "SfxPlayer::loadSfxModule(0x%X, %d, %d)", resNum, delay, pos);
 	MemEntry *me = &_res->_memList[resNum];
-	if (me->status == Resource::STATUS_LOADED && me->type == 1) {
-		_resNum = resNum;
+	if (me->status == Resource::STATUS_LOADED && me->type == Resource::RT_MUSIC) {
 		memset(&_sfxMod, 0, sizeof(SfxModule));
 		_sfxMod.curOrder = pos;
 		_sfxMod.numOrder = me->bufPtr[0x3F];
@@ -51,7 +50,7 @@ void SfxPlayer::prepareInstruments(const uint8_t *p) {
 		if (resNum != 0) {
 			ins->volume = READ_BE_UINT16(p);
 			MemEntry *me = &_res->_memList[resNum];
-			if (me->status == Resource::STATUS_LOADED && me->type == 0) {
+			if (me->status == Resource::STATUS_LOADED && me->type == Resource::RT_SOUND) {
 				ins->data = me->bufPtr;
 				debug(DBG_SND, "Loaded instrument 0x%X n=%d volume=%d", resNum, i, ins->volume);
 			} else {
@@ -70,9 +69,9 @@ void SfxPlayer::play(int rate) {
 }
 
 static int16_t toS16(int a) {
-	if (a < -128) {
+	if (a <= -128) {
 		return -32768;
-	} else if (a > 127) {
+	} else if (a >= 127) {
 		return 32767;
 	} else {
 		const uint8_t u8 = (a ^ 0x80);
@@ -128,7 +127,6 @@ void SfxPlayer::mixSamples(int16_t *buf, int len) {
 }
 
 void SfxPlayer::readSamples(int16_t *buf, int len) {
-	memset(buf, 0, len * sizeof(int16_t));
 	if (_delay != 0) {
 		mixSamples(buf, len / 2);
 	}
@@ -142,7 +140,6 @@ void SfxPlayer::start() {
 void SfxPlayer::stop() {
 	debug(DBG_SND, "SfxPlayer::stop()");
 	_playing = false;
-	_resNum = 0;
 }
 
 void SfxPlayer::handleEvents() {
@@ -158,7 +155,6 @@ void SfxPlayer::handleEvents() {
 		_sfxMod.curPos = 0;
 		order = _sfxMod.curOrder + 1;
 		if (order == _sfxMod.numOrder) {
-			_resNum = 0;
 			_playing = false;
 		}
 		_sfxMod.curOrder = order;
@@ -215,7 +211,7 @@ void SfxPlayer::handlePattern(uint8_t channel, const uint8_t *data) {
 		_channels[channel].sampleLen = 0;
 	} else if (pat.note_1 != 0 && pat.sampleBuffer != 0) {
 		assert(pat.note_1 >= 0x37 && pat.note_1 < 0x1000);
-		// convert amiga period value to hz
+		// convert Amiga period value to hz
 		const int freq = kPaulaFreq / (pat.note_1 * 2);
 		debug(DBG_SND, "SfxPlayer::handlePattern() adding sample freq = 0x%X", freq);
 		SfxChannel *ch = &_channels[channel];

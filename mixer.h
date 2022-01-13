@@ -19,7 +19,7 @@ struct Mixer {
 	Mixer_impl *_impl;
 
 	Mixer(SfxPlayer *sfx);
-	void init();
+	void init(bool softwareMixer);
 	void quit();
 	void update();
 
