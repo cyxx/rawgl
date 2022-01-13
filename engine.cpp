@@ -118,7 +118,23 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 		break;
 	}
 	_mix.init(softwareMixer);
-	if (_res.getDataType() == Resource::DT_3DO && _partNum == 16001) {
+#ifndef BYPASS_PROTECTION
+	switch (_res.getDataType()) {
+	case Resource::DT_DOS:
+		if (!_res._hasPasswordScreen) {
+			break;
+		}
+		/* fall-through */
+	case Resource::DT_AMIGA:
+	case Resource::DT_ATARI:
+	case Resource::DT_WIN31:
+		_partNum = kPartCopyProtection;
+		break;
+	default:
+		break;
+	}
+#endif
+	if (_res.getDataType() == Resource::DT_3DO && _partNum == kPartIntro) {
 		_state = kStateLogo3DO;
 	} else {
 		_state = kStateGame;
