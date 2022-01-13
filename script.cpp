@@ -760,6 +760,15 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		}
 		/* fall-through */
 	case Resource::DT_15TH_EDITION:
+		if (freq >= 32) {
+			// Anniversary editions do not have the 170 period
+			//
+			//  [31] dos=19886 20th=19886 amiga=19886 (period 180)
+			//  [32] dos=21056 20th=22372 amiga=21056 (period 170)
+			//  [33] dos=22372 20th=23704 amiga=22372 (period 160)
+			++freq;
+		}
+		/* fall-through */
 	case Resource::DT_WIN31: {
 			uint8_t *buf = _res->loadWav(resNum);
 			if (buf) {
