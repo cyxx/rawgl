@@ -354,6 +354,10 @@ void Script::op_playSound() {
 	snd_playSound(resNum, freq, vol, channel);
 }
 
+static void preloadSoundCb(void *userdata, int soundNum, const uint8_t *data) {
+	((Script *)userdata)->snd_preloadSound(soundNum, data);
+}
+
 void Script::op_updateResources() {
 	uint16_t num = _scriptPtr.fetchWord();
 	debug(DBG_SCRIPT, "Script::op_updateResources(%d)", num);
@@ -362,7 +366,7 @@ void Script::op_updateResources() {
 		_mix->stopAll();
 		_res->invalidateRes();
 	} else {
-		_res->update(num);
+		_res->update(num, preloadSoundCb, this);
 	}
 }
 
@@ -748,6 +752,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	if (freq > 39) {
 		freq = 39;
 	}
+	channel &= 3;
 	switch (_res->getDataType()) {
 	case Resource::DT_20TH_EDITION:
 		if (freq != 0) {
@@ -758,16 +763,12 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	case Resource::DT_WIN31: {
 			uint8_t *buf = _res->loadWav(resNum);
 			if (buf) {
-				_mix->playSoundWav(channel & 3, buf, getSoundFreq(freq), vol, getWavLooping(resNum));
+				_mix->playSoundWav(channel, buf, getSoundFreq(freq), vol, getWavLooping(resNum));
 			}
 		}
 		break;
-	case Resource::DT_3DO: {
-			MemEntry *me = &_res->_memList[resNum];
-			if (me->status == Resource::STATUS_LOADED) {
-				_mix->playSoundAiff(channel & 3, me->bufPtr, vol);
-			}
-		}
+	case Resource::DT_3DO:
+		_mix->playSoundAiff(channel, resNum, vol);
 		break;
 	case Resource::DT_AMIGA:
 	case Resource::DT_ATARI:
@@ -775,7 +776,7 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 	case Resource::DT_DOS: {
 			MemEntry *me = &_res->_memList[resNum];
 			if (me->status == Resource::STATUS_LOADED) {
-				_mix->playSoundRaw(channel & 3, me->bufPtr, getSoundFreq(freq), vol);
+				_mix->playSoundRaw(channel, me->bufPtr, getSoundFreq(freq), vol);
 			}
 		}
 		break;
@@ -828,6 +829,12 @@ void Script::snd_playMusic(uint16_t resNum, uint16_t delay, uint8_t pos) {
 			_mix->stopSfxMusic();
 		}
 		break;
+	}
+}
+
+void Script::snd_preloadSound(uint16_t resNum, const uint8_t *data) {
+	if (_res->getDataType() == Resource::DT_3DO) {
+		_mix->preloadSoundAiff(resNum, data);
 	}
 }
 

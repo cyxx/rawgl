@@ -408,7 +408,7 @@ static const int _memListBmp[] = {
 	145, 144, 73, 72, 70, 69, 68, 67, -1
 };
 
-void Resource::update(uint16_t num) {
+void Resource::update(uint16_t num, PreloadSoundProc preloadSound, void *data) {
 	if (num > 16000) {
 		_nextPart = num;
 		return;
@@ -439,7 +439,11 @@ void Resource::update(uint16_t num) {
 		if (num >= 2000) { // preload sounds
 			const uint8_t *soundsList = getSoundsList3DO(num);
 			for (int i = 0; soundsList[i] != 255; ++i) {
-				loadDat(soundsList[i]);
+				const int soundNum = soundsList[i];
+				loadDat(soundNum);
+				if (_memList[soundNum].status == STATUS_LOADED) {
+					preloadSound(data, soundNum, _memList[soundNum].bufPtr);
+				}
 			}
 		} else if (num >= 200) {
 			loadBmp(num);

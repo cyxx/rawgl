@@ -25,7 +25,6 @@ struct Mixer {
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume);
 	void playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume, uint8_t loop);
-	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume);
 	void stopSound(uint8_t channel);
 	void setChannelVolume(uint8_t channel, uint8_t volume);
 	void playMusic(const char *path, uint8_t loop);
@@ -35,6 +34,8 @@ struct Mixer {
 	void playSfxMusic(int num);
 	void stopSfxMusic();
 	void stopAll();
+	void preloadSoundAiff(uint8_t num, const uint8_t *data);
+	void playSoundAiff(uint8_t channel, uint8_t num, uint8_t volume);
 };
 
 #endif

@@ -7,6 +7,7 @@
 #include <SDL.h>
 #define MIX_INIT_FLUIDSYNTH MIX_INIT_MID // renamed with SDL2_mixer >= 2.0.2
 #include <SDL_mixer.h>
+#include <map>
 #include "aifcplayer.h"
 #include "mixer.h"
 #include "sfxplayer.h"
@@ -126,6 +127,7 @@ struct Mixer_impl {
 	Mix_Music *_music;
 	MixerChannel _channels[kMixChannels]; // 0,3:left 1,2:right
 	SfxPlayer *_sfx;
+	std::map<int, Mix_Chunk *> _preloads; // AIFF preloads (3DO)
 
 	void init(bool softwareMixer) {
 		memset(_sounds, 0, sizeof(_sounds));
@@ -167,12 +169,6 @@ struct Mixer_impl {
 		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
 		Mix_Chunk *chunk = loadAndConvertWav(rw, 1, freq, kMixFormat, kMixSoundChannels, kMixFreq);
 		playSound(channel, volume, chunk, loops);
-	}
-	void playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
-		const uint32_t size = READ_BE_UINT32(data + 4) + 8;
-		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
-		Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
-		playSound(channel, volume, chunk);
 	}
 	void playSound(uint8_t channel, int volume, Mix_Chunk *chunk, int loops = 0) {
 		stopSound(channel);
@@ -267,6 +263,32 @@ struct Mixer_impl {
 		}
 		stopMusic();
 		stopSfxMusic();
+		for (std::map<int, Mix_Chunk *>::iterator it = _preloads.begin(); it != _preloads.end(); ++it) {
+			debug(DBG_SND, "Flush preload %d", it->first);
+			Mix_FreeChunk(it->second);
+		}
+		_preloads.clear();
+	}
+
+	void preloadSoundAiff(int num, const uint8_t *data) {
+		if (_preloads.find(num) != _preloads.end()) {
+			warning("AIFF sound %d is already preloaded", num);
+		} else {
+			const uint32_t size = READ_BE_UINT32(data + 4) + 8;
+			SDL_RWops *rw = SDL_RWFromConstMem(data, size);
+			Mix_Chunk *chunk = Mix_LoadWAV_RW(rw, 1);
+			_preloads[num] = chunk;
+		}
+	}
+
+	void playSoundAiff(int channel, int num, int volume) {
+		if (_preloads.find(num) == _preloads.end()) {
+			warning("AIFF sound %d is not preloaded", num);
+		} else {
+			Mix_Chunk *chunk = _preloads[num];
+			Mix_PlayChannel(channel, chunk, 0);
+			Mix_Volume(channel, volume * MIX_MAX_VOLUME / 63);
+		}
 	}
 };
 
@@ -305,13 +327,6 @@ void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, ui
 	debug(DBG_SND, "Mixer::playSoundWav(%d, %d, %d)", channel, volume, loop);
 	if (_impl) {
 		return _impl->playSoundWav(channel, data, freq, volume, (loop != 0) ? -1 : 0);
-	}
-}
-
-void Mixer::playSoundAiff(uint8_t channel, const uint8_t *data, uint8_t volume) {
-	debug(DBG_SND, "Mixer::playSoundAiff(%d, %d)", channel, volume);
-	if (_impl) {
-		return _impl->playSoundAiff(channel, data, volume);
 	}
 }
 
@@ -382,5 +397,19 @@ void Mixer::stopAll() {
 	debug(DBG_SND, "Mixer::stopAll()");
 	if (_impl) {
 		return _impl->stopAll();
+	}
+}
+
+void Mixer::preloadSoundAiff(uint8_t num, const uint8_t *data) {
+	debug(DBG_SND, "Mixer::preloadSoundAiff(num:%d, data:%p)", num, data);
+	if (_impl) {
+		return _impl->preloadSoundAiff(num, data);
+	}
+}
+
+void Mixer::playSoundAiff(uint8_t channel, uint8_t num, uint8_t volume) {
+	debug(DBG_SND, "Mixer::playSoundAiff()");
+	if (_impl) {
+		return _impl->playSoundAiff(channel, num, volume);
 	}
 }

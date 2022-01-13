@@ -64,7 +64,10 @@ struct ResourceWin31;
 struct Resource3do;
 struct Video;
 
+typedef void (*PreloadSoundProc)(void *userdata, int num, const uint8_t *data);
+
 struct Resource {
+
 	enum ResType {
 		RT_SOUND  = 0,
 		RT_MUSIC  = 1,
@@ -137,7 +140,7 @@ struct Resource {
 	void load();
 	void invalidateAll();
 	void invalidateRes();	
-	void update(uint16_t num);
+	void update(uint16_t num, PreloadSoundProc, void *);
 	void loadBmp(int num);
 	uint8_t *loadDat(int num);
 	void loadFont();
