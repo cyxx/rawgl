@@ -28,7 +28,7 @@ void Script::init() {
 		_scriptVars[0xDB] = 1;
 		_scriptVars[0xE2] = 1;
 		_scriptVars[0xF2] = 6000;
-	} else {
+	} else if (_res->getDataType() != Resource::DT_15TH_EDITION && _res->getDataType() != Resource::DT_20TH_EDITION) {
 		_scriptVars[VAR_RANDOM_SEED] = time(0);
 #ifdef BYPASS_PROTECTION
 		// these 3 variables are set by the game code
@@ -271,7 +271,7 @@ void Script::op_updateDisplay() {
 
 #ifndef BYPASS_PROTECTION
 	// entered protection symbols match the expected values
-	if (_res->_currentPart == 16000 && _scriptVars[0x67] == 1) {
+	if (_res->_currentPart == kPartCopyProtection && _scriptVars[0x67] == 1) {
 		_scriptVars[0xDC] = 33;
 	}
 #endif
