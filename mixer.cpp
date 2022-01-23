@@ -37,9 +37,8 @@ struct MixerChannel {
 	int _volume;
 
 	void init(const uint8_t *data, int freq, int volume, int mixingFreq) {
-		_data = data;
-		_pos.offset = 8 << Frac::BITS;
-		_pos.inc = (freq << Frac::BITS) / mixingFreq;
+		_data = data + 8;
+		_pos.reset(freq, mixingFreq);
 
 		const int len = READ_BE_UINT16(data) * 2;
 		_loopLen = READ_BE_UINT16(data + 2) * 2;
@@ -51,11 +50,12 @@ struct MixerChannel {
 
 	void mix(int16_t &sample) {
 		if (_data) {
-			const uint32_t pos = _pos.getInt();
+			uint32_t pos = _pos.getInt();
 			_pos.offset += _pos.inc;
 			if (_loopLen != 0) {
 				if (pos >= _loopPos + _loopLen) {
-					_pos.offset = _loopPos << Frac::BITS;
+					pos = _loopPos;
+					_pos.offset = (_loopPos << Frac::BITS) + _pos.inc;
 				}
 			} else {
 				if (pos >= _len) {
