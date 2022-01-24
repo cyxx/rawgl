@@ -13,6 +13,8 @@
 #include "sfxplayer.h"
 #include "util.h"
 
+static const bool kAmigaStereoChannels = false; // 0,3:left 1,2:right
+
 static int16_t toS16(int a) {
 	if (a <= -128) {
 		return -32768;
@@ -125,7 +127,7 @@ struct Mixer_impl {
 
 	Mix_Chunk *_sounds[kMixChannels];
 	Mix_Music *_music;
-	MixerChannel _channels[kMixChannels]; // 0,3:left 1,2:right
+	MixerChannel _channels[kMixChannels];
 	SfxPlayer *_sfx;
 	std::map<int, Mix_Chunk *> _preloads; // AIFF preloads (3DO)
 
@@ -239,12 +241,19 @@ struct Mixer_impl {
 
 	void mixChannels(int16_t *samples, int count) {
 		for (int i = 0; i < count; i += 2) {
-			_channels[0].mix(*samples);
-			_channels[3].mix(*samples);
-			++samples;
-			_channels[1].mix(*samples);
-			_channels[2].mix(*samples);
-			++samples;
+			if (kAmigaStereoChannels) {
+				_channels[0].mix(*samples);
+				_channels[3].mix(*samples);
+				++samples;
+				_channels[1].mix(*samples);
+				_channels[2].mix(*samples);
+				++samples;
+			}  else {
+				for (int j = 0; j < kMixChannels; ++j) {
+					_channels[j].mix(samples[i]);
+				}
+				samples[i + 1] = samples[i];
+			}
                 }
 	}
 
