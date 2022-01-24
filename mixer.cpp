@@ -51,11 +51,12 @@ struct MixerChannel {
 
 	void mix(int16_t &sample) {
 		if (_data) {
-			const uint32_t pos = _pos.getInt();
+			uint32_t pos = _pos.getInt();
 			_pos.offset += _pos.inc;
 			if (_loopLen != 0) {
 				if (pos >= _loopPos + _loopLen) {
-					_pos.offset = _loopPos << Frac::BITS;
+					pos = _loopPos;
+					_pos.offset = (_loopPos << Frac::BITS) + _pos.inc;
 				}
 			} else {
 				if (pos >= _len) {
