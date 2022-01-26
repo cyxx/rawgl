@@ -13,6 +13,13 @@
 #include "sfxplayer.h"
 #include "util.h"
 
+enum {
+	TAG_RIFF = 0x46464952,
+	TAG_WAVE = 0x45564157,
+	TAG_fmt  = 0x20746D66,
+	TAG_data = 0x61746164
+};
+
 static const bool kAmigaStereoChannels = false; // 0,3:left 1,2:right
 
 static int16_t toS16(int a) {
@@ -123,10 +130,10 @@ struct MixerChannel {
 
 static const uint8_t *loadWav(const uint8_t *data, int &freq, int &len, bool &bits16, bool &stereo) {
 	uint32_t riffMagic = READ_LE_UINT32(data);
-	if (riffMagic != 0x46464952) return 0; // "RIFF"
+	if (riffMagic != TAG_RIFF) return 0;
 	uint32_t riffLength = READ_LE_UINT32(data + 4);
 	uint32_t waveMagic = READ_LE_UINT32(data + 8);
-	if (waveMagic != 0x45564157) return 0; // "WAVE"
+	if (waveMagic != TAG_WAVE) return 0;
 	uint32_t offset = 12;
 	uint32_t chunkMagic, chunkLength = 0;
 	// find fmt chunk
@@ -136,7 +143,7 @@ static const uint8_t *loadWav(const uint8_t *data, int &freq, int &len, bool &bi
 		chunkMagic = READ_LE_UINT32(data + offset);
 		chunkLength = READ_LE_UINT32(data + offset + 4);
 		offset += 8;
-	} while (chunkMagic != 0x20746D66); // "fmt "
+	} while (chunkMagic != TAG_fmt);
 
 	if (chunkLength < 14) return 0;
 	if (offset + chunkLength >= riffLength) return 0;
@@ -167,7 +174,7 @@ static const uint8_t *loadWav(const uint8_t *data, int &freq, int &len, bool &bi
 		chunkMagic = READ_LE_UINT32(data + offset);
 		chunkLength = READ_LE_UINT32(data + offset + 4);
 		offset += 8;
-	} while (chunkMagic != 0x61746164); // "data"
+	} while (chunkMagic != TAG_data);
 
 	uint32_t lengthSamples = chunkLength;
 	if (offset + lengthSamples - 4 > riffLength) {
