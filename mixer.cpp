@@ -22,7 +22,17 @@ enum {
 
 static const bool kAmigaStereoChannels = false; // 0,3:left 1,2:right
 
-static int16_t toS16(int a) {
+static int16_t u8toS16(int a) {
+	if (a <= 0) {
+		return -32768;
+	} else if (a >= 255) {
+		return 32767;
+	} else {
+		return ((a << 8) | a) - 32768;
+	}
+}
+
+static int16_t s8toS16(int a) {
 	if (a <= -128) {
 		return -32768;
 	} else if (a >= 127) {
@@ -84,7 +94,7 @@ struct MixerChannel {
 					return;
 				}
 			}
-			sample = mixS16(sample, toS16(((int8_t)_data[pos]) * _volume / 64));
+			sample = mixS16(sample, s8toS16(((int8_t)_data[pos]) * _volume / 64));
 		}
 	}
 
@@ -107,7 +117,7 @@ struct MixerChannel {
 			}
 			int valueL;
 			if (bits == 8) { // U8
-				valueL = toS16(_data[pos] - 128) * _volume / 64;
+				valueL = u8toS16(_data[pos]) * _volume / 64;
 			} else { // S16
 				valueL = ((int16_t)READ_LE_UINT16(&_data[pos * sizeof(int16_t)])) * _volume / 64;
 			}
@@ -118,7 +128,7 @@ struct MixerChannel {
 				valueR = valueL;
 			} else {
 				if (bits == 8) { // U8
-					valueR = toS16(_data[pos + 1] - 128) * _volume / 64;
+					valueR = u8toS16(_data[pos + 1]) * _volume / 64;
 				} else { // S16
 					valueR = ((int16_t)READ_LE_UINT16(&_data[(pos + 1) * sizeof(int16_t)])) * _volume / 64;
 				}
