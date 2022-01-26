@@ -23,24 +23,12 @@ enum {
 static const bool kAmigaStereoChannels = false; // 0,3:left 1,2:right
 
 static int16_t u8toS16(int a) {
-	if (a <= 0) {
-		return -32768;
-	} else if (a >= 255) {
-		return 32767;
-	} else {
-		return ((a << 8) | a) - 32768;
-	}
+	return ((a << 8) | a) - 32768;
 }
 
 static int16_t s8toS16(int a) {
-	if (a <= -128) {
-		return -32768;
-	} else if (a >= 127) {
-		return 32767;
-	} else {
-		const uint8_t u8 = (a ^ 0x80);
-		return ((u8 << 8) | u8) - 32768;
-	}
+	const uint8_t u8 = (a ^ 0x80);
+	return ((u8 << 8) | u8) - 32768;
 }
 
 static int16_t mixS16(int sample1, int sample2) {
