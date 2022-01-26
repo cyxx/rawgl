@@ -37,6 +37,7 @@ struct MixerChannel {
 	uint32_t _len;
 	uint32_t _loopLen, _loopPos;
 	int _volume;
+	void (MixerChannel::*_mixWav)(int16_t *sample);
 
 	void init(const uint8_t *data, int freq, int volume, int mixingFreq) {
 		_data = data + 8;
@@ -48,6 +49,18 @@ struct MixerChannel {
 		_len = len;
 
 		_volume = volume;
+	}
+
+	void initWav(const uint8_t *data, int freq, int volume, int mixingFreq, int len, bool bits16, bool stereo, bool loop) {
+		_data = data;
+		_pos.inc = (((int64_t)freq) << Frac::BITS) / mixingFreq;
+		_pos.offset = 0;
+
+		_len = len;
+		_loopLen = loop ? len : 0;
+		_loopPos = 0;
+		_volume = volume;
+		_mixWav = bits16 ? (stereo ? &MixerChannel::mixWavS16LEStereo : &MixerChannel::mixWavS16LEMono) : (stereo ? &MixerChannel::mixWavU8Stereo : &MixerChannel::mixWavU8Mono);
 	}
 
 	void mix(int16_t &sample) {
@@ -68,53 +81,147 @@ struct MixerChannel {
 			sample = mixS16(sample, toS16(((int8_t)_data[pos]) * _volume / 64));
 		}
 	}
+
+	void mixWavU8Mono(int16_t *sample) {
+		if (_data) {
+			uint32_t pos = _pos.getInt();
+			_pos.offset += _pos.inc;
+			if (pos >= _len) {
+				if (_loopLen != 0) {
+					pos = 0;
+					_pos.offset = _pos.inc;
+				} else {
+					_data = 0;
+					return;
+				}
+			}
+			int value = toS16((_data[pos] - 128) * _volume / 64);
+			sample[0] = mixS16(sample[0], value);
+			sample[1] = mixS16(sample[1], value);
+		}
+	}
+
+	void mixWavU8Stereo(int16_t *sample) {
+		if (_data) {
+			uint32_t pos = _pos.getInt();
+			_pos.offset += _pos.inc;
+			if (pos >= _len) {
+				if (_loopLen != 0) {
+					pos = 0;
+					_pos.offset = _pos.inc;
+				} else {
+					_data = 0;
+					return;
+				}
+			}
+			int value0 = toS16((_data[2*pos] - 128) * _volume / 64);
+			int value1 = toS16((_data[2*pos+1] - 128) * _volume / 64);
+			sample[0] = mixS16(sample[0], value0);
+			sample[1] = mixS16(sample[1], value1);
+		}
+	}
+
+	void mixWavS16LEMono(int16_t *sample) {
+		if (_data) {
+			uint32_t pos = _pos.getInt();
+			_pos.offset += _pos.inc;
+			if (pos >= _len) {
+				if (_loopLen != 0) {
+					pos = 0;
+					_pos.offset = _pos.inc;
+				} else {
+					_data = 0;
+					return;
+				}
+			}
+			int value = ((int16_t)SDL_SwapLE16(((int16_t *)_data)[pos])) * _volume / 64;
+			sample[0] = mixS16(sample[0], value);
+			sample[1] = mixS16(sample[1], value);
+		}
+	}
+
+	void mixWavS16LEStereo(int16_t *sample) {
+		if (_data) {
+			uint32_t pos = _pos.getInt();
+			_pos.offset += _pos.inc;
+			if (pos >= _len) {
+				if (_loopLen != 0) {
+					pos = 0;
+					_pos.offset = _pos.inc;
+				} else {
+					_data = 0;
+					return;
+				}
+			}
+			int value0 = ((int16_t)SDL_SwapLE16(((int16_t *)_data)[2 * pos])) * _volume / 64;
+			int value1 = ((int16_t)SDL_SwapLE16(((int16_t *)_data)[2 * pos + 1])) * _volume / 64;
+			sample[0] = mixS16(sample[0], value0);
+			sample[1] = mixS16(sample[1], value1);
+		}
+	}
 };
 
-static Mix_Chunk *loadAndConvertWav(SDL_RWops *rw, int freeRw, int freq, SDL_AudioFormat dstFormat, int dstChannels, int dstFreq) {
-	SDL_AudioSpec wavSpec;
-	Uint8 *wavBuf;
-	Uint32 wavLen;
-	SDL_AudioCVT cvt;
+static const uint8_t *loadWav(const uint8_t *data, int &freq, int &len, bool &bits16, bool &stereo) {
+	uint32_t riffMagic = READ_LE_UINT32(data);
+	if (riffMagic != 0x46464952) return 0; // "RIFF"
+	uint32_t riffLength = READ_LE_UINT32(data + 4);
+	uint32_t waveMagic = READ_LE_UINT32(data + 8);
+	if (waveMagic != 0x45564157) return 0; // "WAVE"
+	uint32_t offset = 12;
+	uint32_t chunkMagic, chunkLength = 0;
+	// find fmt chunk
+	do {
+		offset += chunkLength + (chunkLength & 1);
+		if (offset >= riffLength) return 0;
+		chunkMagic = READ_LE_UINT32(data + offset);
+		chunkLength = READ_LE_UINT32(data + offset + 4);
+		offset += 8;
+	} while (chunkMagic != 0x20746D66); // "fmt "
 
-	if (!SDL_LoadWAV_RW(rw, freeRw, &wavSpec, &wavBuf, &wavLen)) {
+	if (chunkLength < 14) return 0;
+	if (offset + chunkLength >= riffLength) return 0;
+
+	// read format
+	int formatTag = READ_LE_UINT16(data + offset);
+	int channels = READ_LE_UINT16(data + offset + 2);
+	int samplesPerSec = READ_LE_UINT32(data + offset + 4);
+	int bitsPerSample = 0;
+	if (chunkLength >= 16) {
+		bitsPerSample = READ_LE_UINT16(data + offset + 14);
+	} else if (formatTag == 1 && channels != 0) {
+		int blockAlign = READ_LE_UINT16(data + offset + 12);
+		bitsPerSample = (blockAlign * 8) / channels;
+	}
+	// check supported format
+	if ((formatTag != 1) || // PCM
+		(channels != 1 && channels != 2) || // mono or stereo
+		(bitsPerSample != 8 && bitsPerSample != 16)) { // 8bit or 16bit
+		warning("Unsupported wave file");
 		return 0;
 	}
 
-	if (wavSpec.freq == 22050 || wavSpec.freq == 44100 || wavSpec.freq == 48000) {
-		freq = (int)(freq * (wavSpec.freq / 9943.0f));
-	}
+	// find data chunk
+	do {
+		offset += chunkLength + (chunkLength & 1);
+		if (offset >= riffLength) return 0;
+		chunkMagic = READ_LE_UINT32(data + offset);
+		chunkLength = READ_LE_UINT32(data + offset + 4);
+		offset += 8;
+	} while (chunkMagic != 0x61746164); // "data"
 
-	if (SDL_BuildAudioCVT(&cvt, wavSpec.format, wavSpec.channels, freq, dstFormat, dstChannels, dstFreq) < 0) {
-		SDL_free(wavBuf);
-		return 0;
+	uint32_t lengthSamples = chunkLength;
+	if (offset + lengthSamples - 4 > riffLength) {
+		lengthSamples = riffLength + 4 - offset;
 	}
+	if (channels == 2) lengthSamples >>= 1;
+	if (bitsPerSample == 16) lengthSamples >>= 1;
 
-	cvt.len = wavLen;
-	if (cvt.len_mult > 1) {
-		cvt.buf = (Uint8 *)SDL_calloc(1, wavLen * cvt.len_mult);
-		if (cvt.buf == 0) {
-			SDL_free(wavBuf);
-			return 0;
-		}
-		SDL_memcpy(cvt.buf, wavBuf, wavLen);
-		SDL_free(wavBuf);
-	} else {
-		cvt.buf = wavBuf;
-	}
+	freq = samplesPerSec;
+	len = lengthSamples;
+	bits16 = (bitsPerSample == 16);
+	stereo = (channels == 2);
 
-	if (SDL_ConvertAudio(&cvt) < 0) {
-		SDL_free(cvt.buf);
-		return 0;
-	}
-
-	Mix_Chunk *chunk = Mix_QuickLoad_RAW(cvt.buf, cvt.len_cvt);
-	if (chunk == 0) {
-		SDL_free(cvt.buf);
-		return 0;
-	}
-
-	chunk->allocated = 1; // free allocated buffer when freeing chunk
-	return chunk;
+	return data + offset;
 }
 
 struct Mixer_impl {
@@ -131,18 +238,21 @@ struct Mixer_impl {
 	SfxPlayer *_sfx;
 	std::map<int, Mix_Chunk *> _preloads; // AIFF preloads (3DO)
 
-	void init(bool softwareMixer) {
+	void init(int softwareMixer) {
 		memset(_sounds, 0, sizeof(_sounds));
 		_music = 0;
 		memset(_channels, 0, sizeof(_channels));
+		for (int i = 0; i < kMixChannels; ++i) _channels[i]._mixWav = &MixerChannel::mixWavU8Mono;
 		_sfx = 0;
 
 		Mix_Init(MIX_INIT_OGG | MIX_INIT_FLUIDSYNTH);
 		if (Mix_OpenAudio(kMixFreq, kMixFormat, kMixSoundChannels, kMixBufSize) < 0) {
 			warning("Mix_OpenAudio failed: %s", Mix_GetError());
 		}
-		if (softwareMixer) {
+		if (softwareMixer == 1) {
 			Mix_HookMusic(mixAudio, this);
+		} else if (softwareMixer == 2) {
+			Mix_SetPostMix(mixAudioWav, this);
 		} else {
 			Mix_AllocateChannels(kMixChannels);
 		}
@@ -166,11 +276,19 @@ struct Mixer_impl {
 		_channels[channel].init(data, freq, volume, kMixFreq);
 		SDL_UnlockAudio();
 	}
-	void playSoundWav(uint8_t channel, const uint8_t *data, int freq, uint8_t volume, int loops = 0) {
-		const uint32_t size = READ_LE_UINT32(data + 4) + 8;
-		SDL_RWops *rw = SDL_RWFromConstMem(data, size);
-		Mix_Chunk *chunk = loadAndConvertWav(rw, 1, freq, kMixFormat, kMixSoundChannels, kMixFreq);
-		playSound(channel, volume, chunk, loops);
+	void playSoundWav(uint8_t channel, const uint8_t *data, int freq, uint8_t volume, bool loop) {
+		int wavFreq, len;
+		bool bits16, stereo;
+		const uint8_t *wavData = loadWav(data, wavFreq, len, bits16, stereo);
+		if (!wavData) return;
+
+		if (wavFreq == 22050 || wavFreq == 44100 || wavFreq == 48000) {
+			freq = (int)(freq * (wavFreq / 9943.0f));
+		}
+
+		SDL_LockAudio();
+		_channels[channel].initWav(wavData, freq, volume, kMixFreq, len, bits16, stereo, loop);
+		SDL_UnlockAudio();
 	}
 	void playSound(uint8_t channel, int volume, Mix_Chunk *chunk, int loops = 0) {
 		stopSound(channel);
@@ -240,21 +358,23 @@ struct Mixer_impl {
 	}
 
 	void mixChannels(int16_t *samples, int count) {
-		for (int i = 0; i < count; i += 2) {
-			if (kAmigaStereoChannels) {
+		if (kAmigaStereoChannels) {
+			for (int i = 0; i < count; i += 2) {
 				_channels[0].mix(*samples);
 				_channels[3].mix(*samples);
 				++samples;
 				_channels[1].mix(*samples);
 				_channels[2].mix(*samples);
 				++samples;
-			}  else {
+			}
+		}  else {
+			for (int i = 0; i < count; i += 2) {
 				for (int j = 0; j < kMixChannels; ++j) {
 					_channels[j].mix(samples[i]);
 				}
 				samples[i + 1] = samples[i];
 			}
-                }
+		}
 	}
 
 	static void mixAudio(void *data, uint8_t *s16buf, int len) {
@@ -264,6 +384,19 @@ struct Mixer_impl {
 		if (mixer->_sfx) {
 			mixer->_sfx->readSamples((int16_t *)s16buf, len / sizeof(int16_t));
 		}
+	}
+
+	void mixChannelsWav(int16_t *samples, int count) {
+		for (int i = 0; i < count; i += 2) {
+			for (int j = 0; j < kMixChannels; ++j) {
+				(_channels[j].*_channels[j]._mixWav)(samples + i);
+			}
+		}
+	}
+
+	static void mixAudioWav(void *data, uint8_t *s16buf, int len) {
+		Mixer_impl *mixer = (Mixer_impl *)data;
+		mixer->mixChannelsWav((int16_t *)s16buf, len / sizeof(int16_t));
 	}
 
 	void stopAll() {
@@ -305,7 +438,7 @@ Mixer::Mixer(SfxPlayer *sfx)
 	: _aifc(0), _sfx(sfx) {
 }
 
-void Mixer::init(bool softwareMixer) {
+void Mixer::init(int softwareMixer) {
 	_impl = new Mixer_impl();
 	_impl->init(softwareMixer);
 }
@@ -335,7 +468,7 @@ void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, ui
 void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume, uint8_t loop) {
 	debug(DBG_SND, "Mixer::playSoundWav(%d, %d, %d)", channel, volume, loop);
 	if (_impl) {
-		return _impl->playSoundWav(channel, data, freq, volume, (loop != 0) ? -1 : 0);
+		return _impl->playSoundWav(channel, data, freq, volume, loop);
 	}
 }
 
