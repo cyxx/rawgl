@@ -60,9 +60,8 @@ struct MixerChannel {
 		_loopLen = loop ? len : 0;
 		_loopPos = 0;
 		_volume = volume;
-		_mixWav = bits16 ? (stereo ? &MixerChannel::mixWavS16LEStereo : &MixerChannel::mixWavS16LEMono) : (stereo ? &MixerChannel::mixWavU8Stereo : &MixerChannel::mixWavU8Mono);
+		_mixWav = bits16 ? (stereo ? &MixerChannel::mixWav<16, true> : &MixerChannel::mixWav<16, false>) : (stereo ? &MixerChannel::mixWav<8, true> : &MixerChannel::mixWav<8, false>);
 	}
-
 	void mix(int16_t &sample) {
 		if (_data) {
 			uint32_t pos = _pos.getInt();
@@ -82,7 +81,8 @@ struct MixerChannel {
 		}
 	}
 
-	void mixWavU8Mono(int16_t *sample) {
+	template<int bits, bool stereo>
+	void mixWav(int16_t *sample) {
 		if (_data) {
 			uint32_t pos = _pos.getInt();
 			_pos.offset += _pos.inc;
@@ -95,68 +95,28 @@ struct MixerChannel {
 					return;
 				}
 			}
-			int value = toS16((_data[pos] - 128) * _volume / 64);
-			sample[0] = mixS16(sample[0], value);
-			sample[1] = mixS16(sample[1], value);
-		}
-	}
+			if (stereo) {
+				pos *= 2;
+			}
+			int valueL;
+			if (bits == 8) { // U8
+				valueL = toS16(_data[pos] - 128) * _volume / 64;
+			} else { // S16
+				valueL = ((int16_t)READ_LE_UINT16(&_data[pos * sizeof(int16_t)])) * _volume / 64;
+			}
+			sample[0] = mixS16(sample[0], valueL);
 
-	void mixWavU8Stereo(int16_t *sample) {
-		if (_data) {
-			uint32_t pos = _pos.getInt();
-			_pos.offset += _pos.inc;
-			if (pos >= _len) {
-				if (_loopLen != 0) {
-					pos = 0;
-					_pos.offset = _pos.inc;
-				} else {
-					_data = 0;
-					return;
+			int valueR;
+			if (!stereo) {
+				valueR = valueL;
+			} else {
+				if (bits == 8) { // U8
+					valueR = toS16(_data[pos + 1] - 128) * _volume / 64;
+				} else { // S16
+					valueR = ((int16_t)READ_LE_UINT16(&_data[(pos + 1) * sizeof(int16_t)])) * _volume / 64;
 				}
 			}
-			int value0 = toS16((_data[2*pos] - 128) * _volume / 64);
-			int value1 = toS16((_data[2*pos+1] - 128) * _volume / 64);
-			sample[0] = mixS16(sample[0], value0);
-			sample[1] = mixS16(sample[1], value1);
-		}
-	}
-
-	void mixWavS16LEMono(int16_t *sample) {
-		if (_data) {
-			uint32_t pos = _pos.getInt();
-			_pos.offset += _pos.inc;
-			if (pos >= _len) {
-				if (_loopLen != 0) {
-					pos = 0;
-					_pos.offset = _pos.inc;
-				} else {
-					_data = 0;
-					return;
-				}
-			}
-			int value = ((int16_t)SDL_SwapLE16(((int16_t *)_data)[pos])) * _volume / 64;
-			sample[0] = mixS16(sample[0], value);
-			sample[1] = mixS16(sample[1], value);
-		}
-	}
-
-	void mixWavS16LEStereo(int16_t *sample) {
-		if (_data) {
-			uint32_t pos = _pos.getInt();
-			_pos.offset += _pos.inc;
-			if (pos >= _len) {
-				if (_loopLen != 0) {
-					pos = 0;
-					_pos.offset = _pos.inc;
-				} else {
-					_data = 0;
-					return;
-				}
-			}
-			int value0 = ((int16_t)SDL_SwapLE16(((int16_t *)_data)[2 * pos])) * _volume / 64;
-			int value1 = ((int16_t)SDL_SwapLE16(((int16_t *)_data)[2 * pos + 1])) * _volume / 64;
-			sample[0] = mixS16(sample[0], value0);
-			sample[1] = mixS16(sample[1], value1);
+			sample[1] = mixS16(sample[1], valueR);
 		}
 	}
 };
@@ -242,7 +202,9 @@ struct Mixer_impl {
 		memset(_sounds, 0, sizeof(_sounds));
 		_music = 0;
 		memset(_channels, 0, sizeof(_channels));
-		for (int i = 0; i < kMixChannels; ++i) _channels[i]._mixWav = &MixerChannel::mixWavU8Mono;
+		for (int i = 0; i < kMixChannels; ++i) {
+			_channels[i]._mixWav = &MixerChannel::mixWav<8, false>;
+		}
 		_sfx = 0;
 
 		Mix_Init(MIX_INIT_OGG | MIX_INIT_FLUIDSYNTH);
