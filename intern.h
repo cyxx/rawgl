@@ -148,7 +148,7 @@ struct Frac {
 	uint64_t offset;
 
 	void reset(int n, int d) {
-		inc = (n << BITS) / d;
+		inc = (((int64_t)n) << BITS) / d;
 		offset = 0;
 	}
 

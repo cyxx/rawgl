@@ -58,8 +58,7 @@ struct MixerChannel {
 
 	void initWav(const uint8_t *data, int freq, int volume, int mixingFreq, int len, bool bits16, bool stereo, bool loop) {
 		_data = data;
-		_pos.inc = (((int64_t)freq) << Frac::BITS) / mixingFreq;
-		_pos.offset = 0;
+		_pos.reset(freq, mixingFreq);
 
 		_len = len;
 		_loopLen = loop ? len : 0;
