@@ -39,7 +39,7 @@ struct MixerChannel {
 	int _volume;
 	void (MixerChannel::*_mixWav)(int16_t *sample, int count);
 
-	void init(const uint8_t *data, int freq, int volume, int mixingFreq) {
+	void initRaw(const uint8_t *data, int freq, int volume, int mixingFreq) {
 		_data = data + 8;
 		_pos.reset(freq, mixingFreq);
 
@@ -61,7 +61,7 @@ struct MixerChannel {
 		_volume = volume;
 		_mixWav = bits16 ? (stereo ? &MixerChannel::mixWav<16, true> : &MixerChannel::mixWav<16, false>) : (stereo ? &MixerChannel::mixWav<8, true> : &MixerChannel::mixWav<8, false>);
 	}
-	void mix(int16_t &sample) {
+	void mixRaw(int16_t &sample) {
 		if (_data) {
 			uint32_t pos = _pos.getInt();
 			_pos.offset += _pos.inc;
@@ -240,7 +240,7 @@ struct Mixer_impl {
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, int freq, uint8_t volume) {
 		SDL_LockAudio();
-		_channels[channel].init(data, freq, volume, kMixFreq);
+		_channels[channel].initRaw(data, freq, volume, kMixFreq);
 		SDL_UnlockAudio();
 	}
 	void playSoundWav(uint8_t channel, const uint8_t *data, int freq, uint8_t volume, bool loop) {
@@ -327,17 +327,17 @@ struct Mixer_impl {
 	void mixChannels(int16_t *samples, int count) {
 		if (kAmigaStereoChannels) {
 			for (int i = 0; i < count; i += 2) {
-				_channels[0].mix(*samples);
-				_channels[3].mix(*samples);
+				_channels[0].mixRaw(*samples);
+				_channels[3].mixRaw(*samples);
 				++samples;
-				_channels[1].mix(*samples);
-				_channels[2].mix(*samples);
+				_channels[1].mixRaw(*samples);
+				_channels[2].mixRaw(*samples);
 				++samples;
 			}
 		}  else {
 			for (int i = 0; i < count; i += 2) {
 				for (int j = 0; j < kMixChannels; ++j) {
-					_channels[j].mix(samples[i]);
+					_channels[j].mixRaw(samples[i]);
 				}
 				samples[i + 1] = samples[i];
 			}
