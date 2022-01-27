@@ -13,13 +13,19 @@ struct AifcPlayer;
 struct SfxPlayer;
 struct Mixer_impl;
 
+enum MixerType {
+	kMixerTypeRaw,
+	kMixerTypeWav,
+	kMixerTypeAiff
+};
+
 struct Mixer {
 	AifcPlayer *_aifc;
 	SfxPlayer *_sfx;
 	Mixer_impl *_impl;
 
 	Mixer(SfxPlayer *sfx);
-	void init(int softwareMixer);
+	void init(MixerType mixerType);
 	void quit();
 	void update();
 

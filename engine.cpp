@@ -97,13 +97,13 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 		_vid.setDefaultFont();
 	}
 	_script.init();
-	int softwareMixer = 0;
+	MixerType mixerType = kMixerTypeRaw;
 	switch (_res.getDataType()) {
 	case Resource::DT_DOS:
 	case Resource::DT_AMIGA:
 	case Resource::DT_ATARI:
 	case Resource::DT_ATARI_DEMO:
-		softwareMixer = 1;
+		mixerType = kMixerTypeRaw;
 		switch (lang) {
 		case LANG_FR:
 			_vid._stringsTable = Video::_stringsTableFr;
@@ -117,12 +117,13 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	case Resource::DT_WIN31:
 	case Resource::DT_15TH_EDITION:
 	case Resource::DT_20TH_EDITION:
-		softwareMixer = 2;
+		mixerType = kMixerTypeWav;
 		break;
-	default:
+	case Resource::DT_3DO:
+		mixerType = kMixerTypeAiff;
 		break;
 	}
-	_mix.init(softwareMixer);
+	_mix.init(mixerType);
 #ifndef BYPASS_PROTECTION
 	switch (_res.getDataType()) {
 	case Resource::DT_DOS:

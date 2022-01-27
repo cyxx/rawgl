@@ -204,7 +204,7 @@ struct Mixer_impl {
 	SfxPlayer *_sfx;
 	std::map<int, Mix_Chunk *> _preloads; // AIFF preloads (3DO)
 
-	void init(int softwareMixer) {
+	void init(MixerType mixerType) {
 		memset(_sounds, 0, sizeof(_sounds));
 		_music = 0;
 		memset(_channels, 0, sizeof(_channels));
@@ -217,12 +217,16 @@ struct Mixer_impl {
 		if (Mix_OpenAudio(kMixFreq, kMixFormat, kMixSoundChannels, kMixBufSize) < 0) {
 			warning("Mix_OpenAudio failed: %s", Mix_GetError());
 		}
-		if (softwareMixer == 1) {
+		switch (mixerType) {
+		case kMixerTypeRaw:
 			Mix_HookMusic(mixAudio, this);
-		} else if (softwareMixer == 2) {
+			break;
+		case kMixerTypeWav:
 			Mix_SetPostMix(mixAudioWav, this);
-		} else {
+			break;
+		case kMixerTypeAiff:
 			Mix_AllocateChannels(kMixChannels);
+			break;
 		}
 	}
 	void quit() {
@@ -406,9 +410,9 @@ Mixer::Mixer(SfxPlayer *sfx)
 	: _aifc(0), _sfx(sfx) {
 }
 
-void Mixer::init(int softwareMixer) {
+void Mixer::init(MixerType mixerType) {
 	_impl = new Mixer_impl();
-	_impl->init(softwareMixer);
+	_impl->init(mixerType);
 }
 
 void Mixer::quit() {
