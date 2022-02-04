@@ -15,8 +15,8 @@
 
 
 static const char USAGE[] =
-	"Raw(gl) - Another World Interpreter\n"
-	"Usage: rawgl [OPTIONS]...\n"
+	"raw(gl) - Another World Interpreter\n"
+	"Usage: %s [OPTIONS]...\n"
 	"  --datapath=PATH   Path to data files (default '.')\n"
 	"  --language=LANG   Language (fr,us,de,es,it)\n"
 	"  --part=NUM        Game part to start from (0-35 or 16001-16009)\n"
@@ -221,7 +221,7 @@ int main(int argc, char *argv[]) {
 		case 'h':
 			// fall-through
 		default:
-			printf("%s\n", USAGE);
+			printf(USAGE, argv[0]);
 			return 0;
 		}
 	}
