@@ -14,7 +14,7 @@
 #include "util.h"
 
 
-static const char *USAGE =
+static const char USAGE[] =
 	"Raw(gl) - Another World Interpreter\n"
 	"Usage: rawgl [OPTIONS]...\n"
 	"  --datapath=PATH   Path to data files (default '.')\n"
