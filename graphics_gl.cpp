@@ -504,7 +504,6 @@ void GraphicsGL::drawSprite(int listNum, int num, const Point *pt, uint8_t color
 }
 
 void GraphicsGL::drawBitmap(int listNum, const uint8_t *data, int w, int h, int fmt) {
-	assert(listNum == 0);
 	_backgroundTex._fmt = fmt;
 	switch (fmt) {
 	case FMT_CLUT:
