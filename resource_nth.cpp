@@ -146,14 +146,18 @@ struct Resource15th: ResourceNth {
 				_textBuf = loadTextFile(f, size);
 				if (_textBuf) {
 					char *p = _textBuf;
-					while (true) {
+					while (*p) {
 						char *end = strchr(p, '\r');
 						if (!end) {
-							break;
+							end = strchr(p, '\n');
 						}
-						*end++ = 0;
-						if (*end == '\n') {
+						if (end) {
 							*end++ = 0;
+							if (*end == '\n') {
+								*end++ = 0;
+							}
+						} else {
+							end = strchr(p, 0);
 						}
 						const int len = end - p;
 						int strNum = -1;

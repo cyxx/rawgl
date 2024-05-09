@@ -349,6 +349,13 @@ void Video::drawString(uint8_t color, uint16_t x, uint16_t y, uint16_t strId) {
 					y += 8;
 					x = xx;
 					break;
+				case '2':
+				case '3':
+					Point pt(x * 8, y);
+					_graphics->drawStringChar(_buffers[0], color, (str[i] - '0') * 10 + (str[i+1] - '0'), &pt);
+					++x;
+					++i;
+					break;
 				}
 			}
 		} else {
