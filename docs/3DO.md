@@ -6,8 +6,6 @@ Another World has been ported on many platforms. The way the game was written (i
 This document focuses on the 3DO release made by Interplay in 1994. This version was not a straight port. In addition to reworking the assets, the game code was modified.
 
 - [Assets](#assets)
-- [Game Code](#game-code)
-- [Game Copy Protection](#game-copy-protection)
 - [Bytecode](#bytecode)
 - [Resources](#resources)
 - [Rendering](#rendering)
@@ -22,78 +20,6 @@ Music    | 4 channels tracker with raw signed 8bits samples (3 files) | AIFF SDX
 Sound    | raw signed 8bits mono (103 files)                          | AIFF signed 16 bits (92 files)
 Bitmap   | 4 bits depth paletted 320x200 (8 files)                    | True-color RGB555 320x200 (139 files)
 Bytecode | Big-endian (Motorola 68000)                                | Little-endian (ARMv3)
-
-## Game Code
-
-The game code is split in 9 different sections.
-
-```
-16000.asm - protection screen
-16001_intro.asm
-16002_eau.asm - water
-16003_pri.asm - jail
-16004_cite.asm
-16005_arene.asm
-16006_luxe.asm
-16007_final.asm
-16008.asm - password screen
-```
-
-Each section can be used as a starting point by the engine, with _vars[0] set to start at a specific position within that section.
-
-![Screenshot Code](screenshot-code.png)
-
-The password screen bytecode contains series of checks such as below to lookup the code entered.
-
-```
-02E3: jmpIf(VAR(0x07) != 10, @0303)
-02E9: jmpIf(VAR(0x08) != 2, @0303)
-02EF: jmpIf(VAR(0x09) != 9, @0303)
-02F5: jmpIf(VAR(0x0A) != 2, @0303)
-02FB: VAR(0x00) = 10
-02FF: updateResources(res=16002)
-```
-
-The 4 variables (var7..varA) hold the index of the letter selected.
-
-```
-alphabet = [ 'B', 'C', 'D', 'F', 'G', 'H', '?', '?', 'J', 'K', 'L', 'R', 'T', 'X' ]
-```
-
-## Game Copy Protection
-
-With the original Amiga/DOS version, the player has to lookup some symbols from a code wheel provided with the game.
-
-![Screenshot Code](screenshot-protection.png)
-
-In addition to checking if the symbols entered are the correct ones, the game code is setting a few variables which are checked during gameplay.
-This was probably added to defeat game cracks that would simply bypass the game protection screen.
-
-The Amiga version bytecode checks 4 variables :
-
-```
-0091: VAR(0xBC) &= 16
-0095: VAR(0xC6) &= 128
-0099: jmpIf(VAR(0xBC) == 0, @00B3)
-009F: jmpIf(VAR(0xC6) == 0, @00B3)
-00A5: jmpIf(VAR(0xF2) != 6000, @00B3)
-00AC: jmpIf(VAR(0xDC) != 33, @00B3)
-```
-
-The DOS version bytecode checks 5 variables :
-
-```
-00B7: VAR(0xBC) &= 16
-00BB: VAR(0xF8) = VAR(0xC6)
-00BE: VAR(0xF8) &= 128
-00C2: jmpIf(VAR(0xBC) == 0, @00E9)
-00C8: jmpIf(VAR(0xF8) == 0, @00E9)
-00CE: VAR(0xF8) = VAR(0xE4)
-00D1: VAR(0xF8) &= 60
-00D5: jmpIf(VAR(0xF8) != 20, @00E9)
-00DB: jmpIf(VAR(0xF2) != 4000, @00E9)
-00E2: jmpIf(VAR(0xDC) != 33, @00E9)
-```
 
 ## Bytecode
 

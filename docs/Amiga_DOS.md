@@ -4,6 +4,7 @@
 This document lists differences found in the Amiga and DOS executables and bytecode of Another World.
 
 - [Game Copy Protection](#game-copy-protection)
+- [Game Code](#game-code)
 - [Variables](#variables)
 - [Opcodes Dispatch](#opcodes-dispatch)
 - [Data Files](#data-files)
@@ -81,7 +82,7 @@ Part  | Name  | Comment
 16007 | final |
 16008 |       | password screen
 
-Each section can be used as a starting point by the engine, with _vars[0] set to start at a specific position within that section.
+Each section can be used as a starting point by the engine, with `_vars[0]` set to start at a specific position within that section.
 
 ![DOS Code](dos-code.png)
 
@@ -95,6 +96,13 @@ The password screen bytecode contains series of checks such as below to lookup t
 08CE: (00) VAR(0x00) = 60
 08D2: (19) updateResources(res=16006)
 ```
+
+The 4 variables (var1E..var21) hold the index of the letter selected.
+
+```
+alphabet = [ 'B', 'C', 'D', 'F', 'G', 'H', '?', '?', 'J', 'K', 'L', 'R', 'T', 'X' ]
+```
+
 
 ## Variables
 
