@@ -12,6 +12,8 @@
 #include "mixer.h"
 #include "sfxplayer.h"
 #include "util.h"
+#define MT32EMU_API_TYPE 1
+#include <mt32emu.h>
 
 enum {
 	TAG_RIFF = 0x46464952,
@@ -198,6 +200,7 @@ struct Mixer_impl {
 	MixerChannel _channels[kMixChannels];
 	SfxPlayer *_sfx;
 	std::map<int, Mix_Chunk *> _preloads; // AIFF preloads (3DO)
+	mt32emu_context _mt32;
 
 	void init(MixerType mixerType) {
 		memset(_sounds, 0, sizeof(_sounds));
@@ -222,10 +225,25 @@ struct Mixer_impl {
 		case kMixerTypeAiff:
 			Mix_AllocateChannels(kMixChannels);
 			break;
+		case kMixerTypeMt32: {
+				mt32emu_report_handler_i report = { 0 };
+				_mt32 = mt32emu_create_context(report, this);
+				mt32emu_add_rom_file(_mt32, "CM32L_CONTROL.ROM");
+				mt32emu_add_rom_file(_mt32, "CM32L_PCM.ROM");
+				mt32emu_set_stereo_output_samplerate(_mt32, kMixFreq);
+				mt32emu_open_synth(_mt32);
+				mt32emu_set_midi_delay_mode(_mt32, MT32EMU_MDM_IMMEDIATE);
+			}
+			Mix_HookMusic(mixAudio, this);
+			break;
 		}
 	}
 	void quit() {
 		stopAll();
+		if (_mt32) {
+			mt32emu_close_synth(_mt32);
+			mt32emu_free_context(_mt32);
+		}
 		Mix_CloseAudio();
 		Mix_Quit();
 	}
@@ -266,11 +284,45 @@ struct Mixer_impl {
 		_sounds[channel] = chunk;
 	}
 	void stopSound(uint8_t channel) {
+		if (_mt32) {
+			stopSoundMt32();
+		}
 		SDL_LockAudio();
 		_channels[channel]._data = 0;
 		SDL_UnlockAudio();
 		Mix_HaltChannel(channel);
 		freeSound(channel);
+	}
+	void playSoundMt32(int channel, int num) {
+		for (const uint8_t *data = Mixer::_mt32SoundsTable; data[0]; data += 4) {
+			if (data[0] == num) {
+				int8_t note = data[1];
+
+				uint32_t noteOn = 0x99;
+				noteOn |= ABS(note) << 8;
+				noteOn |= 0x7f << 16;
+				mt32emu_play_msg(_mt32, noteOn);
+
+				uint32_t pitchBend = 0xe9;
+				pitchBend |= (READ_LE_UINT16(data) & 0x7f) << 8;
+				pitchBend |= (0x3f80 >> 7) << 16;
+				mt32emu_play_msg(_mt32, pitchBend);
+
+				if (note < 0) {
+					uint32_t noteVel = 0x99;
+					noteVel |= ABS(note) << 8;
+					noteVel |= 0 << 16;
+					mt32emu_play_msg(_mt32, noteVel);
+				}
+				break;
+			}
+		}
+	}
+	void stopSoundMt32() {
+		uint32_t controlChange = 0xb9;
+		controlChange |= 0x7b << 8;
+		controlChange |= 0 << 16;
+		mt32emu_play_msg(_mt32, controlChange);
 	}
 	void freeSound(int channel) {
 		Mix_FreeChunk(_sounds[channel]);
@@ -347,7 +399,11 @@ struct Mixer_impl {
 	static void mixAudio(void *data, uint8_t *s16buf, int len) {
 		memset(s16buf, 0, len);
 		Mixer_impl *mixer = (Mixer_impl *)data;
-		mixer->mixChannels((int16_t *)s16buf, len / sizeof(int16_t));
+		if (mixer->_mt32) {
+			mt32emu_render_bit16s(mixer->_mt32, (int16_t *)s16buf, len / (2 * sizeof(int16_t)));
+		} else {
+			mixer->mixChannels((int16_t *)s16buf, len / sizeof(int16_t));
+		}
 		if (mixer->_sfx) {
 			mixer->_sfx->readSamples((int16_t *)s16buf, len / sizeof(int16_t));
 		}
@@ -425,6 +481,10 @@ void Mixer::update() {
 	}
 }
 
+bool Mixer::hasMt32() const {
+	return _impl && _impl->_mt32;
+}
+
 void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
 	debug(DBG_SND, "Mixer::playChannel(%d, %d, %d)", channel, freq, volume);
 	if (_impl) {
@@ -443,6 +503,12 @@ void Mixer::stopSound(uint8_t channel) {
 	debug(DBG_SND, "Mixer::stopChannel(%d)", channel);
 	if (_impl) {
 		return _impl->stopSound(channel);
+	}
+}
+
+void Mixer::playSoundMt32(int channel, int num) {
+	if (_impl) {
+		return _impl->playSoundMt32(channel, num);
 	}
 }
 

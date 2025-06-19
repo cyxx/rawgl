@@ -37,6 +37,7 @@ directory. This can be changed with command line switches.
     --demo3-joy       Use inputs from 'demo3.joy' (DOS demo)
     --difficulty=DIFF Difficulty (easy,normal,hard)
     --audio=AUDIO     Audio (original,remastered)
+    --mt32            Use MT32 sounds mapping with DOS version
 ```
 
 In game hotkeys :

@@ -463,9 +463,9 @@ void Video::scaleBitmap(const uint8_t *src, int fmt) {
 		const int h = BITMAP_H * _scalerFactor;
 		const int depth = (fmt == FMT_CLUT) ? 1 : 2;
 		_scaler->scale(_scalerFactor, depth, _scalerBuffer, w * depth, src, BITMAP_W * depth, BITMAP_W, BITMAP_H);
-		_graphics->drawBitmap(_buffers[0], _scalerBuffer, w, h, fmt);
+		_graphics->drawBitmap(0, _scalerBuffer, w, h, fmt);
 	} else {
-		_graphics->drawBitmap(_buffers[0], src, BITMAP_W, BITMAP_H, fmt);
+		_graphics->drawBitmap(0, src, BITMAP_W, BITMAP_H, fmt);
 	}
 }
 

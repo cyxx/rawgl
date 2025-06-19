@@ -69,7 +69,7 @@ void Engine::run() {
 	}
 }
 
-void Engine::setup(Language lang, int graphicsType, const char *scalerName, int scalerFactor) {
+void Engine::setup(Language lang, int graphicsType, const char *scalerName, int scalerFactor, bool useMT32) {
 	_vid._graphics = _graphics;
 	int w = GFX_W * scalerFactor;
 	int h = GFX_H * scalerFactor;
@@ -100,10 +100,13 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 	MixerType mixerType = kMixerTypeRaw;
 	switch (_res.getDataType()) {
 	case Resource::DT_DOS:
+		if (useMT32) {
+			mixerType = kMixerTypeMt32;
+		}
+		/* fall-through */
 	case Resource::DT_AMIGA:
 	case Resource::DT_ATARI:
 	case Resource::DT_ATARI_DEMO:
-		mixerType = kMixerTypeRaw;
 		switch (lang) {
 		case LANG_FR:
 			_vid._stringsTable = Video::_stringsTableFr;

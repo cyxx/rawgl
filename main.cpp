@@ -28,6 +28,7 @@ static const char USAGE[] =
 	"  --demo3-joy       Use inputs from 'demo3.joy' (DOS demo)\n"
 	"  --difficulty=DIFF Difficulty (easy,normal,hard)\n"
 	"  --audio=AUDIO     Audio (original,remastered)\n"
+	"  --mt32            Use MT32 sounds mapping with DOS version\n"
 	;
 
 static const struct {
@@ -131,6 +132,7 @@ int main(int argc, char *argv[]) {
 	scaler.factor = 1;
 	bool defaultGraphics = true;
 	bool demo3JoyInputs = false;
+	bool useMT32 = false;
 	if (argc == 2) {
 		// data path as the only command line argument
 		struct stat st;
@@ -152,6 +154,7 @@ int main(int argc, char *argv[]) {
 			{ "demo3-joy",  no_argument,     0, 'j' },
 			{ "difficulty", required_argument, 0, 'i' },
 			{ "audio",    required_argument, 0, 'u' },
+			{ "mt32",       no_argument,     0, 'm' },
 			{ "help",       no_argument,     0, 'h' },
 			{ 0, 0, 0, 0 }
 		};
@@ -218,6 +221,9 @@ int main(int argc, char *argv[]) {
 				Script::_useRemasteredAudio = false;
 			}
 			break;
+		case 'm':
+			useMT32 = true;
+			break;
 		case 'h':
 			// fall-through
 		default:
@@ -263,12 +269,13 @@ int main(int argc, char *argv[]) {
 	if (demo3JoyInputs && e->_res.getDataType() == Resource::DT_DOS) {
 		e->_res.readDemo3Joy();
 	}
-	e->setup(lang, graphicsType, scaler.name, scaler.factor);
+	e->setup(lang, graphicsType, scaler.name, scaler.factor, useMT32);
 	while (!stub->_pi.quit) {
 		e->run();
 	}
 	e->finish();
 	delete e;
+	delete graphics;
 	stub->fini();
 	delete stub;
 	return 0;

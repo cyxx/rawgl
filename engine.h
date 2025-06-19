@@ -43,7 +43,7 @@ struct Engine {
 	const char *getGameTitle(Language lang) const { return _res.getGameTitle(lang); }
 
 	void run();
-	void setup(Language lang, int graphicsType, const char *scalerName, int scalerFactor);
+	void setup(Language lang, int graphicsType, const char *scalerName, int scalerFactor, bool useMT32);
 	void finish();
 	void processInput();
 

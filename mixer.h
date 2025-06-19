@@ -16,10 +16,13 @@ struct Mixer_impl;
 enum MixerType {
 	kMixerTypeRaw,
 	kMixerTypeWav,
-	kMixerTypeAiff
+	kMixerTypeAiff,
+	kMixerTypeMt32,
 };
 
 struct Mixer {
+	static const uint8_t _mt32SoundsTable[196];
+
 	AifcPlayer *_aifc;
 	SfxPlayer *_sfx;
 	Mixer_impl *_impl;
@@ -29,9 +32,12 @@ struct Mixer {
 	void quit();
 	void update();
 
+	bool hasMt32() const;
+
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume);
 	void playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume, uint8_t loop);
 	void stopSound(uint8_t channel);
+	void playSoundMt32(int channel, int num);
 	void setChannelVolume(uint8_t channel, uint8_t volume);
 	void playMusic(const char *path, uint8_t loop);
 	void stopMusic();

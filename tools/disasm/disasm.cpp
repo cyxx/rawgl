@@ -162,10 +162,6 @@ static void printOpcode(uint16_t addr, uint8_t opcode, int args[16]) {
 		fprintf(_out, "%04X: loc_%04X:\n", addr, addr);
 	}
 	fprintf(_out, "%04X: (%02X) ", addr, opcode);
-	if (opcode > op_playMusic && (opcode & 0xC0) == 0) {
-		fputc('\n', _out);
-		return;
-	}
 	switch (opcode) {
 	case op_movConst:
 		fprintf(_out, "VAR(0x%02X) = %d", args[0], args[1]);
