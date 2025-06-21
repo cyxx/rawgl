@@ -65,7 +65,7 @@ struct Resource15th: ResourceNth {
 	}
 
 	virtual uint8_t *loadBmp(int num) {
-		char name[16];
+		char name[32];
 		if (num >= 3000) {
 			snprintf(name, sizeof(name), "e%04d.bmp", num);
 		} else {
@@ -75,7 +75,7 @@ struct Resource15th: ResourceNth {
 	}
 
 	virtual uint8_t *loadDat(int num, uint8_t *dst, uint32_t *size) {
-		char name[16];
+		char name[32];
 		snprintf(name, sizeof(name), "file%03d.dat", num);
 		const PakEntry *e = _pak.find(name);
 		if (e) {
@@ -138,10 +138,10 @@ struct Resource15th: ResourceNth {
 			default:
 				return;
 			}
-			char path[MAXPATHLEN];
-			snprintf(path, sizeof(path), "%s/lang_%s", _menuPath, name);
+			char txtName[32];
+			snprintf(txtName, sizeof(txtName), "lang_%s", name);
 			File f;
-			if (f.open(path)) {
+			if (f.open(txtName, _menuPath)) {
 				const int size = f.size();
 				_textBuf = loadTextFile(f, size);
 				if (_textBuf) {

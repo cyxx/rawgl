@@ -210,6 +210,7 @@ struct Mixer_impl {
 			_channels[i]._mixWav = &MixerChannel::mixWav<8, false>;
 		}
 		_sfx = 0;
+		_mt32 = 0;
 
 		Mix_Init(MIX_INIT_OGG | MIX_INIT_FLUIDSYNTH);
 		if (Mix_OpenAudio(kMixFreq, kMixFormat, kMixSoundChannels, kMixBufSize) < 0) {
@@ -428,6 +429,7 @@ struct Mixer_impl {
 		}
 		stopMusic();
 		stopSfxMusic();
+		stopAifcMusic();
 		for (std::map<int, Mix_Chunk *>::iterator it = _preloads.begin(); it != _preloads.end(); ++it) {
 			debug(DBG_SND, "Flush preload %d", it->first);
 			Mix_FreeChunk(it->second);

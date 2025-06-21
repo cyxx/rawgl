@@ -274,7 +274,9 @@ struct DrawList {
 			DrawListEntry e;
 			e.color = color;
 			e.numVertices = count;
-			memcpy(e.vertices, vertices, count * sizeof(Point));
+			for (int i = 0; i < count; ++i) {
+				e.vertices[i] = *vertices++;
+			}
 			entries.push_back(e);
 		}
 	}
