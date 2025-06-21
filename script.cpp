@@ -780,8 +780,8 @@ void Script::snd_playSound(uint16_t resNum, uint8_t freq, uint8_t vol, uint8_t c
 		_mix->playSoundAiff(channel, resNum, vol);
 		break;
 	case Resource::DT_DOS:
-		if (_mix->hasMt32()) {
-			_mix->playSoundMt32(channel, resNum);
+		if (_mix->hasMt32() && _mix->hasMt32SoundMapping(resNum)) {
+			_mix->playSoundMt32(resNum);
 			break;
 		}
 		/* fall-through */

@@ -240,7 +240,6 @@ struct Mixer_impl {
 		}
 	}
 	void quit() {
-		stopAll();
 		if (_mt32) {
 			mt32emu_close_synth(_mt32);
 			mt32emu_free_context(_mt32);
@@ -294,9 +293,18 @@ struct Mixer_impl {
 		Mix_HaltChannel(channel);
 		freeSound(channel);
 	}
-	void playSoundMt32(int channel, int num) {
+	static const uint8_t *findMt32Sound(int num) {
 		for (const uint8_t *data = Mixer::_mt32SoundsTable; data[0]; data += 4) {
 			if (data[0] == num) {
+				return data;
+			}
+		}
+		return 0;
+	}
+	void playSoundMt32(int num) {
+		const uint8_t *data = findMt32Sound(num);
+		if (data) {
+			for (; data[0] == num; data += 4) {
 				int8_t note = data[1];
 
 				uint32_t noteOn = 0x99;
@@ -315,7 +323,6 @@ struct Mixer_impl {
 					noteVel |= 0 << 16;
 					mt32emu_play_msg(_mt32, noteVel);
 				}
-				break;
 			}
 		}
 	}
@@ -402,9 +409,8 @@ struct Mixer_impl {
 		Mixer_impl *mixer = (Mixer_impl *)data;
 		if (mixer->_mt32) {
 			mt32emu_render_bit16s(mixer->_mt32, (int16_t *)s16buf, len / (2 * sizeof(int16_t)));
-		} else {
-			mixer->mixChannels((int16_t *)s16buf, len / sizeof(int16_t));
 		}
+		mixer->mixChannels((int16_t *)s16buf, len / sizeof(int16_t));
 		if (mixer->_sfx) {
 			mixer->_sfx->readSamples((int16_t *)s16buf, len / sizeof(int16_t));
 		}
@@ -423,13 +429,17 @@ struct Mixer_impl {
 		mixer->mixChannelsWav((int16_t *)s16buf, len / sizeof(int16_t));
 	}
 
-	void stopAll() {
+	void stopAll(AifcPlayer *aifc, SfxPlayer *sfx) {
 		for (int i = 0; i < kMixChannels; ++i) {
 			stopSound(i);
 		}
 		stopMusic();
-		stopSfxMusic();
-		stopAifcMusic();
+		if (sfx) {
+			stopSfxMusic();
+		}
+		if (aifc) {
+			stopAifcMusic();
+		}
 		for (std::map<int, Mix_Chunk *>::iterator it = _preloads.begin(); it != _preloads.end(); ++it) {
 			debug(DBG_SND, "Flush preload %d", it->first);
 			Mix_FreeChunk(it->second);
@@ -487,8 +497,12 @@ bool Mixer::hasMt32() const {
 	return _impl && _impl->_mt32;
 }
 
+bool Mixer::hasMt32SoundMapping(int num) {
+	return Mixer_impl::findMt32Sound(num) != 0;
+}
+
 void Mixer::playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume) {
-	debug(DBG_SND, "Mixer::playChannel(%d, %d, %d)", channel, freq, volume);
+	debug(DBG_SND, "Mixer::playSoundRaw(%d, %d, %d)", channel, freq, volume);
 	if (_impl) {
 		return _impl->playSoundRaw(channel, data, freq, volume);
 	}
@@ -502,15 +516,16 @@ void Mixer::playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, ui
 }
 
 void Mixer::stopSound(uint8_t channel) {
-	debug(DBG_SND, "Mixer::stopChannel(%d)", channel);
+	debug(DBG_SND, "Mixer::stopSound(%d)", channel);
 	if (_impl) {
 		return _impl->stopSound(channel);
 	}
 }
 
-void Mixer::playSoundMt32(int channel, int num) {
+void Mixer::playSoundMt32(int num) {
+	debug(DBG_SND, "Mixer::playSoundMt32(%d)", num);
 	if (_impl) {
-		return _impl->playSoundMt32(channel, num);
+		return _impl->playSoundMt32(num);
 	}
 }
 
@@ -573,7 +588,7 @@ void Mixer::stopSfxMusic() {
 void Mixer::stopAll() {
 	debug(DBG_SND, "Mixer::stopAll()");
 	if (_impl) {
-		return _impl->stopAll();
+		return _impl->stopAll(_aifc, _sfx);
 	}
 }
 

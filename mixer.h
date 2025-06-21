@@ -33,11 +33,12 @@ struct Mixer {
 	void update();
 
 	bool hasMt32() const;
+	bool hasMt32SoundMapping(int num);
 
 	void playSoundRaw(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume);
 	void playSoundWav(uint8_t channel, const uint8_t *data, uint16_t freq, uint8_t volume, uint8_t loop);
 	void stopSound(uint8_t channel);
-	void playSoundMt32(int channel, int num);
+	void playSoundMt32(int num);
 	void setChannelVolume(uint8_t channel, uint8_t volume);
 	void playMusic(const char *path, uint8_t loop);
 	void stopMusic();
