@@ -224,9 +224,15 @@ struct LzHuffman {
 
 const char *ResourceWin31::FILENAME = "BANK";
 
+const char *ResourceWin31::EXECUTABLE = "WORLD.EXE";
+
 ResourceWin31::ResourceWin31(const char *dataPath)
 	:  _dataPath(dataPath), _entries(0), _entriesCount(0) {
 	_f.open(FILENAME, dataPath);
+	memset(_bitmaps, 0, sizeof(_bitmaps));
+	if (_exe.open(EXECUTABLE, dataPath)) {
+		readExecutableResources();
+	}
 	_textBuf = 0;
 	memset(_stringsTable, 0, sizeof(_stringsTable));
 }
@@ -292,6 +298,49 @@ uint8_t *ResourceWin31::loadFile(int num, uint8_t *dst, uint32_t *size) {
 	return 0;
 }
 
+static bool freadTag(File *f, const char *tag) {
+	for (; *tag; ++tag) {
+		if (f->readByte() != (uint8_t)*tag) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void ResourceWin31::readExecutableResources() {
+	if (freadTag(&_exe, "MZ")) {
+		_exe.seek(60);
+		const uint16_t executableOffset = _exe.readUint16LE();
+		_exe.seek(executableOffset);
+		if (freadTag(&_exe, "NE")) {
+			_exe.seek(executableOffset + 36);
+			const uint16_t resourceOffset = _exe.readUint16LE();
+			if (resourceOffset != 0) {
+				_exe.seek(executableOffset + resourceOffset);
+				const int align = 1 << _exe.readUint16LE();
+				int type = _exe.readUint16LE();
+				while (type != 0) {
+					assert((type & 0x8000) != 0);
+					const int count = _exe.readUint16LE();
+					_exe.readUint32LE(); // reserved
+					for (int i = 0; i < count; ++i) {
+						if (type == 0x8002 /* bitmap */ && i < RESOURCE_BITMAP_COUNT) {
+							_bitmaps[i].offset = _exe.readUint16LE() * align;
+							_bitmaps[i].size = _exe.readUint16LE() * align;
+							_exe.readUint16LE(); // flags
+							_bitmaps[i].id = _exe.readUint16LE();
+							_exe.readUint32LE(); // reserved
+						} else {
+							_exe.seek(12, SEEK_CUR);
+						}
+					}
+					type = _exe.readUint16LE();
+				}
+			}
+		}
+	}
+}
+
 void ResourceWin31::readStrings() {
 	uint32_t len, offset = 0;
 	_textBuf = loadFile(148, 0, &len);
@@ -324,4 +373,24 @@ const char *ResourceWin31::getMusicName(int num) const {
 		return "X.mid";
 	}
 	return 0;
+}
+
+uint8_t *ResourceWin31::getDib(int num) {
+	uint8_t *buf = 0;
+	if (num >= 0 && num < RESOURCE_BITMAP_COUNT) {
+		const Win31ResourceBitmap *b = &_bitmaps[num];
+		if (b->size != 0) {
+			buf = (uint8_t *)malloc(b->size);
+			if (buf) {
+				_exe.seek(b->offset);
+				const uint32_t count = _exe.read(buf, b->size);
+				if (count != b->size) {
+					warning("Failed to read %d bytes, count %d", b->size, count);
+					free(buf);
+					buf = 0;
+				}
+			}
+		}
+	}
+	return buf;
 }

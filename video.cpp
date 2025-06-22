@@ -628,3 +628,39 @@ void Video::drawBitmap3DO(const char *name, SystemStub *stub) {
 		free(data);
 	}
 }
+
+void Video::drawBitmapDIB(const uint8_t *data, SystemStub *stub) {
+	int w = 0;
+	int h = 0;
+	const int headerSize = READ_LE_UINT32(data);
+	if (headerSize == 40) {
+		w = READ_LE_UINT32(data + 4);
+		h = READ_LE_UINT32(data + 8);
+	} else if (headerSize == 12) {
+		w = READ_LE_UINT16(data + 4);
+		h = READ_LE_UINT16(data + 6);
+	} else {
+		return;
+	}
+	const uint8_t *pal = data + headerSize;
+	uint16_t palette[256];
+	for (int i = 0; i < 256; ++i) {
+		Color color;
+		color.r = *pal++;
+		color.g = *pal++;
+		color.b = *pal++;
+		palette[i] = color.rgb555();
+	}
+	uint16_t *rgb = (uint16_t *)malloc(w * h * sizeof(uint16_t));
+	if (rgb) {
+		const uint8_t *bmp = pal + h * w;
+		for (int y = 0; y < h; ++y) {
+			bmp -= w;
+			for (int x = 0; x < w; ++x) {
+				rgb[y * w + x] = palette[bmp[x]];
+			}
+		}
+		_graphics->drawBitmapOverlay((const uint8_t *)rgb, w, h, FMT_RGB555, stub);
+		free(rgb);
+	}
+}

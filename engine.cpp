@@ -8,6 +8,7 @@
 #include "file.h"
 #include "graphics.h"
 #include "resource_nth.h"
+#include "resource_win31.h"
 #include "systemstub.h"
 #include "util.h"
 
@@ -48,6 +49,9 @@ void Engine::run() {
 		break;
 	case kStateEnd3DO:
 		doEndCredits();
+		break;
+	case kStateLogoWin31:
+		doWin31Logos();
 		break;
 	case kStateGame:
 		_script.setupTasks();
@@ -145,6 +149,8 @@ void Engine::setup(Language lang, int graphicsType, const char *scalerName, int 
 #endif
 	if (_res.getDataType() == Resource::DT_3DO && _partNum == kPartIntro) {
 		_state = kStateLogo3DO;
+	} else if (_res.getDataType() == Resource::DT_WIN31 && _partNum == kPartIntro) {
+		_state = kStateLogoWin31;
 	} else {
 		_state = kStateGame;
 		const int num = _partNum;
@@ -227,13 +233,33 @@ void Engine::titlePage() {
 		}
 		if (_stub->_pi.action) {
 			_stub->_pi.action = false;
-			_script.restartAt(_partNum);
 			break;
 		}
 		_vid.updateDisplay(1, _stub);
 		_stub->sleep(50);
 	}
 	_state = kStateGame;
+	_script.restartAt(_partNum);
+}
+
+void Engine::doWin31Logos() {
+	for (int num = 1; num <= 2; ++num) {
+		uint8_t *dib = _res._win31->getDib(num);
+		if (dib) {
+			while (!_stub->_pi.quit) {
+				_vid.drawBitmapDIB(dib, _stub);
+				_stub->processEvents();
+				if (_stub->_pi.action) {
+					_stub->_pi.action = false;
+					break;
+				}
+				_stub->sleep(50);
+			}
+			free(dib);
+		}
+	}
+	_state = kStateGame;
+	_script.restartAt(_partNum);
 }
 
 void Engine::saveGameState(uint8_t slot, const char *desc) {
