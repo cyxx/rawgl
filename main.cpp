@@ -90,7 +90,6 @@ static int getGraphicsType(Resource::DataType type) {
 	switch (type) {
 	case Resource::DT_15TH_EDITION:
 	case Resource::DT_20TH_EDITION:
-	case Resource::DT_3DO:
 		return GRAPHICS_GL;
 	default:
 		return GRAPHICS_ORIGINAL;
@@ -234,7 +233,7 @@ int main(int argc, char *argv[]) {
 	g_debugMask = DBG_INFO; // | DBG_VIDEO | DBG_SND | DBG_SCRIPT | DBG_BANK | DBG_SER;
 	Engine *e = new Engine(dataPath, part);
 	if (defaultGraphics) {
-		// if not set, use original software graphics for 199x editions and GL for the anniversary and 3DO versions
+		// if not set, use original software graphics for 199x and 3DO versions and GL for the anniversary releases
 		graphicsType = getGraphicsType(e->_res.getDataType());
 		dm.opengl = (graphicsType == GRAPHICS_GL);
 	}
